@@ -303,25 +303,6 @@ export default function TTSSettingsScreen() {
                     placeholderTextColor={colors.mutedForeground}
                   />
                 </View>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>
-                    {t("tts.apiKeyHeader", "API key header")}
-                  </Text>
-                  <TextInput
-                    style={styles.input}
-                    value={config.openaiTtsApiKeyHeader || ""}
-                    onChangeText={(v) => updateConfig({ openaiTtsApiKeyHeader: v })}
-                    placeholder="Authorization"
-                    placeholderTextColor={colors.mutedForeground}
-                    autoCapitalize="none"
-                  />
-                  <Text style={styles.fieldHint}>
-                    {t(
-                      "tts.apiKeyHeaderHint",
-                      "Leave empty for the OpenAI default. Self-hosted services often want X-API-Key instead.",
-                    )}
-                  </Text>
-                </View>
               </>
             )}
 
@@ -575,6 +556,25 @@ export default function TTSSettingsScreen() {
                     placeholder="sk-..."
                     placeholderTextColor={colors.mutedForeground}
                   />
+                </View>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>
+                    {t("tts.apiKeyHeader", "API key header")}
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={config.openaiTtsApiKeyHeader || ""}
+                    onChangeText={(v) => updateConfig({ openaiTtsApiKeyHeader: v })}
+                    placeholder="Authorization"
+                    placeholderTextColor={colors.mutedForeground}
+                    autoCapitalize="none"
+                  />
+                  <Text style={styles.fieldHint}>
+                    {t(
+                      "tts.apiKeyHeaderHint",
+                      "Leave empty for the OpenAI default. Self-hosted services often want X-API-Key instead.",
+                    )}
+                  </Text>
                 </View>
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>{t("tts.stylePrompt", "朗读风格")}</Text>
