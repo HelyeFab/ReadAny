@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Keyboard,
   Platform,
   ScrollView,
@@ -29,6 +30,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { captureRef } from "react-native-view-shot";
 import { WebView } from "react-native-webview";
 import type { WebViewNavigation } from "react-native-webview";
 
@@ -40,10 +42,14 @@ import {
   ChevronRightIcon,
   GlobeIcon,
   RefreshCwIcon,
+  ScanTextIcon,
   Trash2Icon,
   XIcon,
 } from "@/components/ui/Icon";
+import { RegionCaptureOverlay } from "@/components/web/RegionCaptureOverlay";
+import type { CaptureRegion } from "@/components/web/RegionCaptureOverlay";
 import { WebSelectionBar } from "@/components/web/WebSelectionBar";
+import { isOcrAvailable, recognizeRegion } from "../../modules/mlkit-ocr";
 import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
 import { SELECTION_BRIDGE_JS, parseWebBridgeMessage } from "@/lib/web/selection-bridge";
 import { STARTER_SITES, resolveInputToUrl } from "@/lib/web/starter-sites";
@@ -73,6 +79,16 @@ export function WebReaderScreen() {
   const [selection, setSelection] = useState<string | null>(null);
   const [definition, setDefinition] = useState<{ word: string } | null>(null);
   const [speaking, setSpeaking] = useState(false);
+  /**
+   * A still of the page, taken so a box can be drawn on it. Some of the best
+   * Japanese on the web is published as page images with no text to select;
+   * reading those means recognising the crop instead.
+   */
+  const pageRef = useRef<View>(null);
+  const [capture, setCapture] = useState<{ uri: string; width: number; height: number } | null>(
+    null,
+  );
+  const [ocrBusy, setOcrBusy] = useState(false);
 
   // Reopen whatever was being read, but only once the persisted state has
   // actually arrived — reading `lastUrl` before that always looks like "empty".
@@ -166,6 +182,69 @@ export function WebReaderScreen() {
     });
   }, [selection, navigation, pageTitle, address]);
 
+  /** Freeze the page as an image so a box can be drawn on it without it moving. */
+  const startRegionCapture = useCallback(async () => {
+    if (!pageRef.current) return;
+    setSelection(null);
+    try {
+      const raw = await captureRef(pageRef, { format: "png", quality: 1, result: "tmpfile" });
+      const uri = raw.startsWith("file://") ? raw : `file://${raw}`;
+      const size = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+        Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
+      });
+      setCapture({ uri, width: size.width, height: size.height });
+    } catch (error) {
+      Alert.alert(
+        t("web.captureFailed", "Could not capture the page"),
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }, [t]);
+
+  const handleRegion = useCallback(
+    async (region: CaptureRegion) => {
+      if (!capture) return;
+      setOcrBusy(true);
+      try {
+        const { text } = await recognizeRegion({
+          uri: capture.uri,
+          x: region.x,
+          y: region.y,
+          width: region.width,
+          height: region.height,
+          language: "japanese",
+        });
+        // Recognised lines arrive newline-separated. Japanese is written without
+        // spaces, so rejoining with one would put a gap in the middle of a word.
+        const japanese = /[\u3041-\u30FF\u4E00-\u9FFF]/.test(text);
+        const cleaned = japanese
+          ? text.replace(/[\s\u3000]+/g, "")
+          : text.replace(/\s+/g, " ").trim();
+        setCapture(null);
+        if (!cleaned) {
+          Alert.alert(
+            t("web.ocrNothing", "No text found"),
+            t(
+              "web.ocrNothingBody",
+              "Nothing was recognised in that area. A tighter box around a single line usually works better.",
+            ),
+          );
+          return;
+        }
+        setSelection(cleaned);
+      } catch (error) {
+        setCapture(null);
+        Alert.alert(
+          t("web.ocrFailed", "Could not read that"),
+          error instanceof Error ? error.message : String(error),
+        );
+      } finally {
+        setOcrBusy(false);
+      }
+    },
+    [capture, t],
+  );
+
   const copySelection = useCallback(() => {
     if (!selection) return;
     void Clipboard.setStringAsync(selection);
@@ -221,6 +300,15 @@ export function WebReaderScreen() {
                 <BookmarkIcon color={colors.foreground} size={20} />
               )}
             </TouchableOpacity>
+            {isOcrAvailable ? (
+              <TouchableOpacity
+                style={s.navButton}
+                onPress={() => void startRegionCapture()}
+                accessibilityLabel={t("web.readRegion", "Read a region")}
+              >
+                <ScanTextIcon color={colors.foreground} size={20} />
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
               style={s.navButton}
               onPress={() => webRef.current?.reload()}
@@ -242,7 +330,10 @@ export function WebReaderScreen() {
       {loading ? <ActivityIndicator style={s.spinner} color={colors.primary} /> : null}
 
       {url ? (
-        <WebView
+        // collapsable={false} keeps a real view behind this on Android, which
+        // captureRef needs — without it the node is optimised away.
+        <View ref={pageRef} collapsable={false} style={s.web}>
+          <WebView
           ref={webRef}
           source={{ uri: url }}
           style={s.web}
@@ -274,7 +365,8 @@ export function WebReaderScreen() {
               ? "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
               : undefined
           }
-        />
+          />
+        </View>
       ) : (
         <ScrollView
           style={s.home}
@@ -361,6 +453,17 @@ export function WebReaderScreen() {
           onAsk={askSensei}
           onCopy={copySelection}
           onDismiss={() => setSelection(null)}
+        />
+      ) : null}
+
+      {capture ? (
+        <RegionCaptureOverlay
+          uri={capture.uri}
+          imageWidth={capture.width}
+          imageHeight={capture.height}
+          busy={ocrBusy}
+          onSelect={(region) => void handleRegion(region)}
+          onCancel={() => setCapture(null)}
         />
       ) : null}
 
