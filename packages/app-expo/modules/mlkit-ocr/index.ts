@@ -25,6 +25,8 @@ export interface RecognizeResult {
 
 declare class MlkitOcrModule extends NativeModule {
   recognize(options: RecognizeOptions): Promise<RecognizeResult>;
+  /** The same crop as a base64 JPEG, unprocessed, for a vision model to read. */
+  cropToBase64(options: RecognizeOptions): Promise<string>;
 }
 
 /**
@@ -33,6 +35,7 @@ declare class MlkitOcrModule extends NativeModule {
  */
 const unavailable = {
   recognize: async () => ({ text: "", blocks: [] }),
+  cropToBase64: async () => "",
 } as unknown as MlkitOcrModule;
 
 let resolved: MlkitOcrModule = unavailable;
@@ -51,6 +54,10 @@ export const isOcrAvailable = available;
 
 export async function recognizeRegion(options: RecognizeOptions): Promise<RecognizeResult> {
   return resolved.recognize(options);
+}
+
+export async function cropRegionToBase64(options: RecognizeOptions): Promise<string> {
+  return resolved.cropToBase64(options);
 }
 
 export default resolved;

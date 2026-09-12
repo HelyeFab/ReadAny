@@ -50,6 +50,9 @@ import { RegionCaptureOverlay } from "@/components/web/RegionCaptureOverlay";
 import type { CaptureRegion } from "@/components/web/RegionCaptureOverlay";
 import { WebSelectionBar } from "@/components/web/WebSelectionBar";
 import { isOcrAvailable, recognizeRegion } from "../../modules/mlkit-ocr";
+import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
+import { readRegionWithVision, supportsVisionOcr } from "@/lib/web/vision-ocr";
+import { useSettingsStore } from "@/stores";
 import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
 import { SELECTION_BRIDGE_JS, parseWebBridgeMessage } from "@/lib/web/selection-bridge";
 import { STARTER_SITES, resolveInputToUrl } from "@/lib/web/starter-sites";
@@ -206,16 +209,38 @@ export function WebReaderScreen() {
       if (!capture) return;
       setOcrBusy(true);
       try {
-        const { text } = await recognizeRegion({
-          uri: capture.uri,
-          x: region.x,
-          y: region.y,
-          width: region.width,
-          height: region.height,
-          language: "japanese",
-        });
+        // The vision model first, because this is only ever pointed at page
+        // images and the on-device recogniser is poor on hand lettering. It
+        // falls back rather than failing: no signal should still read.
+        let text = "";
+        const aiConfig = await resolveActiveAIConfig(useSettingsStore.getState());
+        const endpoint = aiConfig?.endpoints.find((e) => e.id === aiConfig.activeEndpointId);
+        if (endpoint?.apiKey && supportsVisionOcr(endpoint.baseUrl)) {
+          try {
+            text = await readRegionWithVision(capture.uri, region, {
+              baseUrl: endpoint.baseUrl,
+              apiKey: endpoint.apiKey,
+            });
+          } catch (error) {
+            console.warn("[OCR] vision read failed, falling back on-device", error);
+          }
+        }
+        if (!text) {
+          text = (
+            await recognizeRegion({
+              uri: capture.uri,
+              x: region.x,
+              y: region.y,
+              width: region.width,
+              height: region.height,
+              language: "japanese",
+            })
+          ).text;
+        }
         // Recognised lines arrive newline-separated. Japanese is written without
         // spaces, so rejoining with one would put a gap in the middle of a word.
+        // Recognised lines arrive newline-separated. Japanese is written
+        // without spaces, so rejoining with one would put a gap mid-word.
         const japanese = /[\u3041-\u30FF\u4E00-\u9FFF]/.test(text);
         const cleaned = japanese
           ? text.replace(/[\s\u3000]+/g, "")

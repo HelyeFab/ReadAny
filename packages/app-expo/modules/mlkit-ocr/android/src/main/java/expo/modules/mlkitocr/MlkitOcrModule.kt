@@ -9,6 +9,7 @@ import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.Rect
 import android.net.Uri
+import android.util.Base64
 import androidx.core.os.bundleOf
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
@@ -21,6 +22,7 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
+import java.io.ByteArrayOutputStream
 import java.io.File
 
 /**
@@ -45,6 +47,8 @@ import java.io.File
 private const val TARGET_MIN_DIM = 1200
 private const val MAX_DIM = 3000
 private const val SIGMOID_K = 7f
+/** Longest side of a crop uploaded for vision reading. */
+private const val UPLOAD_MAX_DIM = 1600
 
 class RecognizeOptions : Record {
   @Field val uri: String = ""
@@ -107,6 +111,43 @@ class MlkitOcrModule : Module() {
         )
       } finally {
         prepared.recycle()
+      }
+    }
+    /**
+     * The same crop, handed back as a JPEG for a vision model to read.
+     *
+     * Deliberately skips the preprocessing above. That recipe hardens the
+     * anti-aliased edges of rendered type for a recogniser that wants clean
+     * strokes; a vision model wants the picture as it is, and flattening
+     * screentone to black and white throws away what it reads best.
+     */
+    AsyncFunction("cropToBase64") { options: RecognizeOptions ->
+      val source = decode(options.uri)
+      val cropped = crop(source, options)
+      if (cropped !== source) source.recycle()
+
+      // Capped so a full-resolution crop does not become a multi-megabyte
+      // upload; well above what the model resolves text at.
+      val longest = maxOf(cropped.width, cropped.height)
+      val scaled = if (longest > UPLOAD_MAX_DIM) {
+        val ratio = UPLOAD_MAX_DIM.toFloat() / longest
+        Bitmap.createScaledBitmap(
+          cropped,
+          (cropped.width * ratio).toInt().coerceAtLeast(1),
+          (cropped.height * ratio).toInt().coerceAtLeast(1),
+          true,
+        )
+      } else {
+        cropped
+      }
+
+      try {
+        val stream = ByteArrayOutputStream()
+        scaled.compress(Bitmap.CompressFormat.JPEG, 92, stream)
+        Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+      } finally {
+        if (scaled !== cropped) scaled.recycle()
+        cropped.recycle()
       }
     }
   }
