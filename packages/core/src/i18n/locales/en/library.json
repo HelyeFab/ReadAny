@@ -162,7 +162,8 @@
     "bookNotFound": "Book not found",
     "importSourceFolder": "Import a folder",
     "folderImportEmpty": "No books were found in that folder.",
-    "newFolder": "New folder"
+    "newFolder": "New folder",
+    "folderCreateFailed": "That folder could not be created."
   },
   "home": {
     "library": "Library",

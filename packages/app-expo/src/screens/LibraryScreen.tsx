@@ -748,7 +748,16 @@ export function LibraryScreen() {
     if (groupNameModal.mode === "create") {
       // A folder made while inside another one becomes its child, which is how
       // nesting is reached without a separate "new subfolder" command.
-      await addGroup(trimmed, activeGroupId || undefined);
+      const created = await addGroup(trimmed, activeGroupId || undefined);
+      if (!created) {
+        // Silence here is indistinguishable from the folder simply not
+        // appearing, which is the exact confusion this feature already had.
+        Alert.alert(
+          t("library.newFolder", "New folder"),
+          t("library.folderCreateFailed", "That folder could not be created."),
+        );
+        return;
+      }
       setGroupView(true);
     } else if (groupNameModal.group) {
       renameGroup(groupNameModal.group.id, trimmed);

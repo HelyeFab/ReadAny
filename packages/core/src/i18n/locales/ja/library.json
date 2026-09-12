@@ -149,7 +149,8 @@
     "bookNotFound": "書籍が見つかりません",
     "importSourceFolder": "フォルダを読み込む",
     "folderImportEmpty": "そのフォルダに本が見つかりませんでした。",
-    "newFolder": "新しいフォルダ"
+    "newFolder": "新しいフォルダ",
+    "folderCreateFailed": "フォルダを作成できませんでした。"
   },
   "home": {
     "library": "ライブラリ",

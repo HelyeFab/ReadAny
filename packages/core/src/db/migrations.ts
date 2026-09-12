@@ -121,6 +121,14 @@ const migrations: Migration[] = [
       "ALTER TABLE threads ADD COLUMN memory_message_count INTEGER DEFAULT 0",
     ],
   },
+  {
+    version: 14,
+    description: "Nest book groups inside one another",
+    up: [
+      "ALTER TABLE book_groups ADD COLUMN parent_id TEXT",
+      "CREATE INDEX IF NOT EXISTS idx_book_groups_parent ON book_groups(parent_id)",
+    ],
+  },
 ];
 
 /** Run pending migrations */

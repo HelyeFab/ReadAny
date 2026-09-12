@@ -149,7 +149,8 @@
     "bookNotFound": "Livre introuvable",
     "importSourceFolder": "Importer un dossier",
     "folderImportEmpty": "Aucun livre trouvé dans ce dossier.",
-    "newFolder": "Nouveau dossier"
+    "newFolder": "Nouveau dossier",
+    "folderCreateFailed": "Ce dossier n'a pas pu être créé."
   },
   "home": {
     "library": "Bibliothèque",
