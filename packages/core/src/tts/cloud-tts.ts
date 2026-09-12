@@ -17,7 +17,10 @@ export function base64ToBytes(base64: string): Uint8Array {
 }
 
 function joinUrl(baseUrl: string, path: string): string {
-  const normalizedBase = baseUrl.replace(/\/+$/u, "");
+  // Trim first: a base URL typed or pasted with a trailing space produces a
+  // request to "/v1%20/audio/speech", which 404s in a way that looks like the
+  // service is wrong rather than the input.
+  const normalizedBase = baseUrl.trim().replace(/\/+$/u, "");
   const normalizedPath = path.replace(/^\/+/u, "");
   return `${normalizedBase}/${normalizedPath}`;
 }
