@@ -92,6 +92,23 @@ export function RegionCaptureOverlay({
   const modeRef = useRef<Mode>({ kind: "draw", anchorX: 0, anchorY: 0 });
   const fitRef = useRef({ left: 0, top: 0, width: 0, height: 0 });
 
+  /**
+   * Where the action bar sits, so the drawing gesture can keep its hands off it.
+   * The responder below claims movement anywhere, which otherwise lets it steal
+   * a tap on Read out from under the button and draw a box on the button
+   * instead — the touch never reaches it and nothing is ever sent.
+   */
+  const barRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
+  const onBarLayout = useCallback((event: LayoutChangeEvent) => {
+    barRef.current = event.nativeEvent.layout;
+  }, []);
+
+  const inBar = useCallback((x: number, y: number) => {
+    const b = barRef.current;
+    if (!b.width || !b.height) return false;
+    return x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height;
+  }, []);
+
   const containerRef = useRef<View>(null);
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -149,8 +166,16 @@ export function RegionCaptureOverlay({
   const responder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponder: (event) =>
+          !inBar(
+            event.nativeEvent.pageX - originRef.current.x,
+            event.nativeEvent.pageY - originRef.current.y,
+          ),
+        onMoveShouldSetPanResponder: (event) =>
+          !inBar(
+            event.nativeEvent.pageX - originRef.current.x,
+            event.nativeEvent.pageY - originRef.current.y,
+          ),
         onPanResponderGrant: (event) => {
           const x = event.nativeEvent.pageX - originRef.current.x;
           const y = event.nativeEvent.pageY - originRef.current.y;
@@ -240,7 +265,7 @@ export function RegionCaptureOverlay({
           }
         },
       }),
-    [clampToImage, cornerAt],
+    [clampToImage, cornerAt, inBar],
   );
 
   const readBox = useCallback(() => {
@@ -284,7 +309,7 @@ export function RegionCaptureOverlay({
           <View style={s.dimAll} pointerEvents="none" />
         )}
 
-        <View style={s.bar} pointerEvents="box-none">
+        <View style={s.bar} onLayout={onBarLayout} pointerEvents="box-none">
           {busy ? (
             <View style={s.busy}>
               <ActivityIndicator color="#fff" />
