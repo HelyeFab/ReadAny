@@ -196,8 +196,17 @@ export function LibraryScreen() {
    * so books can be filed as they arrive instead of being fished back out of
    * the shelf afterwards.
    */
+  /**
+   * What the import is doing right now. A few hundred books take minutes, and
+   * an app that shows nothing for minutes looks broken rather than busy.
+   */
+  const [importProgress, setImportProgress] = useState<{
+    done: number;
+    total: number;
+    label: string;
+  } | null>(null);
   const [pendingImport, setPendingImport] = useState<{
-    files: Array<{ uri: string; name?: string }>;
+    files: Array<{ uri: string; name?: string; relativeFolder?: string[] }>;
     suggestedName?: string;
   } | null>(null);
   const [selectedBookIds, setSelectedBookIds] = useState<Set<string>>(new Set());
@@ -488,6 +497,7 @@ export function LibraryScreen() {
       setIsPickingImport(true);
       try {
         let groupId: string | undefined;
+        let destinationLabel = "";
         if (destination.kind === "existing") {
           groupId = destination.groupId;
         } else if (destination.kind === "new") {
@@ -500,22 +510,80 @@ export function LibraryScreen() {
             return;
           }
           groupId = created.id;
+          destinationLabel = destination.name;
         }
 
-        const summary = await importBooks(staged.files);
-        if (groupId && summary.imported.length > 0) {
-          moveBooksToGroup(
-            summary.imported.map((book) => book.id),
-            groupId,
-          );
+        /**
+         * Find or make the chain of folders a file sat in on disk.
+         * Looked up by name under its parent each time, so a second import of
+         * the same shelf lands in the folders that already exist rather than
+         * building a parallel set beside them.
+         */
+        const ensureFolderPath = async (
+          segments: string[],
+          rootId: string | undefined,
+        ): Promise<string | undefined> => {
+          let parentId = rootId;
+          for (const segment of segments) {
+            const name = segment.trim();
+            if (!name) continue;
+            const existing = useLibraryStore
+              .getState()
+              .groups.find(
+                (group) =>
+                  group.name === name && (group.parentId ?? undefined) === (parentId ?? undefined),
+              );
+            if (existing) {
+              parentId = existing.id;
+              continue;
+            }
+            const created = await addGroup(name, parentId);
+            if (!created) return parentId;
+            parentId = created.id;
+          }
+          return parentId;
+        };
+
+        // Imported one folder at a time: importBooks skips duplicates, so the
+        // books it returns cannot be matched back to the files that went in.
+        // Keeping each folder's import separate keeps the mapping exact.
+        const byFolder = new Map<string, typeof staged.files>();
+        for (const file of staged.files) {
+          const path = (file.relativeFolder || []).join("/");
+          const bucket = byFolder.get(path);
+          if (bucket) bucket.push(file);
+          else byFolder.set(path, [file]);
         }
+
+        let imported = 0;
+        let skipped = 0;
+        let failed = 0;
+        let done = 0;
+        const total = staged.files.length;
+        for (const [path, files] of byFolder) {
+          setImportProgress({
+            done,
+            total,
+            label: path || destinationLabel || t("library.importing", "Importing"),
+          });
+          const target = path ? await ensureFolderPath(path.split("/"), groupId) : groupId;
+          const summary = await importBooks(files);
+          imported += summary.imported.length;
+          skipped += summary.skippedDuplicates.length;
+          failed += summary.failures.length;
+          if (target && summary.imported.length > 0) {
+            moveBooksToGroup(
+              summary.imported.map((book) => book.id),
+              target,
+            );
+          }
+          done += files.length;
+        }
+        setImportProgress(null);
+
         Alert.alert(
           t("common.success", "成功！"),
-          t("library.importResultSummary", {
-            imported: summary.imported.length,
-            skipped: summary.skippedDuplicates.length,
-            failed: summary.failures.length,
-          }),
+          t("library.importResultSummary", { imported, skipped, failed }),
         );
       } catch (err) {
         console.error("Import failed:", err);
@@ -524,6 +592,7 @@ export function LibraryScreen() {
           err instanceof Error ? err.message : String(err),
         );
       } finally {
+        setImportProgress(null);
         setIsPickingImport(false);
       }
     },
@@ -575,7 +644,15 @@ export function LibraryScreen() {
     setIsPickingImport(true);
     try {
       const { pickFolderBooks } = await import("@/lib/library/folder-import");
-      const pick = await pickFolderBooks();
+      setImportProgress({ done: 0, total: 0, label: t("library.scanning", "Looking for books…") });
+      const pick = await pickFolderBooks((found) => {
+        setImportProgress({
+          done: found,
+          total: 0,
+          label: t("library.scanning", "Looking for books…"),
+        });
+      });
+      setImportProgress(null);
       if (!pick) return;
       if (pick.candidates.length === 0) {
         Alert.alert(
@@ -1048,6 +1125,24 @@ export function LibraryScreen() {
   return (
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]} edges={["top"]}>
       <ExtractorWebView ref={extractorRef} />
+
+      {importProgress ? (
+        <View style={[s.importBanner, { marginHorizontal: 16 }]}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={s.importBannerTitle} numberOfLines={1}>
+              {importProgress.total > 0
+                ? `${importProgress.done} / ${importProgress.total}`
+                : importProgress.done > 0
+                  ? `${importProgress.done} ${t("library.found", "found")}`
+                  : t("library.importing", "Importing")}
+            </Text>
+            <Text style={s.importBannerLabel} numberOfLines={1}>
+              {importProgress.label}
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
       <ImportDestinationSheet
         visible={pendingImport !== null}
@@ -1638,6 +1733,12 @@ const makeStyles = (
       marginBottom: 12,
     },
     importBannerText: { fontSize: fontSize.xs, color: colors.primary },
+    importBannerTitle: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.semibold,
+      color: colors.foreground,
+    },
+    importBannerLabel: { fontSize: fontSize.xs, color: colors.mutedForeground },
     vecBanner: {
       backgroundColor: `${colors.muted}0D`,
       borderRadius: radius.lg,
