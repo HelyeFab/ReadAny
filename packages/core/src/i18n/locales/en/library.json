@@ -167,7 +167,10 @@
     "folderColor": "Colour",
     "folderColorNone": "No colour",
     "listView": "List view",
-    "gridView": "Grid view"
+    "gridView": "Grid view",
+    "menu": "Library options",
+    "folderView": "Folders",
+    "layout": "Layout"
   },
   "home": {
     "library": "Library",

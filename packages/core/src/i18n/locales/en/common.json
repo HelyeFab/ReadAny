@@ -47,7 +47,9 @@
     "selectAll": "Select all",
     "rename": "Rename",
     "reset": "Reset",
-    "writeYourThoughts": "Write your thoughts..."
+    "writeYourThoughts": "Write your thoughts...",
+    "on": "On",
+    "off": "Off"
   },
   "sidebar": {
     "library": "Library",

@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
  * Sliding sidebar for threads, compact header, empty state with suggestions.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cafeIllustration } from "@/lib/library/cafe-illustration";
 import { useTranslation } from "react-i18next";
 import {
   Animated,
@@ -577,7 +578,11 @@ function EmptyState({
   return (
     <View style={[s.emptyContainer, compact && s.emptyContainerCompact]}>
       <View style={s.emptyInner}>
-        <Image source={isDark ? THINK_DARK_PNG : THINK_PNG} style={{ width: 140, height: 140 }} />
+        <Image
+          source={cafeIllustration()}
+          style={{ width: 280, height: 209, borderRadius: 12 }}
+          resizeMode="contain"
+        />
         <Text style={s.emptyTitle}>{t("chat.howCanIHelp", "有什么我可以帮你的？")}</Text>
         <Text style={s.emptySubtitle}>
           {t("chat.askAboutBooks", "关于书籍的任何问题都可以问我")}

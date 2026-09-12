@@ -91,7 +91,7 @@
     "select": "選択",
     "selectAll": "すべて選択",
     "selectedCount": "{{count}}件選択中",
-    "sort": "並べ替え",
+    "sort": "並び替え",
     "syncNotConfigured": "先に同期を設定してください",
     "detailsAction": "書籍の詳細",
     "detailsTitle": "書籍の詳細",
@@ -154,7 +154,10 @@
     "folderColor": "色",
     "folderColorNone": "なし",
     "listView": "リスト表示",
-    "gridView": "グリッド表示"
+    "gridView": "グリッド表示",
+    "menu": "ライブラリの操作",
+    "folderView": "フォルダ",
+    "layout": "表示"
   },
   "home": {
     "library": "ライブラリ",

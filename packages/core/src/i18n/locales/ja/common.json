@@ -47,7 +47,9 @@
     "selectAll": "すべて選択",
     "rename": "名前を変更",
     "reset": "リセット",
-    "writeYourThoughts": "感想を書く..."
+    "writeYourThoughts": "感想を書く...",
+    "on": "オン",
+    "off": "オフ"
   },
   "sidebar": {
     "library": "ライブラリ",

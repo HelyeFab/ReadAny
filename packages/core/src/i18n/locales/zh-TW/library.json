@@ -154,7 +154,10 @@
     "folderColor": "顏色",
     "folderColorNone": "無顏色",
     "listView": "清單檢視",
-    "gridView": "格狀檢視"
+    "gridView": "格狀檢視",
+    "menu": "書庫選項",
+    "folderView": "資料夾",
+    "layout": "版面"
   },
   "home": {
     "library": "書庫",
