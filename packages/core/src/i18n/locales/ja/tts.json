@@ -140,7 +140,8 @@
     "player": "TTSプレーヤー",
     "listeningToBook": "オーディオブック再生中",
     "apiKeyHeader": "APIキーのヘッダー",
-    "apiKeyHeaderHint": "空欄でOpenAI標準。自前のサービスではX-API-Keyを使うことが多いです。"
+    "apiKeyHeaderHint": "空欄でOpenAI標準。自前のサービスではX-API-Keyを使うことが多いです。",
+    "previewFailed": "再生に失敗しました"
   },
   "fonts": {
     "title": "フォント",

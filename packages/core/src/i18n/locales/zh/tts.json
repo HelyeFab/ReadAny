@@ -141,7 +141,8 @@
     "stop": "停止",
     "noTextFound": "当前页面未找到可朗读的文本",
     "apiKeyHeader": "API 密钥请求头",
-    "apiKeyHeaderHint": "留空使用 OpenAI 默认值。自建服务通常需要 X-API-Key。"
+    "apiKeyHeaderHint": "留空使用 OpenAI 默认值。自建服务通常需要 X-API-Key。",
+    "previewFailed": "试听失败"
   },
   "fonts": {
     "title": "字体",

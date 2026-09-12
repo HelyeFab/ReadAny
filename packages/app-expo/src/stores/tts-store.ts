@@ -295,7 +295,10 @@ function startPlayback(
     if (gen !== _sessionGeneration) return;
     console.error("[TTSStore][player] error", error);
     _activeTTS = null;
-    set({ playState: "stopped" });
+    set({
+      playState: "stopped",
+      lastError: error instanceof Error ? error.message : String(error),
+    });
   };
 
   player.onEnd = () => {
@@ -342,6 +345,11 @@ function startPlayback(
 
 export interface TTSState {
   playState: TTSPlayState;
+  /**
+   * Why speech last failed. Release builds have no readable console, so a
+   * failed voice is otherwise indistinguishable from silence.
+   */
+  lastError: string | null;
   currentText: string;
   currentSegmentText: string;
   config: TTSConfig;
@@ -378,6 +386,7 @@ export const useTTSStore = create<TTSState>()(
     "tts",
     (set, get) => ({
       playState: "stopped",
+      lastError: null,
       currentText: "",
       currentSegmentText: "",
       config: DEFAULT_TTS_CONFIG,

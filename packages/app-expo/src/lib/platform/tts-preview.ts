@@ -9,6 +9,7 @@ const dashscopePreviewPlayer = new ExpoSpeechTTSPlayer();
 const cloudPreviewPlayer = new TrackPlayerCloudTTSPlayer();
 
 export interface TTSPreviewCallbacks {
+  onError?: (error: unknown) => void;
   onStateChange?: (state: "playing" | "paused" | "stopped") => void;
   onEnd?: () => void;
 }
@@ -42,6 +43,12 @@ export async function previewTTSConfig(
           : systemPreviewPlayer;
   player.onStateChange = undefined;
   player.onEnd = undefined;
+  // Not every preview player declares onError; the cloud one does, and it is
+  // the one that can fail on the network.
+  (player as { onError?: (error: unknown) => void }).onError = (error: unknown) => {
+    callbacks.onError?.(error);
+    callbacks.onStateChange?.("stopped");
+  };
   try {
     const preview = Promise.resolve(player.speak(text, config));
     player.onStateChange = callbacks.onStateChange;
@@ -50,5 +57,8 @@ export async function previewTTSConfig(
   } catch (error) {
     console.error("[TTSPreview] Preview failed", error);
     callbacks.onStateChange?.("stopped");
+    // Rethrown so the caller can say WHY. Swallowing it here leaves a preview
+    // that looks identical whether the voice played or never loaded.
+    throw error;
   }
 }

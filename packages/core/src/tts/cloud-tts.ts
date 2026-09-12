@@ -94,6 +94,8 @@ export async function fetchXiaomiTTSWav(text: string, config: TTSConfig): Promis
   const platform = getPlatformService();
   const response = await platform.fetch(buildXiaomiTTSUrl(config), {
     method: "POST",
+    // Binary response over POST — see the note in fetchOpenAITTSAudio.
+    responseType: "arraybuffer",
     headers: {
       "Content-Type": "application/json",
       "api-key": config.xiaomiApiKey,
@@ -152,6 +154,10 @@ export async function fetchOpenAITTSAudio(text: string, config: TTSConfig): Prom
 
   const response = await platform.fetch(joinUrl(config.openaiTtsBaseUrl, "/audio/speech"), {
     method: "POST",
+    // Must be asked for explicitly: the mobile platform reads a POST response
+    // as text unless told otherwise, which turns the audio into an unplayable
+    // file and fails silently — nothing throws, it just never makes a sound.
+    responseType: "arraybuffer",
     headers: openAIHeaders(config.openaiTtsApiKey, config.openaiTtsApiKeyHeader),
     body: JSON.stringify({
       model: config.openaiTtsModel,

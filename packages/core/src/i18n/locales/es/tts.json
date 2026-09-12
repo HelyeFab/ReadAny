@@ -140,7 +140,8 @@
     "player": "Reproductor TTS",
     "listeningToBook": "Reproduciendo audiolibro",
     "apiKeyHeader": "Cabecera de la clave API",
-    "apiKeyHeaderHint": "Déjalo vacío para el valor por defecto de OpenAI. Los servicios autoalojados suelen usar X-API-Key."
+    "apiKeyHeaderHint": "Déjalo vacío para el valor por defecto de OpenAI. Los servicios autoalojados suelen usar X-API-Key.",
+    "previewFailed": "Fallo en la vista previa"
   },
   "fonts": {
     "title": "Fuentes",

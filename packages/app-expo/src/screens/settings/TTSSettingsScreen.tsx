@@ -25,6 +25,7 @@ import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -138,12 +139,20 @@ export default function TTSSettingsScreen() {
       () => endPreviewFeedback(run),
       PREVIEW_FALLBACK_TIMEOUT_MS,
     );
-    void previewTTSConfig(t("tts.testText", "这是一段测试文本"), config, {
+    const reportPreviewFailure = (error: unknown) => {
+      endPreviewFeedback(run);
+      Alert.alert(
+        t("tts.previewFailed", "Preview failed"),
+        error instanceof Error ? error.message : String(error),
+      );
+    };
+    previewTTSConfig(t("tts.testText", "这是一段测试文本"), config, {
       onStateChange: (state) => {
         if (state === "stopped") endPreviewFeedback(run);
       },
       onEnd: () => endPreviewFeedback(run),
-    });
+      onError: reportPreviewFailure,
+    }).catch(reportPreviewFailure);
   }, [clearPreviewTimer, config, endPreviewFeedback, isPreviewing, stop, t]);
 
   const selectProfile = useCallback(

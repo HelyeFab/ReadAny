@@ -140,7 +140,8 @@
     "player": "TTS 플레이어",
     "listeningToBook": "오디오북 재생 중",
     "apiKeyHeader": "API 키 헤더",
-    "apiKeyHeaderHint": "비워 두면 OpenAI 기본값입니다. 자체 호스팅 서비스는 X-API-Key를 사용하는 경우가 많습니다."
+    "apiKeyHeaderHint": "비워 두면 OpenAI 기본값입니다. 자체 호스팅 서비스는 X-API-Key를 사용하는 경우가 많습니다.",
+    "previewFailed": "미리듣기 실패"
   },
   "fonts": {
     "title": "글꼴",
