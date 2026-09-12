@@ -327,6 +327,32 @@ export function LibraryScreen() {
     return onLibraryChanged((deletedTags) => loadBooks(deletedTags));
   }, [loadBooks]);
 
+  /**
+   * Tag and search applied, but NOT the folder filter.
+   *
+   * Folder tiles must count from this, not from filteredBooks: inside a folder
+   * that list contains only that folder's own books, so a subfolder tile could
+   * never see its own contents and always read zero.
+   */
+  const searchableBooks = useMemo(() => {
+    let result = [...books];
+    if (activeTag === "__uncategorized__") {
+      result = result.filter((b) => b.tags.length === 0);
+    } else if (activeTag) {
+      result = result.filter((b) => b.tags.includes(activeTag));
+    }
+    const search = filter.search.toLowerCase().trim();
+    if (search) {
+      result = result.filter(
+        (b) =>
+          b.meta.title.toLowerCase().includes(search) ||
+          b.meta.author?.toLowerCase().includes(search) ||
+          b.tags.some((tag) => tag.toLowerCase().includes(search)),
+      );
+    }
+    return result;
+  }, [books, activeTag, filter.search]);
+
   const filteredBooks = useMemo(() => {
     let result = [...books];
     if (activeTag === "__uncategorized__") {
@@ -404,7 +430,7 @@ export function LibraryScreen() {
   const groupedEntries = useMemo(() => {
     if (hasSearch || !isGroupView) return [];
     const childBookCount = (groupId: string): number => {
-      const direct = filteredBooks.filter((book) => book.groupId === groupId).length;
+      const direct = searchableBooks.filter((book) => book.groupId === groupId).length;
       const nested = groups
         .filter((g) => g.parentId === groupId)
         .reduce((sum, g) => sum + childBookCount(g.id), 0);
@@ -415,10 +441,12 @@ export function LibraryScreen() {
       .map((group) => ({
         type: "group" as const,
         group,
-        books: filteredBooks.filter((book) => book.groupId === group.id),
+        // Cover previews also come from the unfiltered list, or a subfolder
+        // tile would show an empty stack of covers.
+        books: searchableBooks.filter((book) => book.groupId === group.id),
         totalCount: childBookCount(group.id),
       }));
-  }, [activeGroupId, filteredBooks, groups, hasSearch, isGroupView]);
+  }, [activeGroupId, searchableBooks, groups, hasSearch, isGroupView]);
 
   const visibleBooks = useMemo(
     () =>
