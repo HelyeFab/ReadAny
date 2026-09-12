@@ -119,7 +119,7 @@ export async function importYomitanZip(
   fileUri: string,
   onProgress?: (done: number, total: number, title: string) => void,
 ): Promise<DictionaryInfo> {
-  const { BlobReader, ZipReader, TextWriter } = await import("@zip.js/zip.js");
+  const { Uint8ArrayReader, ZipReader, TextWriter } = await import("@zip.js/zip.js");
 
   const base64 = await FileSystem.readAsStringAsync(fileUri, {
     encoding: FileSystem.EncodingType.Base64,
@@ -128,7 +128,10 @@ export async function importYomitanZip(
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
 
-  const reader = new ZipReader(new BlobReader(new Blob([bytes])));
+  // Uint8ArrayReader, not BlobReader: React Native's Blob cannot be built from
+  // an array buffer, and fails with "creating blob from array buffer" — which
+  // is a platform limitation, not a bad archive.
+  const reader = new ZipReader(new Uint8ArrayReader(bytes));
   const entries = await reader.getEntries();
 
   // zip.js types getData only on the union member that has it; a directory
@@ -171,20 +174,28 @@ export async function importYomitanZip(
     if (!bankText) continue;
     const terms = JSON.parse(bankText) as TermRow[];
 
-    // One transaction per bank: a whole-file transaction risks losing an hour's
-    // work to one malformed entry, and per-row commits are far too slow.
-    await db.withTransactionAsync(async () => {
-      for (const term of terms) {
-        if (!Array.isArray(term) || typeof term[0] !== "string") continue;
-        const text = glossaryToText(term[5]);
-        if (!text) continue;
-        await db.runAsync(
-          "INSERT INTO terms (dictionary_id, expression, reading, rules, score, glossary) VALUES (?, ?, ?, ?, ?, ?)",
-          dictId, term[0], term[1] ?? "", term[3] ?? "", Number(term[4]) || 0, text,
-        );
-        termCount += 1;
-      }
-    });
+    // One transaction per bank: a whole-file transaction risks losing a long
+    // import to one malformed entry, and per-row commits are far too slow.
+    // The statement is prepared once — JMdict is a quarter of a million rows,
+    // and re-parsing the SQL for each one dominates the import otherwise.
+    const insert = await db.prepareAsync(
+      "INSERT INTO terms (dictionary_id, expression, reading, rules, score, glossary) VALUES (?, ?, ?, ?, ?, ?)",
+    );
+    try {
+      await db.withTransactionAsync(async () => {
+        for (const term of terms) {
+          if (!Array.isArray(term) || typeof term[0] !== "string") continue;
+          const text = glossaryToText(term[5]);
+          if (!text) continue;
+          await insert.executeAsync(
+            dictId, term[0], term[1] ?? "", term[3] ?? "", Number(term[4]) || 0, text,
+          );
+          termCount += 1;
+        }
+      });
+    } finally {
+      await insert.finalizeAsync();
+    }
     onProgress?.(i + 1, banks.length, title);
   }
 
