@@ -10,5 +10,10 @@
     "entries": "항목",
     "noneInstalled": "설치된 사전이 없습니다. 설정 → 사전에서 추가하세요.",
     "noMatch": "항목을 찾을 수 없습니다."
+  },
+  "anki": {
+    "title": "Anki에 추가",
+    "add": "Anki에 추가",
+    "notInstalled": "AnkiDroid가 설치되어 있지 않은 것 같습니다."
   }
 }

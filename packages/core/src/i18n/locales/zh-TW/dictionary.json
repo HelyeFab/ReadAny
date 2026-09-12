@@ -10,5 +10,10 @@
     "entries": "筆",
     "noneInstalled": "未安裝詞典。請在 設定 → 詞典 中新增。",
     "noMatch": "找不到詞條。"
+  },
+  "anki": {
+    "title": "加入 Anki",
+    "add": "加入 Anki",
+    "notInstalled": "似乎未安裝 AnkiDroid。"
   }
 }

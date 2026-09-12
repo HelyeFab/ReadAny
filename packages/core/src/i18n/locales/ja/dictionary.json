@@ -10,5 +10,10 @@
     "entries": "件",
     "noneInstalled": "辞書が未登録です。設定 → 辞書 から追加してください。",
     "noMatch": "見つかりませんでした。"
+  },
+  "anki": {
+    "title": "Ankiに追加",
+    "add": "Ankiに追加",
+    "notInstalled": "AnkiDroidがインストールされていないようです。"
   }
 }
