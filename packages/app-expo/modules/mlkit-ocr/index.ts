@@ -4,7 +4,11 @@ import { Platform } from "react-native";
 export interface RecognizeOptions {
   /** Local file path of the capture. */
   uri: string;
-  /** Crop rectangle in the capture's own pixels. Omit to read the whole image. */
+  /**
+   * Crop rectangle as fractions of the image, 0..1. Omit to read the whole
+   * image. Fractions rather than pixels because only the native side knows the
+   * decoded bitmap's true size; see the module for why that matters.
+   */
   x?: number;
   y?: number;
   width?: number;
