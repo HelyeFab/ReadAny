@@ -4940,23 +4940,48 @@ html, body {
       return mode === 'ja' ? !!_rubyJaTokenizer : !!(_rubyWordDict || _rubyCharDict);
     }
 
-    // Called from RN once the kuromoji dictionary is downloaded and served.
-    window.setJapaneseDictUrl = function(url) {
-      if (_rubyJaTokenizer || _rubyJaLoading || !url || typeof kuromoji === 'undefined') return false;
-      _rubyJaLoading = true;
-      try {
-        kuromoji.builder({ dicPath: url }).build(function(err, tokenizer) {
-          _rubyJaLoading = false;
-          if (err) { console.error('[Ruby] kuromoji build failed:', err); return; }
-          _rubyJaTokenizer = tokenizer;
-          if (_rubyMode === 'ja') { try { window.injectRuby('ja'); } catch(e) {} }
-        });
-        return true;
-      } catch (e) {
-        _rubyJaLoading = false;
-        console.error('[Ruby] kuromoji builder threw:', e);
+    // Called from RN once the kuromoji dictionary is downloaded.
+    //
+    // Two candidate locations are tried in turn. The local HTTP server is
+    // preferred, but a server may advertise Content-Encoding: gzip for a .gz
+    // file, in which case the browser silently decompresses it and kuromoji's
+    // own gunzip then fails on plain data. file:// has no such semantics, so it
+    // is the fallback.
+    window.setJapaneseDictUrl = function(url, fallbackUrl) {
+      if (typeof kuromoji === 'undefined') {
+        postToRN('rubyStatus', { message: 'kuromoji global is missing from the reader bundle' });
         return false;
       }
+      if (_rubyJaTokenizer || _rubyJaLoading || !url) return false;
+      _rubyJaLoading = true;
+      var candidates = [url];
+      if (fallbackUrl && fallbackUrl !== url) candidates.push(fallbackUrl);
+
+      var attempt = function(i) {
+        if (i >= candidates.length) {
+          _rubyJaLoading = false;
+          postToRN('rubyStatus', { message: 'kuromoji could not load its dictionary from ' + candidates.join(' or ') });
+          return;
+        }
+        try {
+          kuromoji.builder({ dicPath: candidates[i] }).build(function(err, tokenizer) {
+            if (err || !tokenizer) {
+              postToRN('rubyStatus', { message: 'build failed for ' + candidates[i] + ' — ' + (err && err.message ? err.message : String(err)) });
+              attempt(i + 1);
+              return;
+            }
+            _rubyJaLoading = false;
+            _rubyJaTokenizer = tokenizer;
+            postToRN('debug', { message: '[Ruby] tokenizer ready from ' + candidates[i] });
+            if (_rubyMode === 'ja') { try { window.injectRuby('ja'); } catch(e) {} }
+          });
+        } catch (e) {
+          postToRN('rubyStatus', { message: 'builder threw for ' + candidates[i] + ' — ' + (e && e.message ? e.message : String(e)) });
+          attempt(i + 1);
+        }
+      };
+      attempt(0);
+      return true;
     };
 
     function doInjectRubyAnnotations(doc, mode) {
