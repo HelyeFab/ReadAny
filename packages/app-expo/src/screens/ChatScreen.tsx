@@ -1,6 +1,6 @@
 import type { RootStackParamList } from "@/navigation/RootNavigator";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 /**
  * ChatScreen — full AI chat matching app-mobile ChatPage layout.
@@ -82,6 +82,31 @@ export function ChatScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute();
+  // The web reader hands a selection over as a route param rather than posting
+  // it into the thread, so the wording of the question is still the user's.
+  const seededSelection = (route.params as { selectedText?: string; source?: string } | undefined)
+    ?.selectedText;
+  const seededSource = (route.params as { selectedText?: string; source?: string } | undefined)
+    ?.source;
+  const [quotes, setQuotes] = useState<AttachedQuote[]>([]);
+
+  useEffect(() => {
+    if (!seededSelection) return;
+    setQuotes([
+      {
+        id: `quote-${Date.now()}`,
+        text: seededSelection,
+        source: seededSource || undefined,
+      },
+    ]);
+    // Cleared so returning to the tab later does not re-attach a stale quote.
+    navigation.setParams({ selectedText: undefined, source: undefined } as never);
+  }, [seededSelection, seededSource, navigation]);
+
+  const handleRemoveQuote = useCallback((id: string) => {
+    setQuotes((prev) => prev.filter((q) => q.id !== id));
+  }, []);
   const layout = useResponsiveLayout();
   const isTabletLandscape = layout.isTabletLandscape;
   const sidebarWidth = isTabletLandscape
@@ -211,6 +236,7 @@ export function ChatScreen() {
       }
 
       await sendMessage(text, undefined, deepThinking, spoilerFree, quotes, resolvedAIConfig);
+      setQuotes([]);
     },
     [sendMessage, navigation, t],
   );
@@ -495,6 +521,8 @@ export function ChatScreen() {
               onSend={handleSend}
               onStop={stopStream}
               isStreaming={isStreaming}
+              quotes={quotes}
+              onRemoveQuote={handleRemoveQuote}
               keyboardBottomOffset={tabBarHeight}
             />
           </KeyboardAvoidingView>

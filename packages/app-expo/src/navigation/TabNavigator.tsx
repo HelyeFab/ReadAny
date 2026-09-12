@@ -1,9 +1,16 @@
-import { BookOpenIcon, MessageSquareIcon, NotebookPenIcon, UserIcon } from "@/components/ui/Icon";
+import {
+  BookOpenIcon,
+  GlobeIcon,
+  MessageSquareIcon,
+  NotebookPenIcon,
+  UserIcon,
+} from "@/components/ui/Icon";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { ChatScreen } from "@/screens/ChatScreen";
 import { LibraryScreen } from "@/screens/LibraryScreen";
 import { NotesScreen } from "@/screens/NotesScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
+import { WebReaderScreen } from "@/screens/WebReaderScreen";
 import { useTheme } from "@/styles/ThemeContext";
 /**
  * TabNavigator — bottom tab bar matching the Tauri mobile app's 4 tabs.
@@ -16,7 +23,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export type TabParamList = {
   Library: undefined;
-  Chat: undefined;
+  Web: undefined;
+  Chat: { selectedText?: string; source?: string } | undefined;
   Notes: { bookId?: string } | undefined;
   Profile: undefined;
 };
@@ -74,6 +82,14 @@ export function TabNavigator() {
         options={{
           tabBarLabel: t("tabs.library", "书架"),
           tabBarIcon: ({ color, size }) => <BookOpenIcon color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="Web"
+        component={WebReaderScreen}
+        options={{
+          tabBarLabel: t("tabs.web", "Web"),
+          tabBarIcon: ({ color, size }) => <GlobeIcon color={color} size={size} />,
         }}
       />
       <Tab.Screen
