@@ -32,6 +32,25 @@ function simpleHash(str: string): string {
   return Math.abs(hash).toString(36);
 }
 
+/**
+ * A second, independent fingerprint stored with each entry.
+ *
+ * The key above is a 32-bit hash and the entry used to hold only the
+ * translation, so two different passages landing on the same hash would serve
+ * each other's translation with nothing able to notice. Storing the source text
+ * would catch that but roughly doubles a cache that also holds whole chapters.
+ * A different hash plus the length costs a few bytes and makes a silent
+ * mismatch vanishingly unlikely.
+ */
+function fingerprint(str: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(36);
+}
+
 /** Get translation from cache */
 export async function getFromCache(
   text: string,
@@ -44,9 +63,13 @@ export async function getFromCache(
     const key = getCacheKey(text, sourceLang, targetLang, provider);
     const cached = await platform.kvGetItem(key);
     if (cached) {
-      const { translation, timestamp } = JSON.parse(cached);
-      // Cache expires after 7 days
-      if (Date.now() - timestamp < 7 * 24 * 60 * 60 * 1000) {
+      const { translation, timestamp, fp, len } = JSON.parse(cached);
+      const expired = Date.now() - timestamp >= 7 * 24 * 60 * 60 * 1000;
+      // Entries written before fingerprinting cannot be checked, so they are
+      // not trusted. They would age out within the week anyway; a wrong
+      // translation served in the meantime is worse than one refetch.
+      const matches = fp === fingerprint(text) && len === text.length;
+      if (!expired && matches) {
         return translation;
       }
       await platform.kvRemoveItem(key);
@@ -73,6 +96,8 @@ export async function storeInCache(
       JSON.stringify({
         translation,
         timestamp: Date.now(),
+        fp: fingerprint(text),
+        len: text.length,
       }),
     );
   } catch (err) {
