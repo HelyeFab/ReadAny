@@ -537,6 +537,20 @@ export function ReaderScreen({ route, navigation }: Props) {
     loadAsset();
   }, []);
 
+  /**
+   * Where the WebView should fetch kuromoji's dictionary from.
+   *
+   * The local file server is already rooted at the document directory for the
+   * open book, and the dictionary lives inside it, so it can be served over the
+   * same server — re-rooting that server here would stop the book mid-read.
+   * Falls back to file://, which works because the reader WebView is itself
+   * loaded from file:// with allowFileAccessFromFileURLs.
+   */
+  const japaneseDictUrl = useCallback((dictDir: string) => {
+    const server = fileServerRef.current;
+    return server ? `${server.replace(/\/$/, "")}/dicts/ja` : dictDir.replace(/\/$/, "");
+  }, []);
+
   // Controls toggle — declared before bridge so onTap can reference it without TS error
   const toggleControls = useCallback(() => {
     const willShow = !showControls;
@@ -602,7 +616,19 @@ export function ReaderScreen({ route, navigation }: Props) {
 
       // Auto-restore ruby annotations if enabled for this book
       const rubyMode = useRubyStore.getState().getBookRuby(bookId);
-      if (rubyMode) {
+      if (rubyMode === "ja") {
+        void (async () => {
+          try {
+            const { checkExistingJapaneseDictMobile, JA_DICT_DIR } = await import(
+              "@/lib/ruby/dict-service-mobile"
+            );
+            if (!(await checkExistingJapaneseDictMobile())) return;
+            bridge.setJapaneseDictUrl(japaneseDictUrl(JA_DICT_DIR));
+          } catch (err) {
+            console.error("[ReaderScreen] Japanese ruby auto-restore failed:", err);
+          }
+        })();
+      } else if (rubyMode) {
         void (async () => {
           try {
             const { checkExistingDictMobile, readDictStrings } = await import(
@@ -2010,7 +2036,20 @@ export function ReaderScreen({ route, navigation }: Props) {
         onClose={() => setShowSettings(false)}
         onUpdateSetting={updateSetting}
         onRubyModeChange={async (mode) => {
-          if (mode) {
+          if (mode === "ja") {
+            try {
+              const { checkExistingJapaneseDictMobile, JA_DICT_DIR } = await import(
+                "@/lib/ruby/dict-service-mobile"
+              );
+              if (!(await checkExistingJapaneseDictMobile())) return;
+              // The WebView builds the tokenizer, then injects ruby itself —
+              // building is async and can take a second on first use.
+              bridge.setJapaneseDictUrl(japaneseDictUrl(JA_DICT_DIR));
+              setTimeout(() => bridge.injectRuby(mode), 100);
+            } catch (err) {
+              console.error("[ReaderScreen] Japanese ruby load failed:", err);
+            }
+          } else if (mode) {
             // Load dicts into WebView if not already done
             try {
               const { readDictStrings } = await import("@/lib/ruby/dict-service-mobile");

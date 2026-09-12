@@ -88,10 +88,23 @@ async function buildReader() {
     }
     const templateWithJustifiedText = `${justifiedTextParts[0]}<script>\n${justifiedText}\n</script>${justifiedTextParts[1]}`;
 
+    // Inline the kuromoji browser build (~300KB). Its 18MB dictionary is NOT
+    // inlined — RN downloads that and serves it over the local file server.
+    const KUROMOJI_MARKER = "<!-- __READANY_KUROMOJI_INSERT_POINT_5d71c0a4__ -->";
+    const kuromojiPath = require.resolve("kuromoji/build/kuromoji.js");
+    const kuromojiParts = templateWithJustifiedText.split(KUROMOJI_MARKER);
+    if (kuromojiParts.length !== 2) {
+      throw new Error("Reader template must contain exactly one kuromoji marker");
+    }
+    const templateWithKuromoji = `${kuromojiParts[0]}<script>\n${fs.readFileSync(
+      kuromojiPath,
+      "utf-8",
+    )}\n</script>${kuromojiParts[1]}`;
+
     // Replace the placeholder with the bundled code
     // Use split/join instead of replace to avoid $ replacement patterns in JS bundle
     const MARKER = "<!-- __READANY_FOLIATE_BUNDLE_INSERT_POINT_7f3a9b2e__ -->";
-    const parts = templateWithJustifiedText.split(MARKER);
+    const parts = templateWithKuromoji.split(MARKER);
     if (parts.length !== 2) {
       throw new Error("Reader template must contain exactly one Foliate bundle marker");
     }
