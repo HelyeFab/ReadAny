@@ -139,7 +139,9 @@
     "systemVoiceNote": "Choose the system voice in your device settings",
     "browserVoiceNote": "Choose the system voice in your device settings",
     "stop": "Stop",
-    "noTextFound": "No readable text found on this page"
+    "noTextFound": "No readable text found on this page",
+    "apiKeyHeader": "API key header",
+    "apiKeyHeaderHint": "Leave empty for the OpenAI default. Self-hosted services often want X-API-Key instead."
   },
   "fonts": {
     "title": "Fonts",

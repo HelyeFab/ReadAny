@@ -138,7 +138,9 @@
     "engineDescDashscope": "Alibaba Tongyi · Chino optimizado",
     "engineDescSystem": "Sistema integrado · Gratis",
     "player": "Reproductor TTS",
-    "listeningToBook": "Reproduciendo audiolibro"
+    "listeningToBook": "Reproduciendo audiolibro",
+    "apiKeyHeader": "Cabecera de la clave API",
+    "apiKeyHeaderHint": "Déjalo vacío para el valor por defecto de OpenAI. Los servicios autoalojados suelen usar X-API-Key."
   },
   "fonts": {
     "title": "Fuentes",

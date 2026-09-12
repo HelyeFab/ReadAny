@@ -138,7 +138,9 @@
     "engineDescDashscope": "アリババクラウド通義 · 中国語最適化",
     "engineDescSystem": "システム内蔵 · 無料",
     "player": "TTSプレーヤー",
-    "listeningToBook": "オーディオブック再生中"
+    "listeningToBook": "オーディオブック再生中",
+    "apiKeyHeader": "APIキーのヘッダー",
+    "apiKeyHeaderHint": "空欄でOpenAI標準。自前のサービスではX-API-Keyを使うことが多いです。"
   },
   "fonts": {
     "title": "フォント",

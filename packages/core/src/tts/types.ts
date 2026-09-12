@@ -40,6 +40,13 @@ export interface TTSConfig {
   openaiTtsBaseUrl: string;
   /** OpenAI-compatible TTS API Key */
   openaiTtsApiKey: string;
+  /**
+   * Header the key is sent in. Empty means the OpenAI default,
+   * `Authorization: Bearer <key>`. Self-hosted services often want a bare
+   * custom header such as `X-API-Key` instead, and sending the key in both
+   * would leak it to every endpoint that did not ask for it.
+   */
+  openaiTtsApiKeyHeader: string;
   /** OpenAI-compatible TTS endpoint shape */
   openaiTtsEndpoint: OpenAITTSEndpoint;
   /** OpenAI-compatible TTS model */
@@ -174,6 +181,7 @@ export const DEFAULT_TTS_CONFIG: TTSConfig = {
   xiaomiStylePrompt: DEFAULT_XIAOMI_STYLE_PROMPT,
   openaiTtsBaseUrl: "https://api.openai.com/v1",
   openaiTtsApiKey: "",
+  openaiTtsApiKeyHeader: "",
   openaiTtsEndpoint: "audio-speech",
   openaiTtsModel: "gpt-4o-mini-tts",
   openaiTtsVoice: "alloy",
