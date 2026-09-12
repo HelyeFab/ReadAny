@@ -15,7 +15,6 @@
  * can never touch the library.
  */
 import * as SQLite from "expo-sqlite";
-import * as FileSystem from "expo-file-system/legacy";
 
 const DB_NAME = "readany-dict.db";
 
@@ -120,13 +119,12 @@ export async function importYomitanZip(
   onProgress?: (done: number, total: number, title: string) => void,
 ): Promise<DictionaryInfo> {
   const { Uint8ArrayReader, ZipReader, TextWriter } = await import("@zip.js/zip.js");
+  const { File } = await import("expo-file-system");
 
-  const base64 = await FileSystem.readAsStringAsync(fileUri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  const binary = globalThis.atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  // Read the archive straight into bytes. The obvious route — base64 then
+  // atob — does not work: this React Native has no atob, which surfaces as
+  // "undefined is not a function" a long way from the cause.
+  const bytes = await new File(fileUri).bytes();
 
   // Uint8ArrayReader, not BlobReader: React Native's Blob cannot be built from
   // an array buffer, and fails with "creating blob from array buffer" — which
