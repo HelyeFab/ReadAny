@@ -1,0 +1,14 @@
+{
+  "dictionary": {
+    "title": "Dictionaries",
+    "description": "Import a Yomitan dictionary archive. The same packs your browser extension uses will work here.",
+    "import": "Import a dictionary",
+    "importing": "Importing…",
+    "imported": "{{count}} entries imported.",
+    "importFailed": "Import failed",
+    "empty": "No dictionaries yet.",
+    "entries": "entries",
+    "noneInstalled": "No dictionaries installed. Add one in Settings → Dictionaries.",
+    "noMatch": "No entry found."
+  }
+}

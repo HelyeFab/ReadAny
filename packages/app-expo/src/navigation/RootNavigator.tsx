@@ -15,6 +15,7 @@ import FeedbackDetailScreen from "@/screens/settings/FeedbackDetailScreen";
 import FeedbackScreen from "@/screens/settings/FeedbackScreen";
 import FontSettingsScreen from "@/screens/settings/FontSettingsScreen";
 import SyncSettingsScreen from "@/screens/settings/SyncSettingsScreen";
+import DictionarySettingsScreen from "@/screens/settings/DictionarySettingsScreen";
 import TTSSettingsScreen from "@/screens/settings/TTSSettingsScreen";
 import TranslationSettingsScreen from "@/screens/settings/TranslationSettingsScreen";
 import VectorModelSettingsScreen from "@/screens/settings/VectorModelSettingsScreen";
@@ -39,6 +40,7 @@ export type RootStackParamList = {
   AppearanceSettings: undefined;
   AISettings: undefined;
   TTSSettings: undefined;
+  DictionarySettings: undefined;
   TranslationSettings: undefined;
   SyncSettings: undefined;
   About: undefined;
@@ -95,6 +97,10 @@ export function RootNavigator() {
               name="Skills"
               component={SkillsScreen}
               options={{ animation: "slide_from_right" }}
+            />
+            <Stack.Screen
+              name="DictionarySettings"
+              component={DictionarySettingsScreen}
             />
             <Stack.Screen
               name="VectorModelSettings"

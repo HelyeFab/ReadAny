@@ -80,6 +80,7 @@ type ProfileMenuRoute = Extract<
   | "TranslationSettings"
   | "Skills"
   | "VectorModelSettings"
+  | "DictionarySettings"
   | "Feedback"
   | "About"
 >;
@@ -465,6 +466,11 @@ export function ProfileScreen() {
             route: "TranslationSettings" as const,
           },
           { icon: PuzzleIcon, label: t("skills.title", "技能"), route: "Skills" as const },
+          {
+            icon: BookOpenIcon,
+            label: t("dictionary.title", "Dictionaries"),
+            route: "DictionarySettings" as const,
+          },
           {
             icon: CpuIcon,
             label: t("settings.vm_title", "向量模型"),

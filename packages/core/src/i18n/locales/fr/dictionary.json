@@ -1,0 +1,14 @@
+{
+  "dictionary": {
+    "title": "Dictionnaires",
+    "description": "Importez une archive de dictionnaire Yomitan. Les mêmes paquets que votre extension de navigateur fonctionnent ici.",
+    "import": "Importer un dictionnaire",
+    "importing": "Importation…",
+    "imported": "{{count}} entrées importées.",
+    "importFailed": "Échec de l'importation",
+    "empty": "Aucun dictionnaire.",
+    "entries": "entrées",
+    "noneInstalled": "Aucun dictionnaire installé. Ajoutez-en un dans Réglages → Dictionnaires.",
+    "noMatch": "Aucune entrée trouvée."
+  }
+}

@@ -3122,6 +3122,7 @@ html, body {
       postToRN('selection', {
         text,
         cfi,
+        baseForms: japaneseBaseForms(text),
         position: {
           x: iframeRect.left + rect.left + rect.width / 2,
           y: iframeRect.top + firstRect.top - 4,
@@ -5158,6 +5159,22 @@ html, body {
       attempt(0);
       return true;
     };
+
+    // Dictionary forms for a selection, so lookup can find 育てる from
+    // 育てられた. The tokenizer is already here for furigana; nothing else in
+    // the app can do this, because the text lives in this WebView.
+    function japaneseBaseForms(text) {
+      if (!_rubyJaTokenizer || !text) return [];
+      var forms = [];
+      try {
+        var tokens = _rubyJaTokenizer.tokenize(text);
+        for (var i = 0; i < tokens.length; i++) {
+          var basic = tokens[i].basic_form;
+          if (basic && basic !== '*' && forms.indexOf(basic) === -1) forms.push(basic);
+        }
+      } catch (e) { /* a failed lookup is not worth breaking selection over */ }
+      return forms;
+    }
 
     function doInjectRubyAnnotations(doc, mode) {
       if (!mode || !doc) return 0;

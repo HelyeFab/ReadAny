@@ -1,0 +1,14 @@
+{
+  "dictionary": {
+    "title": "Diccionarios",
+    "description": "Importa un archivo de diccionario Yomitan. Los mismos paquetes que usa tu extensión funcionan aquí.",
+    "import": "Importar un diccionario",
+    "importing": "Importando…",
+    "imported": "{{count}} entradas importadas.",
+    "importFailed": "Error al importar",
+    "empty": "Aún no hay diccionarios.",
+    "entries": "entradas",
+    "noneInstalled": "No hay diccionarios instalados. Añade uno en Ajustes → Diccionarios.",
+    "noMatch": "No se encontró ninguna entrada."
+  }
+}

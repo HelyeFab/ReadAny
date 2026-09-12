@@ -22,6 +22,8 @@ export interface RelocateEvent {
 export interface SelectionEvent {
   text: string;
   cfi: string;
+  /** Dictionary forms from the reader's tokenizer; empty when it is not loaded. */
+  baseForms?: string[];
   position: {
     x: number;
     y: number;
