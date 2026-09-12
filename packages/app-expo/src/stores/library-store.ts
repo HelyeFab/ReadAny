@@ -106,7 +106,7 @@ export interface LibraryState {
   renameTag: (oldName: string, newName: string) => void;
   addGroup: (name: string, parentId?: string) => Promise<BookGroup | null>;
   renameGroup: (groupId: string, name: string) => void;
-  setGroupColor: (groupId: string, color?: string) => void;
+  setGroupColor: (groupId: string, color?: string) => Promise<void>;
   setGroupViewPrefs: (groupId: string, prefs: GroupViewPrefs) => void;
   removeGroup: (groupId: string) => Promise<void>;
   moveBookToGroup: (bookId: string, groupId?: string) => void;
@@ -1386,7 +1386,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     );
   },
 
-  setGroupColor: (groupId, color) => {
+  setGroupColor: async (groupId, color) => {
     set((state) => {
       const groups = state.groups.map((group) =>
         group.id === groupId ? { ...group, color, updatedAt: Date.now() } : group,
@@ -1394,9 +1394,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       debouncedSave("library-groups", groups);
       return { groups };
     });
-    db.updateGroup(groupId, { color: color ?? "" }).catch((err) =>
-      console.error("Failed to set folder colour:", err),
-    );
+    // Awaited and rethrown: a swallowed failure here looks exactly like the
+    // colour working, until the app restarts and it is gone.
+    await db.updateGroup(groupId, { color: color ?? "" });
   },
 
   /** Merged, not replaced: changing the sort should not forget the layout. */

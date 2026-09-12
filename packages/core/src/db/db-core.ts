@@ -536,6 +536,16 @@ export async function initDatabase(): Promise<void> {
       await database.execute(
         "CREATE INDEX IF NOT EXISTS idx_book_groups_parent ON book_groups(parent_id)",
       );
+      try {
+        await database.execute("ALTER TABLE book_groups ADD COLUMN color TEXT");
+      } catch {
+        // Column already exists, ignore
+      }
+      try {
+        await database.execute("ALTER TABLE book_groups ADD COLUMN view_prefs TEXT");
+      } catch {
+        // Column already exists, ignore
+      }
       await database.execute("CREATE INDEX IF NOT EXISTS idx_books_group ON books(group_id)");
       try {
         await database.execute("ALTER TABLE messages ADD COLUMN reasoning TEXT");
