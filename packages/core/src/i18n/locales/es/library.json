@@ -148,7 +148,8 @@
     "detailsManagedMetadataNote": "ReadAny mantiene estos metadatos para mostrar, buscar y nombrar en la sincronización. El archivo original del libro no se modifica.",
     "bookNotFound": "Libro no encontrado",
     "importSourceFolder": "Importar una carpeta",
-    "folderImportEmpty": "No se encontraron libros en esa carpeta."
+    "folderImportEmpty": "No se encontraron libros en esa carpeta.",
+    "newFolder": "Nueva carpeta"
   },
   "home": {
     "library": "Biblioteca",

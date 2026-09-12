@@ -10,6 +10,7 @@ import {
   ClockIcon,
   DatabaseIcon,
   FolderInputIcon,
+  FolderPlusIcon,
   FolderMinusIcon,
   HashIcon,
   LayersIcon,
@@ -139,7 +140,7 @@ const SORT_OPTIONS: { field: SortField; labelKey: string }[] = [
 ];
 
 type LibraryGridItem =
-  | { type: "group"; group: BookGroup; books: Book[] }
+  | { type: "group"; group: BookGroup; books: Book[]; totalCount?: number }
   | { type: "book"; book: Book };
 
 export function LibraryScreen() {
@@ -364,30 +365,62 @@ export function LibraryScreen() {
 
   const hasSearch = filter.search.trim().length > 0;
 
+  /** "Series › Volume 1" — without it, a nested folder is indistinguishable. */
+  const folderPathLabel = useMemo(() => {
+    if (!activeGroupId) return t("sidebar.library", "书库");
+    const trail: string[] = [];
+    const byId = new Map(groups.map((g) => [g.id, g]));
+    let cursor = byId.get(activeGroupId);
+    const guard = new Set<string>();
+    while (cursor && !guard.has(cursor.id)) {
+      guard.add(cursor.id);
+      trail.unshift(cursor.name);
+      cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
+    }
+    return trail.join(" › ");
+  }, [activeGroupId, groups, t]);
+
+  /**
+   * Folders are nested, so the grid shows ONE level at a time: the folders
+   * whose parent is the folder we are in, plus the books filed directly in it.
+   *
+   * Empty folders are shown. Hiding them is what made this feature invisible:
+   * you could make a folder, see nothing change, and conclude it had not
+   * worked.
+   */
   const groupedEntries = useMemo(() => {
-    if (hasSearch) return [];
+    if (hasSearch || !isGroupView) return [];
+    const childBookCount = (groupId: string): number => {
+      const direct = filteredBooks.filter((book) => book.groupId === groupId).length;
+      const nested = groups
+        .filter((g) => g.parentId === groupId)
+        .reduce((sum, g) => sum + childBookCount(g.id), 0);
+      return direct + nested;
+    };
     return groups
-      .map((group) => {
-        const groupBooks = filteredBooks.filter((book) => book.groupId === group.id);
-        return { type: "group" as const, group, books: groupBooks };
-      })
-      .filter((item) => item.books.length > 0);
-  }, [filteredBooks, groups, hasSearch]);
+      .filter((group) => (group.parentId ?? null) === (activeGroupId || null))
+      .map((group) => ({
+        type: "group" as const,
+        group,
+        books: filteredBooks.filter((book) => book.groupId === group.id),
+        totalCount: childBookCount(group.id),
+      }));
+  }, [activeGroupId, filteredBooks, groups, hasSearch, isGroupView]);
 
   const visibleBooks = useMemo(
     () =>
-      isGroupView && !activeGroupId && !hasSearch
-        ? filteredBooks.filter((book) => !book.groupId)
+      isGroupView && !hasSearch
+        ? filteredBooks.filter((book) => (book.groupId ?? null) === (activeGroupId || null))
         : filteredBooks,
     [activeGroupId, filteredBooks, isGroupView, hasSearch],
   );
 
   const gridItems = useMemo<LibraryGridItem[]>(
     () =>
-      isGroupView && !activeGroupId && !hasSearch
+      isGroupView && !hasSearch
         ? [...groupedEntries, ...visibleBooks.map((book) => ({ type: "book" as const, book }))]
         : visibleBooks.map((book) => ({ type: "book" as const, book })),
-    [activeGroupId, groupedEntries, isGroupView, visibleBooks, hasSearch],
+    [groupedEntries, isGroupView, visibleBooks, hasSearch],
   );
 
   const handleLocalImport = useCallback(async () => {
@@ -713,14 +746,16 @@ export function LibraryScreen() {
     const trimmed = groupNameInput.trim();
     if (!trimmed || !groupNameModal) return;
     if (groupNameModal.mode === "create") {
-      await addGroup(trimmed);
+      // A folder made while inside another one becomes its child, which is how
+      // nesting is reached without a separate "new subfolder" command.
+      await addGroup(trimmed, activeGroupId || undefined);
       setGroupView(true);
     } else if (groupNameModal.group) {
       renameGroup(groupNameModal.group.id, trimmed);
     }
     setGroupNameInput("");
     setGroupNameModal(null);
-  }, [addGroup, groupNameInput, groupNameModal, renameGroup, setGroupView]);
+  }, [activeGroupId, addGroup, groupNameInput, groupNameModal, renameGroup, setGroupView]);
 
   const handleGroupLongPress = useCallback(
     (group: BookGroup) => {
@@ -777,6 +812,7 @@ export function LibraryScreen() {
           <GroupCard
             group={item.group}
             books={item.books}
+            totalCount={item.totalCount}
             cardWidth={gridItemWidth}
             onOpen={setActiveGroupId}
             onLongPress={handleGroupLongPress}
@@ -876,12 +912,15 @@ export function LibraryScreen() {
                 style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}
               >
                 {activeGroup && (
-                  <TouchableOpacity style={s.headerBtn} onPress={() => setActiveGroupId("")}>
+                  <TouchableOpacity
+                    style={s.headerBtn}
+                    onPress={() => setActiveGroupId(activeGroup.parentId ?? "")}
+                  >
                     <ChevronLeftIcon size={18} color={colors.mutedForeground} />
                   </TouchableOpacity>
                 )}
                 <Text style={s.headerTitle} numberOfLines={1}>
-                  {activeGroup?.name ?? t("sidebar.library", "书库")}
+                  {folderPathLabel}
                 </Text>
               </View>
               <View style={s.headerActions}>
@@ -922,6 +961,15 @@ export function LibraryScreen() {
                       size={18}
                       color={isGroupView ? colors.primary : colors.mutedForeground}
                     />
+                  </TouchableOpacity>
+                )}
+                {isGroupView && (
+                  <TouchableOpacity
+                    style={s.headerBtn}
+                    onPress={() => openGroupNameModal("create")}
+                    accessibilityLabel={t("library.newFolder", "New folder")}
+                  >
+                    <FolderPlusIcon size={18} color={colors.mutedForeground} />
                   </TouchableOpacity>
                 )}
                 <View ref={importButtonAnchorRef} collapsable={false}>

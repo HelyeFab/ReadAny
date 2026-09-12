@@ -368,6 +368,7 @@ export async function initDatabase(): Promise<void> {
     CREATE TABLE IF NOT EXISTS book_groups (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      parent_id TEXT,
       sort_order INTEGER DEFAULT 0,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL DEFAULT 0,
@@ -524,6 +525,15 @@ export async function initDatabase(): Promise<void> {
       } catch {
         // Column already exists, ignore
       }
+      try {
+        // Nested folders: a group may live inside another group.
+        await database.execute("ALTER TABLE book_groups ADD COLUMN parent_id TEXT");
+      } catch {
+        // Column already exists, ignore
+      }
+      await database.execute(
+        "CREATE INDEX IF NOT EXISTS idx_book_groups_parent ON book_groups(parent_id)",
+      );
       await database.execute("CREATE INDEX IF NOT EXISTS idx_books_group ON books(group_id)");
       try {
         await database.execute("ALTER TABLE messages ADD COLUMN reasoning TEXT");
