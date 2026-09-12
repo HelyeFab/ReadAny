@@ -44,6 +44,21 @@ export function isImportable(name: string): boolean {
  * Ask for a folder and return every importable file inside it.
  * Returns null if the user declined.
  */
+/**
+ * Copy a granted SAF document into the cache and return a file:// URI.
+ *
+ * The importer reads the file itself, and a content:// URI from a folder grant
+ * is not something it can open — importing them directly fails every book.
+ */
+async function materialise(uri: string, name: string): Promise<FolderCandidate> {
+  const target = `${FileSystem.cacheDirectory}folder-import/${Date.now()}-${name}`;
+  await FileSystem.makeDirectoryAsync(`${FileSystem.cacheDirectory}folder-import`, {
+    intermediates: true,
+  }).catch(() => undefined);
+  await FileSystem.copyAsync({ from: uri, to: target });
+  return { uri: target, name };
+}
+
 export async function pickFolderBooks(
   onProgress?: (found: number, scanned: number) => void,
 ): Promise<FolderCandidate[] | null> {
@@ -73,20 +88,23 @@ export async function pickFolderBooks(
 
       const name = displayNameFromSafUri(child);
       if (isImportable(name)) {
-        found.push({ uri: child, name });
+        try {
+          found.push(await materialise(child, name));
+        } catch {
+          // unreadable file — skip it rather than failing the whole folder
+        }
         onProgress?.(found.length, scanned);
         continue;
       }
 
-      // No type flag in the listing, so probe. Anything with a known book
-      // extension was handled above, so this only costs time on odd files.
+      // No type flag in a SAF listing, and getInfoAsync does not report
+      // isDirectory for SAF child URIs. Listing the child IS the test: it
+      // succeeds for a directory and throws for a file.
       try {
-        const info = await FileSystem.getInfoAsync(child);
-        if (info.exists && info.isDirectory) {
-          await walk(child, depth + 1);
-        }
+        await FileSystem.StorageAccessFramework.readDirectoryAsync(child);
+        await walk(child, depth + 1);
       } catch {
-        // not a directory, or not readable
+        // a file, or an unreadable subtree
       }
       onProgress?.(found.length, scanned);
     }
