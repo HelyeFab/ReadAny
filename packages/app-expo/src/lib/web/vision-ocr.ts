@@ -15,6 +15,7 @@
  * On-device stays as the fallback, so a train with no signal still reads.
  */
 import { cropRegionToBase64 } from "../../../modules/mlkit-ocr";
+import { cachedTranscript, ocrCacheKey, storeTranscript } from "./ocr-cache";
 
 export interface VisionOcrConfig {
   baseUrl: string;
@@ -52,6 +53,16 @@ export async function readRegionWithVision(
   const image = await cropRegionToBase64({ uri: captureUri, ...region });
   if (!image) throw new Error("The crop could not be prepared.");
 
+  // The same pixels always say the same thing, so a box read twice is free.
+  let key = "";
+  try {
+    key = await ocrCacheKey(image);
+    const remembered = cachedTranscript(key);
+    if (remembered) return remembered;
+  } catch {
+    // A cache that will not answer is not a reason to stop reading.
+  }
+
   const response = await fetch(ocrUrlFor(config.baseUrl), {
     method: "POST",
     headers: {
@@ -68,5 +79,7 @@ export async function readRegionWithVision(
   }
 
   const data = (await response.json()) as { text?: string };
-  return (data.text || "").trim();
+  const text = (data.text || "").trim();
+  if (key && text) storeTranscript(key, text);
+  return text;
 }
