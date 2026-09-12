@@ -374,7 +374,10 @@ function RubySettingsRow({
   const jaProgress = useRubyStore((st) => st.dictStates.ja.progress);
   const currentMode = useRubyStore((st) => st.bookRubySettings[bookId] ?? null);
   const setBookRuby = useRubyStore((st) => st.setBookRuby);
+  // Separate flags: one shared boolean made BOTH rows spin whenever either
+  // dictionary was downloading.
   const [downloading, setDownloading] = useState(false);
+  const [downloadingJa, setDownloadingJa] = useState(false);
 
   const zhReady = dictStatus === "ready";
   const jaReady = jaStatus === "ready";
@@ -401,14 +404,14 @@ function RubySettingsRow({
   }, []);
 
   const handleDownloadJa = useCallback(async () => {
-    setDownloading(true);
+    setDownloadingJa(true);
     try {
       const { downloadJapaneseDictMobile } = await import("@/lib/ruby/dict-service-mobile");
       await downloadJapaneseDictMobile();
     } catch (err) {
       console.error("[Ruby] Japanese download failed:", err);
     } finally {
-      setDownloading(false);
+      setDownloadingJa(false);
     }
   }, []);
 
@@ -492,10 +495,10 @@ function RubySettingsRow({
         {!jaReady ? (
           <TouchableOpacity
             style={[s.settingToggleBtn, s.settingToggleBtnActive]}
-            disabled={downloading || jaStatus === "downloading"}
+            disabled={downloadingJa || jaStatus === "downloading"}
             onPress={handleDownloadJa}
           >
-            {downloading || jaStatus === "downloading" ? (
+            {downloadingJa || jaStatus === "downloading" ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
                 <Text style={s.settingToggleTextActive}>

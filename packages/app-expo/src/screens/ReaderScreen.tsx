@@ -546,9 +546,10 @@ export function ReaderScreen({ route, navigation }: Props) {
    * Falls back to file://, which works because the reader WebView is itself
    * loaded from file:// with allowFileAccessFromFileURLs.
    */
-  const japaneseDictUrl = useCallback((dictDir: string) => {
+  const japaneseDictUrl = useCallback((dictDir: string): [string, string] => {
     const server = fileServerRef.current;
-    return server ? `${server.replace(/\/$/, "")}/dicts/ja` : dictDir.replace(/\/$/, "");
+    const direct = dictDir.replace(/\/$/, "");
+    return server ? [`${server.replace(/\/$/, "")}/dicts/ja`, direct] : [direct, direct];
   }, []);
 
   // Controls toggle — declared before bridge so onTap can reference it without TS error
@@ -623,7 +624,7 @@ export function ReaderScreen({ route, navigation }: Props) {
               "@/lib/ruby/dict-service-mobile"
             );
             if (!(await checkExistingJapaneseDictMobile())) return;
-            bridge.setJapaneseDictUrl(japaneseDictUrl(JA_DICT_DIR));
+            bridge.setJapaneseDictUrl(...japaneseDictUrl(JA_DICT_DIR));
           } catch (err) {
             console.error("[ReaderScreen] Japanese ruby auto-restore failed:", err);
           }
@@ -647,6 +648,12 @@ export function ReaderScreen({ route, navigation }: Props) {
           }
         })();
       }
+    },
+    onRubyStatus: (message: string) => {
+      // Only failures reach here; success is logged, not announced. Release
+      // builds have no readable console, so a silent failure would look
+      // identical to a book with no kanji in it.
+      Alert.alert("Furigana unavailable", message);
     },
     onBookTextMetrics: ({ totalCharacters }) => {
       totalBookCharactersRef.current = totalCharacters > 0 ? totalCharacters : null;
@@ -2044,7 +2051,7 @@ export function ReaderScreen({ route, navigation }: Props) {
               if (!(await checkExistingJapaneseDictMobile())) return;
               // The WebView builds the tokenizer, then injects ruby itself —
               // building is async and can take a second on first use.
-              bridge.setJapaneseDictUrl(japaneseDictUrl(JA_DICT_DIR));
+              bridge.setJapaneseDictUrl(...japaneseDictUrl(JA_DICT_DIR));
               setTimeout(() => bridge.injectRuby(mode), 100);
             } catch (err) {
               console.error("[ReaderScreen] Japanese ruby load failed:", err);

@@ -73,6 +73,8 @@ export interface ReaderBridgeCallbacks {
   onSelection?: (detail: SelectionEvent) => void;
   onSelectionCleared?: () => void;
   onTap?: () => void;
+  /** Why furigana did or did not load — surfaced in the UI, since release builds have no readable console. */
+  onRubyStatus?: (message: string) => void;
   onSearchResult?: (index: number, count: number) => void;
   onSearchComplete?: (count: number) => void;
   onError?: (message: string) => void;
@@ -693,11 +695,11 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
    * so it is served over the local file server rather than pushed across this
    * bridge the way the Chinese JSON dictionaries are.
    */
-  const setJapaneseDictUrl = useCallback((url: string) => {
+  const setJapaneseDictUrl = useCallback((url: string, fallbackUrl?: string) => {
     webViewRef.current?.injectJavaScript(`
         (function() {
           try {
-            if (window.setJapaneseDictUrl) window.setJapaneseDictUrl(${JSON.stringify(url)});
+            if (window.setJapaneseDictUrl) window.setJapaneseDictUrl(${JSON.stringify(url)}, ${JSON.stringify(fallbackUrl ?? "")});
           } catch(e) { console.error('[WebView] setJapaneseDictUrl error:', e); }
         })();
         true;
@@ -944,6 +946,9 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
             break;
           case "debug":
             console.log("[WebView]", msg.message);
+            break;
+          case "rubyStatus":
+            cb.onRubyStatus?.(String(msg.message ?? ""));
             break;
           default:
             break;
