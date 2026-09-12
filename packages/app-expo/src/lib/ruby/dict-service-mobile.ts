@@ -8,6 +8,26 @@ import * as FileSystem from "expo-file-system/legacy";
 import { useRubyStore } from "@readany/core/stores/ruby-store";
 
 const DICT_DIR = `${FileSystem.documentDirectory}dicts/zh/`;
+export const JA_DICT_DIR = `${FileSystem.documentDirectory}dicts/ja/`;
+
+// kuromoji's IPADIC, as shipped in the npm package. ~18MB across 12 gzipped
+// files — downloaded once, then served to the WebView over the local file
+// server rather than pushed through the RN bridge.
+const KUROMOJI_DICT_BASE_URL = "https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict";
+const KUROMOJI_DICT_FILES = [
+  "base.dat.gz",
+  "cc.dat.gz",
+  "check.dat.gz",
+  "tid.dat.gz",
+  "tid_pos.dat.gz",
+  "tid_map.dat.gz",
+  "unk.dat.gz",
+  "unk_pos.dat.gz",
+  "unk_map.dat.gz",
+  "unk_char.dat.gz",
+  "unk_compat.dat.gz",
+  "unk_invoke.dat.gz",
+];
 const WORD_DICT_FILENAME = "pinyin-words.json";
 const CHAR_DICT_FILENAME = "pinyin-chars.json";
 
@@ -145,4 +165,74 @@ export async function readDictStrings(): Promise<{
   } catch {
     return { wordDict: null, charDict: null };
   }
+}
+
+
+/**
+ * Download the kuromoji dictionary used for Japanese furigana.
+ *
+ * Progress is counted per file rather than per byte: the dictionary is a fixed
+ * set of small archives, not one blob.
+ */
+export async function downloadJapaneseDictMobile(): Promise<void> {
+  const store = useRubyStore.getState();
+  store.setDictState("ja", { status: "downloading", progress: 0, error: undefined });
+
+  try {
+    const info = await FileSystem.getInfoAsync(JA_DICT_DIR);
+    if (!info.exists) {
+      await FileSystem.makeDirectoryAsync(JA_DICT_DIR, { intermediates: true });
+    }
+
+    for (let i = 0; i < KUROMOJI_DICT_FILES.length; i += 1) {
+      const filename = KUROMOJI_DICT_FILES[i];
+      const target = `${JA_DICT_DIR}${filename}`;
+      const existing = await FileSystem.getInfoAsync(target);
+      if (!existing.exists || existing.size === 0) {
+        const result = await FileSystem.downloadAsync(
+          `${KUROMOJI_DICT_BASE_URL}/${filename}`,
+          target,
+        );
+        if (result.status !== 200) {
+          throw new Error(`${filename} download failed: HTTP ${result.status}`);
+        }
+      }
+      store.setDictState("ja", {
+        progress: Math.round(((i + 1) / KUROMOJI_DICT_FILES.length) * 100),
+      });
+    }
+
+    store.setDictState("ja", { status: "ready", progress: 100, error: undefined });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    store.setDictState("ja", { status: "error", error: message, progress: 0 });
+    throw err;
+  }
+}
+
+/**
+ * True only when every dictionary file is present. kuromoji's builder reads all
+ * of them, so a partial directory would fail later, inside the WebView, where
+ * the failure is much harder to see.
+ */
+export async function checkExistingJapaneseDictMobile(): Promise<boolean> {
+  try {
+    for (const filename of KUROMOJI_DICT_FILES) {
+      const info = await FileSystem.getInfoAsync(`${JA_DICT_DIR}${filename}`);
+      if (!info.exists || info.size === 0) return false;
+    }
+    useRubyStore.getState().setDictState("ja", { status: "ready", progress: 100 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteJapaneseDictMobile(): Promise<void> {
+  try {
+    await FileSystem.deleteAsync(JA_DICT_DIR, { idempotent: true });
+  } catch {
+    // Ignore
+  }
+  useRubyStore.getState().setDictState("ja", { status: "idle", progress: 0, error: undefined });
 }

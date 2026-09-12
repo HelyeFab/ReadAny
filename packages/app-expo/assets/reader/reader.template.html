@@ -1571,7 +1571,7 @@
           attachNoteLongPress(doc);
           refreshUserAnnotations(100);
           // Auto-inject ruby annotations if enabled
-          if (_rubyMode && (_rubyWordDict || _rubyCharDict)) {
+          if (_rubyMode && rubyDictReady(_rubyMode)) {
             try { doInjectRubyAnnotations(doc, _rubyMode); } catch(e) {}
           }
         });
@@ -4865,9 +4865,103 @@ html, body {
       return result;
     }
 
+    // --- Japanese ---------------------------------------------------------
+    // Chinese resolves a reading per character from a dictionary. Japanese
+    // cannot: there are no spaces, and a kanji's reading depends on the word it
+    // sits in, so this needs kuromoji's morphological analyser. The dictionary
+    // is ~18MB of gzipped data, far too much to push over the RN bridge, so RN
+    // downloads it and serves it over the local file server; we get a URL.
+    var _rubyJaTokenizer = null;
+    var _rubyJaLoading = false;
+    var HAS_KANJI_RE = /[\u3400-\u9fff\uf900-\ufaff]/;
+    var KANA_ONLY_RE = /^[\u3040-\u309f\u30a0-\u30ff\u30fc]+$/;
+
+    function rubyKatakanaToHiragana(input) {
+      return input.replace(/[\u30a1-\u30f6]/g, function(ch) {
+        return String.fromCharCode(ch.charCodeAt(0) - 0x60);
+      });
+    }
+
+    // Ruby belongs on the kanji stem only. kuromoji reads 育てられた as
+    // ソダテラレタ; rendering that over the whole token would put kana above
+    // kana. Both sides are folded before trimming, or the katakana tail of
+    // 生ビール never matches its surface form.
+    function rubyTrimJaReading(surface, reading) {
+      var prefix = '', start = 0;
+      while (start < surface.length && KANA_ONLY_RE.test(surface.charAt(start))) {
+        prefix += surface.charAt(start); start++;
+      }
+      var suffix = '', end = surface.length;
+      while (end > start && KANA_ONLY_RE.test(surface.charAt(end - 1))) {
+        suffix = surface.charAt(end - 1) + suffix; end--;
+      }
+      var stemReading = reading;
+      var prefixKana = rubyKatakanaToHiragana(prefix);
+      var suffixKana = rubyKatakanaToHiragana(suffix);
+      if (prefixKana && stemReading.indexOf(prefixKana) === 0) {
+        stemReading = stemReading.slice(prefixKana.length);
+      }
+      if (suffixKana && stemReading.slice(-suffixKana.length) === suffixKana) {
+        stemReading = stemReading.slice(0, stemReading.length - suffixKana.length);
+      }
+      return { char: surface.slice(start, end), reading: stemReading, prefix: prefix, suffix: suffix };
+    }
+
+    function rubyAnnotateJapanese(text) {
+      if (!_rubyJaTokenizer || !text) return [{ char: text, reading: '', needsRuby: false }];
+      var tokens = [];
+      function push(char, reading, needsRuby) {
+        if (!char) return;
+        var last = tokens[tokens.length - 1];
+        if (last && !needsRuby && !last.needsRuby) { last.char += char; return; }
+        tokens.push({ char: char, reading: reading, needsRuby: needsRuby });
+      }
+      var analysed = _rubyJaTokenizer.tokenize(text);
+      for (var i = 0; i < analysed.length; i++) {
+        var surface = analysed[i].surface_form;
+        var raw = analysed[i].reading;
+        if (!HAS_KANJI_RE.test(surface) || !raw || raw === '*') { push(surface, '', false); continue; }
+        var trimmed = rubyTrimJaReading(surface, rubyKatakanaToHiragana(raw));
+        if (!trimmed.char || !trimmed.reading || trimmed.reading === trimmed.char) {
+          push(surface, '', false); continue;
+        }
+        push(trimmed.prefix, '', false);
+        push(trimmed.char, trimmed.reading, true);
+        push(trimmed.suffix, '', false);
+      }
+      return tokens;
+    }
+
+    function rubyAnnotate(text, mode) {
+      return mode === 'ja' ? rubyAnnotateJapanese(text) : rubyAnnotateChinese(text);
+    }
+
+    function rubyDictReady(mode) {
+      return mode === 'ja' ? !!_rubyJaTokenizer : !!(_rubyWordDict || _rubyCharDict);
+    }
+
+    // Called from RN once the kuromoji dictionary is downloaded and served.
+    window.setJapaneseDictUrl = function(url) {
+      if (_rubyJaTokenizer || _rubyJaLoading || !url || typeof kuromoji === 'undefined') return false;
+      _rubyJaLoading = true;
+      try {
+        kuromoji.builder({ dicPath: url }).build(function(err, tokenizer) {
+          _rubyJaLoading = false;
+          if (err) { console.error('[Ruby] kuromoji build failed:', err); return; }
+          _rubyJaTokenizer = tokenizer;
+          if (_rubyMode === 'ja') { try { window.injectRuby('ja'); } catch(e) {} }
+        });
+        return true;
+      } catch (e) {
+        _rubyJaLoading = false;
+        console.error('[Ruby] kuromoji builder threw:', e);
+        return false;
+      }
+    };
+
     function doInjectRubyAnnotations(doc, mode) {
       if (!mode || !doc) return 0;
-      if (!_rubyWordDict && !_rubyCharDict) return 0;
+      if (!rubyDictReady(mode)) return 0;
       rubyInjectStyles(doc);
       var blocks = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, figcaption, div');
       var count = 0;
@@ -4896,7 +4990,7 @@ html, body {
           var node = textNodes[ti];
           var text = node.nodeValue || '';
           if (!text.trim() || !CJK_RE.test(text)) continue;
-          var tokens = rubyAnnotateChinese(text);
+          var tokens = rubyAnnotate(text, mode);
           var span = doc.createElement('span');
           span.setAttribute(RUBY_PROCESSED_ATTR, 'true');
           span.className = 'readany-ruby-container';
@@ -5006,6 +5100,7 @@ html, body {
     }
   </script>
 
+  <!-- __READANY_KUROMOJI_INSERT_POINT_5d71c0a4__ -->
   <!-- __READANY_FOLIATE_BUNDLE_INSERT_POINT_7f3a9b2e__ -->
 
   <script>

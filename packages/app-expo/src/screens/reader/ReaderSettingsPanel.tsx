@@ -370,11 +370,14 @@ function RubySettingsRow({
   const { t } = useTranslation();
   const dictStatus = useRubyStore((st) => st.dictStates.zh.status);
   const dictProgress = useRubyStore((st) => st.dictStates.zh.progress);
+  const jaStatus = useRubyStore((st) => st.dictStates.ja.status);
+  const jaProgress = useRubyStore((st) => st.dictStates.ja.progress);
   const currentMode = useRubyStore((st) => st.bookRubySettings[bookId] ?? null);
   const setBookRuby = useRubyStore((st) => st.setBookRuby);
   const [downloading, setDownloading] = useState(false);
 
   const zhReady = dictStatus === "ready";
+  const jaReady = jaStatus === "ready";
 
   const handleDownload = useCallback(async () => {
     setDownloading(true);
@@ -397,6 +400,27 @@ function RubySettingsRow({
     }
   }, []);
 
+  const handleDownloadJa = useCallback(async () => {
+    setDownloading(true);
+    try {
+      const { downloadJapaneseDictMobile } = await import("@/lib/ruby/dict-service-mobile");
+      await downloadJapaneseDictMobile();
+    } catch (err) {
+      console.error("[Ruby] Japanese download failed:", err);
+    } finally {
+      setDownloading(false);
+    }
+  }, []);
+
+  const handleDeleteJa = useCallback(async () => {
+    try {
+      const { deleteJapaneseDictMobile } = await import("@/lib/ruby/dict-service-mobile");
+      await deleteJapaneseDictMobile();
+    } catch (err) {
+      console.error("[Ruby] Japanese delete failed:", err);
+    }
+  }, []);
+
   const handleModeChange = useCallback(
     (mode: RubyMode) => {
       setBookRuby(bookId, mode);
@@ -405,10 +429,22 @@ function RubySettingsRow({
     [bookId, setBookRuby, onModeChange],
   );
 
+  // Only offer a mode whose dictionary is actually installed — a mode that
+  // silently does nothing is worse than an absent one.
   const modes: Array<{ value: RubyMode; label: string }> = [
     { value: null, label: t("ruby.off", "关闭") },
-    { value: "zh-pinyin", label: t("ruby.pinyin", "拼音") },
-    { value: "zh-zhuyin", label: t("ruby.zhuyin", "注音") },
+    ...(zhReady
+      ? ([
+          { value: "zh-pinyin", label: t("ruby.pinyin", "拼音") },
+          { value: "zh-zhuyin", label: t("ruby.zhuyin", "注音") },
+        ] as Array<{ value: RubyMode; label: string }>)
+      : []),
+    ...(jaReady
+      ? ([{ value: "ja", label: t("ruby.furigana", "ふりがな") }] as Array<{
+          value: RubyMode;
+          label: string;
+        }>)
+      : []),
   ];
 
   return (
@@ -446,7 +482,37 @@ function RubySettingsRow({
           </TouchableOpacity>
         )}
       </View>
-      {zhReady && (
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.settingLabel}>{t("ruby.furiganaTitle", "ふりがな")}</Text>
+          <Text style={[s.settingLabel, { fontSize: 11, opacity: 0.6, marginTop: 2 }]}>
+            {t("ruby.furiganaDesc", "Show readings above kanji in Japanese books")}
+          </Text>
+        </View>
+        {!jaReady ? (
+          <TouchableOpacity
+            style={[s.settingToggleBtn, s.settingToggleBtnActive]}
+            disabled={downloading || jaStatus === "downloading"}
+            onPress={handleDownloadJa}
+          >
+            {downloading || jaStatus === "downloading" ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
+                <Text style={s.settingToggleTextActive}>
+                  {jaProgress ? `${jaProgress}%` : "..."}
+                </Text>
+              </View>
+            ) : (
+              <Text style={s.settingToggleTextActive}>{t("ruby.download", "下载")}</Text>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={s.settingToggleBtn} onPress={handleDeleteJa}>
+            <Text style={s.settingToggleText}>{t("common.delete", "删除")}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {(zhReady || jaReady) && (
         <View style={s.viewModeRow}>
           {modes.map((m) => (
             <TouchableOpacity

@@ -688,6 +688,22 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       `);
   }, []);
 
+  /**
+   * Hand the WebView a URL for kuromoji's dictionary. The dictionary is ~18MB,
+   * so it is served over the local file server rather than pushed across this
+   * bridge the way the Chinese JSON dictionaries are.
+   */
+  const setJapaneseDictUrl = useCallback((url: string) => {
+    webViewRef.current?.injectJavaScript(`
+        (function() {
+          try {
+            if (window.setJapaneseDictUrl) window.setJapaneseDictUrl(${JSON.stringify(url)});
+          } catch(e) { console.error('[WebView] setJapaneseDictUrl error:', e); }
+        })();
+        true;
+      `);
+  }, []);
+
   const injectRuby = useCallback((mode: string) => {
     webViewRef.current?.injectJavaScript(`
         (function() {
@@ -976,6 +992,7 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       removeChapterTranslations,
       setRubyDicts,
       injectRuby,
+      setJapaneseDictUrl,
       removeRuby,
     }),
     [
