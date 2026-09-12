@@ -49,6 +49,26 @@ export function GroupPickerSheet({
     onClose();
   };
 
+  /**
+   * Flattened depth-first so a subfolder appears under its parent and indented.
+   * A flat alphabetical list would make two folders called "Volume 1" in
+   * different series indistinguishable.
+   */
+  const orderedGroups = useMemo(() => {
+    const out: { group: BookGroup; depth: number }[] = [];
+    const childrenOf = (parentId: string | undefined) =>
+      groups.filter((g) => (g.parentId ?? undefined) === parentId);
+    const walk = (parentId: string | undefined, depth: number) => {
+      if (depth > 8) return;
+      for (const group of childrenOf(parentId)) {
+        out.push({ group, depth });
+        walk(group.id, depth + 1);
+      }
+    };
+    walk(undefined, 0);
+    return out;
+  }, [groups]);
+
   const handleSelect = (groupId: string | undefined) => {
     onSelect(groupId);
     onClose();
@@ -68,14 +88,17 @@ export function GroupPickerSheet({
                 keyboardShouldPersistTaps="handled"
                 nestedScrollEnabled
               >
-                {groups.map((group) => (
+                {orderedGroups.map(({ group, depth }) => (
                   <TouchableOpacity
                     key={group.id}
                     style={styles.groupItem}
                     activeOpacity={0.7}
                     onPress={() => handleSelect(group.id)}
                   >
-                    <Text style={styles.groupName}>{group.name}</Text>
+                    <Text style={[styles.groupName, { marginLeft: depth * 16 }]}>
+                      {depth > 0 ? "↳ " : ""}
+                      {group.name}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>

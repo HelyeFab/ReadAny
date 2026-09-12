@@ -10,6 +10,8 @@ import { makeStyles as makeBookCardStyles } from "./book-card-styles";
 interface GroupCardProps {
   group: BookGroup;
   books: Book[];
+  /** Books anywhere inside, including subfolders. Falls back to the direct count. */
+  totalCount?: number;
   cardWidth: number;
   onOpen: (groupId: string) => void;
   onLongPress?: (group: BookGroup) => void;
@@ -142,6 +144,7 @@ function GroupCoverLayer({
 export const GroupCard = memo(function GroupCard({
   group,
   books,
+  totalCount,
   cardWidth,
   onOpen,
   onLongPress,
@@ -204,7 +207,7 @@ export const GroupCard = memo(function GroupCard({
           {group.name}
         </Text>
         <Text style={bookStyles.bookAuthor} numberOfLines={1}>
-          {t("library.groupBookCount", { count: books.length, defaultValue: `${books.length} 本` })}
+          {t("library.groupBookCount", { count: totalCount ?? books.length, defaultValue: `${totalCount ?? books.length} 本` })}
         </Text>
         <View style={bookStyles.tagsRow}>
           <View style={bookStyles.newBadge}>

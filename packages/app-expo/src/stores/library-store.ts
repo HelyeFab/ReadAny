@@ -97,7 +97,7 @@ export interface LibraryState {
   addTag: (tag: string) => void;
   removeTag: (tag: string) => void;
   renameTag: (oldName: string, newName: string) => void;
-  addGroup: (name: string) => Promise<BookGroup | null>;
+  addGroup: (name: string, parentId?: string) => Promise<BookGroup | null>;
   renameGroup: (groupId: string, name: string) => void;
   removeGroup: (groupId: string) => Promise<void>;
   moveBookToGroup: (bookId: string, groupId?: string) => void;
@@ -1335,16 +1335,21 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     });
   },
 
-  addGroup: async (name) => {
+  addGroup: async (name, parentId) => {
     const trimmed = name.trim();
     if (!trimmed) return null;
-    const existing = get().groups.find((group) => group.name === trimmed);
+    // Names only clash within the same folder — "Volume 1" can exist under
+    // two different series.
+    const existing = get().groups.find(
+      (group) => group.name === trimmed && (group.parentId ?? null) === (parentId ?? null),
+    );
     if (existing) return existing;
 
     try {
       await db.initDatabase();
       const group = await db.insertGroup({
         name: trimmed,
+        parentId,
         sortOrder: get().groups.length,
       });
       const groups = [...get().groups, group].sort((a, b) => a.sortOrder - b.sortOrder);

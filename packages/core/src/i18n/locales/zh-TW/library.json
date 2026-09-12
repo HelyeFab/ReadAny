@@ -148,7 +148,8 @@
     "detailsManagedMetadataNote": "ReadAny 會維護這份元資訊，用於書架顯示、搜尋和同步命名，不會修改原始書籍檔案。",
     "bookNotFound": "書籍不存在",
     "importSourceFolder": "匯入資料夾",
-    "folderImportEmpty": "該資料夾中沒有找到書籍。"
+    "folderImportEmpty": "該資料夾中沒有找到書籍。",
+    "newFolder": "新增資料夾"
   },
   "home": {
     "library": "書庫",

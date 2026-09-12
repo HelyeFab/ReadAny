@@ -5,6 +5,7 @@ import { getDB, getDeviceId, insertTombstone, nextSyncVersion, nextUpdatedAt } f
 interface BookGroupRow {
   id: string;
   name: string;
+  parent_id: string | null;
   sort_order: number | null;
   created_at: number;
   updated_at: number;
@@ -14,6 +15,7 @@ function rowToBookGroup(row: BookGroupRow): BookGroup {
   return {
     id: row.id,
     name: row.name,
+    parentId: row.parent_id ?? undefined,
     sortOrder: row.sort_order ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at || row.created_at,
@@ -31,6 +33,7 @@ export async function getGroups(): Promise<BookGroup[]> {
 export async function insertGroup(input: {
   id?: string;
   name: string;
+  parentId?: string;
   sortOrder?: number;
 }): Promise<BookGroup> {
   const database = await getDB();
@@ -40,17 +43,19 @@ export async function insertGroup(input: {
   const group: BookGroup = {
     id: input.id ?? generateId(),
     name: input.name.trim(),
+    parentId: input.parentId,
     sortOrder: input.sortOrder ?? now,
     createdAt: now,
     updatedAt: now,
   };
 
   await database.execute(
-    `INSERT INTO book_groups (id, name, sort_order, created_at, updated_at, sync_version, last_modified_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO book_groups (id, name, parent_id, sort_order, created_at, updated_at, sync_version, last_modified_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       group.id,
       group.name,
+      group.parentId ?? null,
       group.sortOrder,
       group.createdAt,
       group.updatedAt,
@@ -64,7 +69,7 @@ export async function insertGroup(input: {
 
 export async function updateGroup(
   id: string,
-  updates: Partial<Pick<BookGroup, "name" | "sortOrder">>,
+  updates: Partial<Pick<BookGroup, "name" | "sortOrder" | "parentId">>,
 ): Promise<void> {
   const database = await getDB();
   const sets: string[] = [];
@@ -77,6 +82,10 @@ export async function updateGroup(
   if (updates.sortOrder !== undefined) {
     sets.push("sort_order = ?");
     values.push(updates.sortOrder);
+  }
+  if (updates.parentId !== undefined) {
+    sets.push("parent_id = ?");
+    values.push(updates.parentId || null);
   }
   if (sets.length === 0) return;
 
@@ -106,6 +115,21 @@ export async function deleteGroup(id: string): Promise<void> {
      WHERE group_id = ?`,
     [updatedAt, bookSyncVersion, deviceId, id],
   );
+  // Children are lifted to this folder's parent rather than orphaned: a
+  // subfolder whose parent no longer exists would vanish from every view.
+  const parentRow = await database.select<{ parent_id: string | null }>(
+    "SELECT parent_id FROM book_groups WHERE id = ?",
+    [id],
+  );
+  const newParent = parentRow[0]?.parent_id ?? null;
+  const groupSyncVersion = await nextSyncVersion(database, "book_groups");
+  await database.execute(
+    `UPDATE book_groups
+     SET parent_id = ?, updated_at = ?, sync_version = ?, last_modified_by = ?
+     WHERE parent_id = ?`,
+    [newParent, updatedAt, groupSyncVersion, deviceId, id],
+  );
+
   await insertTombstone(database, id, "book_groups");
   await database.execute("DELETE FROM book_groups WHERE id = ?", [id]);
 }

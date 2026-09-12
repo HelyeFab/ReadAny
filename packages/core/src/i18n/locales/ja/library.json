@@ -148,7 +148,8 @@
     "detailsManagedMetadataNote": "ReadAny はこのメタデータをライブラリ表示、検索、同期時の命名に使用します。元の書籍ファイルは変更しません。",
     "bookNotFound": "書籍が見つかりません",
     "importSourceFolder": "フォルダを読み込む",
-    "folderImportEmpty": "そのフォルダに本が見つかりませんでした。"
+    "folderImportEmpty": "そのフォルダに本が見つかりませんでした。",
+    "newFolder": "新しいフォルダ"
   },
   "home": {
     "library": "ライブラリ",

@@ -58,6 +58,8 @@ export interface Book {
 export interface BookGroup {
   id: string;
   name: string;
+  /** Parent folder, or undefined at the top level. */
+  parentId?: string;
   sortOrder: number;
   createdAt: number;
   updatedAt: number;
