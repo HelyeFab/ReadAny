@@ -13,6 +13,7 @@
 
 import type { RubyMode } from "@readany/core/stores/ruby-store";
 import { annotateChinese, isPinyinDictLoaded, type RubyToken } from "./pinyin-processor";
+import { annotateJapanese } from "./japanese-processor";
 
 const RUBY_STYLE_ID = "readany-ruby-annotation-style";
 const RUBY_PROCESSED_ATTR = "data-ruby-processed";
@@ -162,8 +163,7 @@ export function injectRubyAnnotations(
       if (mode === "zh-pinyin" || mode === "zh-zhuyin") {
         tokens = annotateChinese(text, mode === "zh-zhuyin" ? "zhuyin" : "pinyin");
       } else {
-        // Japanese — TODO: implement with kuromoji
-        continue;
+        tokens = annotateJapanese(text);
       }
 
       // Build ruby HTML

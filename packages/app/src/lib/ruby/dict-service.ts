@@ -18,6 +18,12 @@ import {
   PINYIN_CHAR_DICT_FILENAME,
   LEGACY_DICT_FILENAME,
 } from "./pinyin-processor";
+import {
+  loadJapaneseTokenizer,
+  isJapaneseDictLoaded,
+  KUROMOJI_DICT_BASE_URL,
+  KUROMOJI_DICT_FILES,
+} from "./japanese-processor";
 
 /**
  * Get the dictionary directory path for a language.
@@ -220,16 +226,71 @@ export async function tryLoadExistingDict(lang: "zh" | "ja"): Promise<boolean> {
     return false;
   }
 
-  // TODO: Japanese dict loading
+  // Already built
+  if (isJapaneseDictLoaded()) return true;
+
+  try {
+    const { exists } = await import("@tauri-apps/plugin-fs");
+    const dictDir = await getDictDir("ja");
+
+    // Every file must be present: kuromoji's builder reads all of them, and a
+    // partial directory would throw at read time rather than here.
+    for (const filename of KUROMOJI_DICT_FILES) {
+      if (!(await exists(`${dictDir}/${filename}`))) return false;
+    }
+
+    await loadJapaneseTokenizer(dictDir);
+    useRubyStore.getState().setDictState("ja", { status: "ready", progress: 100 });
+    return true;
+  } catch {
+    // Dict not available
+  }
   return false;
 }
 
 /**
- * Download Japanese kuromoji dictionary.
- * TODO: Implement when adding Japanese support.
+ * Download the kuromoji IPADIC used for Japanese furigana.
  */
 export async function downloadJapaneseDict(): Promise<void> {
-  throw new Error("Japanese dictionary not yet supported");
+  const store = useRubyStore.getState();
+  store.setDictState("ja", { status: "downloading", progress: 0, error: undefined });
+
+  try {
+    const { mkdir, writeFile, exists } = await import("@tauri-apps/plugin-fs");
+    const dictDir = await getDictDir("ja");
+
+    if (!(await exists(dictDir))) {
+      await mkdir(dictDir, { recursive: true });
+    }
+
+    // kuromoji's IPADIC is a fixed set of small gzipped files rather than one
+    // blob, so progress is counted per file instead of per byte.
+    const total = KUROMOJI_DICT_FILES.length;
+    for (let i = 0; i < total; i += 1) {
+      const filename = KUROMOJI_DICT_FILES[i];
+      const target = `${dictDir}/${filename}`;
+      if (!(await exists(target))) {
+        const response = await fetch(`${KUROMOJI_DICT_BASE_URL}/${filename}`);
+        if (!response.ok) {
+          throw new Error(`${filename} download failed: HTTP ${response.status}`);
+        }
+        await writeFile(target, new Uint8Array(await response.arrayBuffer()));
+      }
+      store.setDictState("ja", { progress: Math.round(((i + 1) / total) * 90) });
+    }
+
+    // Building the tokenizer reads every file back, so a truncated download
+    // fails here rather than silently producing no furigana later.
+    await loadJapaneseTokenizer(dictDir);
+    store.setDictState("ja", { status: "ready", progress: 100 });
+  } catch (err) {
+    store.setDictState("ja", {
+      status: "error",
+      progress: 0,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 }
 
 /**
