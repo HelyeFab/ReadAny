@@ -7,7 +7,18 @@ import * as SecureStore from "expo-secure-store";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-export type ThemeMode = "light" | "dark" | "sepia" | "oled";
+export type ThemeMode =
+  | "light"
+  | "dark"
+  | "sepia"
+  | "oled"
+  | "apricot"
+  | "coral"
+  | "rose"
+  | "sage"
+  | "jade"
+  | "teal"
+  | "indigo";
 
 export interface ThemeColors {
   background: string;
@@ -145,11 +156,248 @@ const sepiaColors: ThemeColors = {
   stone500: "#78716c",
 };
 
+
+// ── Tinted paper themes ──
+// One per band of the reference palette. Each is derived from its seed hue:
+// paper tinted toward the hue, ink near-black but carrying the same hue, and
+// the seed itself darkened for controls so it stays legible on a light page.
+
+// ── Apricot (#ffc196) ──
+const apricotColors: ThemeColors = {
+  background: "#f7f3f0",
+  foreground: "#2d2520",
+  card: "#fcfbfa",
+  cardForeground: "#2d2520",
+  muted: "#ede6e0",
+  mutedForeground: "#7f6b5c",
+  border: "#e3d8d1",
+  primary: "#b54a00",
+  primaryForeground: "#fcfbfb",
+  destructive: "#e53935",
+  destructiveForeground: "#fafafa",
+  accent: "#f2ebe6",
+  accentForeground: "#993f00",
+  indigo: "#6366f1",
+  emerald: "#10b981",
+  amber: "#f59e0b",
+  blue: "#3b82f6",
+  violet: "#7c3aed",
+  highlightYellow: "#fef08a",
+  highlightGreen: "#bbf7d0",
+  highlightBlue: "#bfdbfe",
+  highlightPink: "#fbcfe8",
+  highlightPurple: "#e9d5ff",
+  stone100: "#f5f5f4",
+  stone200: "#e7e5e4",
+  stone300: "#d6d3d1",
+  stone400: "#a8a29e",
+  stone500: "#78716c",
+};
+
+// ── Coral (#ff7a83) ──
+const coralColors: ThemeColors = {
+  background: "#f7f0f1",
+  foreground: "#2d2020",
+  card: "#fcfafa",
+  cardForeground: "#2d2020",
+  muted: "#ede0e1",
+  mutedForeground: "#7f5c5f",
+  border: "#e3d1d2",
+  primary: "#b5000c",
+  primaryForeground: "#fcfbfb",
+  destructive: "#e53935",
+  destructiveForeground: "#fafafa",
+  accent: "#f2e6e6",
+  accentForeground: "#99000a",
+  indigo: "#6366f1",
+  emerald: "#10b981",
+  amber: "#f59e0b",
+  blue: "#3b82f6",
+  violet: "#7c3aed",
+  highlightYellow: "#fef08a",
+  highlightGreen: "#bbf7d0",
+  highlightBlue: "#bfdbfe",
+  highlightPink: "#fbcfe8",
+  highlightPurple: "#e9d5ff",
+  stone100: "#f5f5f4",
+  stone200: "#e7e5e4",
+  stone300: "#d6d3d1",
+  stone400: "#a8a29e",
+  stone500: "#78716c",
+};
+
+// ── Rose (#c5638a) ──
+const roseColors: ThemeColors = {
+  background: "#f6f1f3",
+  foreground: "#2c2025",
+  card: "#fcfafb",
+  cardForeground: "#2c2025",
+  muted: "#ece1e6",
+  mutedForeground: "#7f5c6a",
+  border: "#e2d2d8",
+  primary: "#843152",
+  primaryForeground: "#fcfbfb",
+  destructive: "#e53935",
+  destructiveForeground: "#fafafa",
+  accent: "#f1e7eb",
+  accentForeground: "#702945",
+  indigo: "#6366f1",
+  emerald: "#10b981",
+  amber: "#f59e0b",
+  blue: "#3b82f6",
+  violet: "#7c3aed",
+  highlightYellow: "#fef08a",
+  highlightGreen: "#bbf7d0",
+  highlightBlue: "#bfdbfe",
+  highlightPink: "#fbcfe8",
+  highlightPurple: "#e9d5ff",
+  stone100: "#f5f5f4",
+  stone200: "#e7e5e4",
+  stone300: "#d6d3d1",
+  stone400: "#a8a29e",
+  stone500: "#78716c",
+};
+
+// ── Sage (#a5b587) ──
+const sageColors: ThemeColors = {
+  background: "#f4f5f2",
+  foreground: "#272923",
+  card: "#fbfcfb",
+  cardForeground: "#272923",
+  muted: "#e8eae4",
+  mutedForeground: "#707765",
+  border: "#dbded6",
+  primary: "#647a3b",
+  primaryForeground: "#fbfbfb",
+  destructive: "#e53935",
+  destructiveForeground: "#fafafa",
+  accent: "#edefe9",
+  accentForeground: "#556732",
+  indigo: "#6366f1",
+  emerald: "#10b981",
+  amber: "#f59e0b",
+  blue: "#3b82f6",
+  violet: "#7c3aed",
+  highlightYellow: "#fef08a",
+  highlightGreen: "#bbf7d0",
+  highlightBlue: "#bfdbfe",
+  highlightPink: "#fbcfe8",
+  highlightPurple: "#e9d5ff",
+  stone100: "#f5f5f4",
+  stone200: "#e7e5e4",
+  stone300: "#d6d3d1",
+  stone400: "#a8a29e",
+  stone500: "#78716c",
+};
+
+// ── Jade (#58af8c) ──
+const jadeColors: ThemeColors = {
+  background: "#f1f6f4",
+  foreground: "#222b27",
+  card: "#fbfcfb",
+  cardForeground: "#222b27",
+  muted: "#e3ebe8",
+  mutedForeground: "#607b70",
+  border: "#d4e0db",
+  primary: "#3b7a61",
+  primaryForeground: "#fbfcfb",
+  destructive: "#e53935",
+  destructiveForeground: "#fafafa",
+  accent: "#e8f0ed",
+  accentForeground: "#326752",
+  indigo: "#6366f1",
+  emerald: "#10b981",
+  amber: "#f59e0b",
+  blue: "#3b82f6",
+  violet: "#7c3aed",
+  highlightYellow: "#fef08a",
+  highlightGreen: "#bbf7d0",
+  highlightBlue: "#bfdbfe",
+  highlightPink: "#fbcfe8",
+  highlightPurple: "#e9d5ff",
+  stone100: "#f5f5f4",
+  stone200: "#e7e5e4",
+  stone300: "#d6d3d1",
+  stone400: "#a8a29e",
+  stone500: "#78716c",
+};
+
+// ── Teal (#009d95) ──
+const tealColors: ThemeColors = {
+  background: "#f0f7f7",
+  foreground: "#202d2c",
+  card: "#fafcfc",
+  cardForeground: "#202d2c",
+  muted: "#e0eded",
+  mutedForeground: "#5c7f7d",
+  border: "#d1e3e2",
+  primary: "#00b5ac",
+  primaryForeground: "#fbfcfc",
+  destructive: "#e53935",
+  destructiveForeground: "#fafafa",
+  accent: "#e6f2f2",
+  accentForeground: "#009991",
+  indigo: "#6366f1",
+  emerald: "#10b981",
+  amber: "#f59e0b",
+  blue: "#3b82f6",
+  violet: "#7c3aed",
+  highlightYellow: "#fef08a",
+  highlightGreen: "#bbf7d0",
+  highlightBlue: "#bfdbfe",
+  highlightPink: "#fbcfe8",
+  highlightPurple: "#e9d5ff",
+  stone100: "#f5f5f4",
+  stone200: "#e7e5e4",
+  stone300: "#d6d3d1",
+  stone400: "#a8a29e",
+  stone500: "#78716c",
+};
+
+// ── Deep Blue (#006294) ──
+const indigoColors: ThemeColors = {
+  background: "#f0f5f7",
+  foreground: "#20282d",
+  card: "#fafbfc",
+  cardForeground: "#20282d",
+  muted: "#e0e9ed",
+  mutedForeground: "#5c737f",
+  border: "#d1dde3",
+  primary: "#0078b5",
+  primaryForeground: "#fbfbfc",
+  destructive: "#e53935",
+  destructiveForeground: "#fafafa",
+  accent: "#e6eef2",
+  accentForeground: "#006599",
+  indigo: "#6366f1",
+  emerald: "#10b981",
+  amber: "#f59e0b",
+  blue: "#3b82f6",
+  violet: "#7c3aed",
+  highlightYellow: "#fef08a",
+  highlightGreen: "#bbf7d0",
+  highlightBlue: "#bfdbfe",
+  highlightPink: "#fbcfe8",
+  highlightPurple: "#e9d5ff",
+  stone100: "#f5f5f4",
+  stone200: "#e7e5e4",
+  stone300: "#d6d3d1",
+  stone400: "#a8a29e",
+  stone500: "#78716c",
+};
+
 const THEME_MAP: Record<ThemeMode, ThemeColors> = {
   light: lightColors,
   dark: darkColors,
   sepia: sepiaColors,
   oled: oledColors,
+  apricot: apricotColors,
+  coral: coralColors,
+  rose: roseColors,
+  sage: sageColors,
+  jade: jadeColors,
+  teal: tealColors,
+  indigo: indigoColors,
 };
 
 const STORAGE_KEY = "readany-theme";

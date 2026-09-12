@@ -4,6 +4,7 @@ import type { TOCItem } from "@readany/core/types";
  * useReaderBridge — encapsulates RN ↔ WebView postMessage communication
  * for the foliate-js reader engine.
  */
+import type { ThemeMode } from "@/styles/ThemeContext";
 import { useCallback, useMemo, useRef } from "react";
 import type { WebView } from "react-native-webview";
 
@@ -307,7 +308,7 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       foreground: string;
       muted: string;
       primary?: string;
-      themeMode?: "light" | "dark" | "sepia" | "oled";
+      themeMode?: ThemeMode;
     }) => {
       const msg = JSON.stringify({ type: "setThemeColors", colors, themeMode: colors.themeMode });
       inject(`handleCommand(${msg})`);

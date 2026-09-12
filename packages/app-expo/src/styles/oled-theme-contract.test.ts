@@ -10,7 +10,12 @@ describe("OLED Black mobile theme", () => {
     const context = read("packages/app-expo/src/styles/ThemeContext.tsx");
     const app = read("packages/app-expo/src/App.tsx");
 
-    expect(context).toContain('export type ThemeMode = "light" | "dark" | "sepia" | "oled"');
+    // The union has grown past one line; what matters is that every base mode
+    // is still a member of it.
+    expect(context).toMatch(/export type ThemeMode =[\s\S]*?"oled"/);
+    for (const mode of ["light", "dark", "sepia", "oled"]) {
+      expect(context).toMatch(new RegExp(`"${mode}"`));
+    }
     expect(context).toMatch(
       /const oledColors: ThemeColors = \{[\s\S]*?\.\.\.darkColors,[\s\S]*?background: "#000000"/,
     );
@@ -53,7 +58,8 @@ describe("OLED Black mobile theme", () => {
     const template = read("packages/app-expo/assets/reader/reader.template.html");
     const built = read("packages/app-expo/assets/reader/reader.html");
 
-    expect(bridge).toContain('themeMode?: "light" | "dark" | "sepia" | "oled"');
+    // The bridge now takes the shared ThemeMode rather than an inline literal.
+    expect(bridge).toMatch(/themeMode\?: (ThemeMode|"light" \| "dark" \| "sepia" \| "oled")/);
     for (const source of [template, built]) {
       expect(source).toContain("themeMode === 'oled'");
       expect(source).toMatch(/oled:\s*'invert\(1\)'/);

@@ -22,6 +22,13 @@ const THEMES: { id: ThemeMode; labelKey: string; fallback: string; Icon: typeof 
   { id: "dark", labelKey: "settings.dark", fallback: "Dark", Icon: MoonIcon },
   { id: "oled", labelKey: "settings.oled", fallback: "OLED Black", Icon: MoonIcon },
   { id: "sepia", labelKey: "settings.sepia", fallback: "Sepia", Icon: BookOpenIcon },
+  { id: "apricot", labelKey: "settings.apricot", fallback: "Apricot", Icon: BookOpenIcon },
+  { id: "coral", labelKey: "settings.coral", fallback: "Coral", Icon: BookOpenIcon },
+  { id: "rose", labelKey: "settings.rose", fallback: "Rose", Icon: BookOpenIcon },
+  { id: "sage", labelKey: "settings.sage", fallback: "Sage", Icon: BookOpenIcon },
+  { id: "jade", labelKey: "settings.jade", fallback: "Jade", Icon: BookOpenIcon },
+  { id: "teal", labelKey: "settings.teal", fallback: "Teal", Icon: BookOpenIcon },
+  { id: "indigo", labelKey: "settings.indigo", fallback: "Deep Blue", Icon: BookOpenIcon },
 ];
 
 const LANGUAGES = [

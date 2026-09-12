@@ -593,6 +593,13 @@
           "fail": "ReadAny Skill is not installed at {{path}}."
         }
       }
-    }
+    },
+    "apricot": "Apricot",
+    "coral": "Coral",
+    "rose": "Rose",
+    "sage": "Sage",
+    "jade": "Jade",
+    "teal": "Teal",
+    "indigo": "Deep Blue"
   }
 }

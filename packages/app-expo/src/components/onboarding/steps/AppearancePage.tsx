@@ -42,6 +42,41 @@ export function AppearancePage() {
       name: t("settings.sepia", "Sepia"),
       icon: <Coffee size={24} color={colors.foreground} />,
     },
+    {
+      id: "apricot",
+      name: t("settings.apricot", "Apricot"),
+      icon: <Coffee size={24} color={colors.foreground} />,
+    },
+    {
+      id: "coral",
+      name: t("settings.coral", "Coral"),
+      icon: <Coffee size={24} color={colors.foreground} />,
+    },
+    {
+      id: "rose",
+      name: t("settings.rose", "Rose"),
+      icon: <Coffee size={24} color={colors.foreground} />,
+    },
+    {
+      id: "sage",
+      name: t("settings.sage", "Sage"),
+      icon: <Coffee size={24} color={colors.foreground} />,
+    },
+    {
+      id: "jade",
+      name: t("settings.jade", "Jade"),
+      icon: <Coffee size={24} color={colors.foreground} />,
+    },
+    {
+      id: "teal",
+      name: t("settings.teal", "Teal"),
+      icon: <Coffee size={24} color={colors.foreground} />,
+    },
+    {
+      id: "indigo",
+      name: t("settings.indigo", "Deep Blue"),
+      icon: <Coffee size={24} color={colors.foreground} />,
+    },
   ];
 
   const handleLangChange = async (code: string) => {
