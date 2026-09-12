@@ -10,5 +10,10 @@
     "entries": "entries",
     "noneInstalled": "No dictionaries installed. Add one in Settings → Dictionaries.",
     "noMatch": "No entry found."
+  },
+  "anki": {
+    "title": "Add to Anki",
+    "add": "Add to Anki",
+    "notInstalled": "AnkiDroid does not appear to be installed."
   }
 }

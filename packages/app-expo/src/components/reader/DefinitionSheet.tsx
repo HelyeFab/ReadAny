@@ -6,7 +6,7 @@
  * take the page away.
  */
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { Definition } from "@/lib/dictionary/lookup";
 import { radius, spacing, useColors } from "@/styles/theme";
@@ -47,6 +47,27 @@ export function DefinitionSheet({ visible, word, baseForms, onClose }: Props) {
     };
   }, [visible, word, baseForms]);
 
+  const addToAnki = async () => {
+    if (!entries || entries.length === 0) return;
+    try {
+      const { sendToAnki, cardFromDefinitions, AnkiUnavailableError } = await import(
+        "@/lib/anki/send-to-anki"
+      );
+      await sendToAnki(cardFromDefinitions(word, entries));
+      onClose();
+    } catch (err) {
+      const { AnkiUnavailableError: Unavailable } = await import("@/lib/anki/send-to-anki");
+      Alert.alert(
+        t("anki.title", "Add to Anki"),
+        err instanceof Unavailable
+          ? t("anki.notInstalled", "AnkiDroid does not appear to be installed.")
+          : err instanceof Error
+            ? err.message
+            : String(err),
+      );
+    }
+  };
+
   if (!visible) return null;
 
   return (
@@ -67,6 +88,23 @@ export function DefinitionSheet({ visible, word, baseForms, onClose }: Props) {
           <Text style={{ fontSize: 13, color: colors.mutedForeground }}>
             {baseForms.join(" · ")}
           </Text>
+        )}
+
+        {entries !== null && entries.length > 0 && (
+          <TouchableOpacity
+            onPress={() => void addToAnki()}
+            style={{
+              alignSelf: "flex-start",
+              backgroundColor: colors.primary,
+              borderRadius: radius.md,
+              paddingHorizontal: spacing.md,
+              paddingVertical: 8,
+            }}
+          >
+            <Text style={{ color: colors.primaryForeground, fontWeight: "600" }}>
+              {t("anki.add", "Add to Anki")}
+            </Text>
+          </TouchableOpacity>
         )}
 
         {entries === null ? (

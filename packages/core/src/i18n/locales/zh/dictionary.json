@@ -10,5 +10,10 @@
     "entries": "条",
     "noneInstalled": "未安装词典。请在 设置 → 词典 中添加。",
     "noMatch": "未找到词条。"
+  },
+  "anki": {
+    "title": "添加到 Anki",
+    "add": "添加到 Anki",
+    "notInstalled": "似乎未安装 AnkiDroid。"
   }
 }
