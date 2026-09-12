@@ -593,6 +593,13 @@
           "fail": "ReadAny 스킬이 {{path}}에 설치되어 있지 않아요."
         }
       }
-    }
+    },
+    "apricot": "살구",
+    "coral": "코럴",
+    "rose": "로즈",
+    "sage": "세이지",
+    "jade": "제이드",
+    "teal": "틸",
+    "indigo": "딥 블루"
   }
 }

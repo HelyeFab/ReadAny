@@ -593,6 +593,13 @@
           "fail": "ReadAny Skill 未安装：{{path}}。"
         }
       }
-    }
+    },
+    "apricot": "杏色",
+    "coral": "珊瑚",
+    "rose": "玫瑰",
+    "sage": "鼠尾草",
+    "jade": "翡翠",
+    "teal": "青碧",
+    "indigo": "深蓝"
   }
 }
