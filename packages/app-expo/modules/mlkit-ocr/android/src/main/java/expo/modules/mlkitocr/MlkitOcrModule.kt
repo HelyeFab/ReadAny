@@ -48,11 +48,19 @@ private const val SIGMOID_K = 7f
 
 class RecognizeOptions : Record {
   @Field val uri: String = ""
-  /** Crop rectangle in source-image pixels. A zero width or height means the whole image. */
-  @Field val x: Int = 0
-  @Field val y: Int = 0
-  @Field val width: Int = 0
-  @Field val height: Int = 0
+  /**
+   * Crop rectangle as fractions of the image, 0..1.
+   *
+   * Fractions rather than pixels on purpose. The caller lays the capture out in
+   * density-independent units and has no reliable way to learn the bitmap's
+   * true pixel size, so passing pixels means guessing at a conversion and
+   * cropping the wrong part of the page when the guess is wrong. Only this side
+   * knows how big the bitmap actually is.
+   */
+  @Field val x: Double = 0.0
+  @Field val y: Double = 0.0
+  @Field val width: Double = 0.0
+  @Field val height: Double = 0.0
   /** "japanese" or "latin". */
   @Field val language: String = "japanese"
 }
@@ -120,13 +128,12 @@ class MlkitOcrModule : Module() {
   }
 
   private fun crop(source: Bitmap, options: RecognizeOptions): Bitmap {
-    if (options.width <= 0 || options.height <= 0) return source
-    val rect = Rect(
-      options.x.coerceIn(0, source.width - 1),
-      options.y.coerceIn(0, source.height - 1),
-      (options.x + options.width).coerceIn(1, source.width),
-      (options.y + options.height).coerceIn(1, source.height),
-    )
+    if (options.width <= 0.0 || options.height <= 0.0) return source
+    val left = (options.x * source.width).toInt().coerceIn(0, source.width - 1)
+    val top = (options.y * source.height).toInt().coerceIn(0, source.height - 1)
+    val right = ((options.x + options.width) * source.width).toInt().coerceIn(1, source.width)
+    val bottom = ((options.y + options.height) * source.height).toInt().coerceIn(1, source.height)
+    val rect = Rect(left, top, right, bottom)
     if (rect.width() < 2 || rect.height() < 2) return source
     return Bitmap.createBitmap(source, rect.left, rect.top, rect.width(), rect.height())
   }
