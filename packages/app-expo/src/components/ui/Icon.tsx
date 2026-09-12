@@ -797,3 +797,15 @@ export const FolderMinusIcon = icon(() => (
     <Line x1="9" y1="13" x2="15" y2="13" />
   </>
 ));
+
+/** Viewfinder corners: draw a box over a page image and read what is inside it. */
+export const ScanTextIcon = icon(() => (
+  <>
+    <Path d="M3 7V5a2 2 0 0 1 2-2h2" />
+    <Path d="M17 3h2a2 2 0 0 1 2 2v2" />
+    <Path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+    <Path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+    <Path d="M7 9h10" />
+    <Path d="M7 13h6" />
+  </>
+));

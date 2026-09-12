@@ -1,0 +1,26 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.mlkitocr'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.mlkitocr"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // Bundled rather than the Play-services-delivered variants: a reader that
+  // only works once Play Services has finished downloading a model is a reader
+  // that fails on the page you opened it for.
+  implementation 'com.google.mlkit:text-recognition-japanese:16.0.1'
+  implementation 'com.google.mlkit:text-recognition:16.0.1'
+}
