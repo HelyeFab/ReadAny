@@ -85,6 +85,7 @@
     "expo-splash-screen": "~31.0.13",
     "expo-sqlite": "~16.0.10",
     "expo-status-bar": "~3.0.9",
+    "fflate": "^0.8.2",
     "i18next": "^25.8.13",
     "lucide-react-native": "^0.577.0",
     "onnxruntime-react-native": "1.24.3",
