@@ -21,6 +21,40 @@ export interface Definition {
   score: number;
 }
 
+/**
+ * English endings, with the stem forms to try. English text gets no help from
+ * the reader's tokenizer — it only analyses Japanese — so a plain lookup of
+ * "running" or "tried" would miss entirely.
+ */
+const ENGLISH_RULES: [RegExp, string[]][] = [
+  [/ies$/, ["y"]],
+  [/ied$/, ["y"]],
+  [/ier$/, ["y"]],
+  [/iest$/, ["y"]],
+  [/ves$/, ["f", "fe"]],
+  [/([^aeiou])\1(ing|ed|er|est)$/, ["$1"]], // running -> run
+  [/ing$/, ["", "e"]], // walking -> walk, making -> make
+  [/ed$/, ["", "e"]], // walked -> walk, liked -> like
+  [/es$/, ["", "e"]],
+  [/s$/, [""]],
+  [/est$/, ["", "e"]],
+  [/er$/, ["", "e"]],
+  [/ly$/, [""]],
+];
+
+function englishStems(word: string): string[] {
+  const out: string[] = [];
+  for (const [pattern, replacements] of ENGLISH_RULES) {
+    const match = pattern.exec(word);
+    if (!match) continue;
+    for (const replacement of replacements) {
+      const stem = word.replace(pattern, replacement.replace("$1", match[1] ?? ""));
+      if (stem.length >= 2) out.push(stem);
+    }
+  }
+  return out;
+}
+
 /** Endings stripped when no tokenizer answer is available. Longest first. */
 const FALLBACK_SUFFIXES = [
   "られませんでした", "させられました", "られました", "させました", "ませんでした",
@@ -41,6 +75,12 @@ function candidatesFor(surface: string, baseForms: string[]): string[] {
 
   // Only guess when the tokenizer gave us nothing to go on.
   if (baseForms.length === 0) {
+    // Latin script means English: try its inflections before the Japanese ones.
+    if (/^[A-Za-z][A-Za-z'\-]*$/.test(surface)) {
+      const lower = surface.toLowerCase();
+      push(lower);
+      for (const stem of englishStems(lower)) push(stem);
+    }
     for (const suffix of FALLBACK_SUFFIXES) {
       if (surface.length > suffix.length && surface.endsWith(suffix)) {
         push(surface.slice(0, surface.length - suffix.length));
