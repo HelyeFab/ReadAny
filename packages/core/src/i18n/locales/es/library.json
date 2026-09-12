@@ -149,7 +149,8 @@
     "bookNotFound": "Libro no encontrado",
     "importSourceFolder": "Importar una carpeta",
     "folderImportEmpty": "No se encontraron libros en esa carpeta.",
-    "newFolder": "Nueva carpeta"
+    "newFolder": "Nueva carpeta",
+    "folderCreateFailed": "No se pudo crear esa carpeta."
   },
   "home": {
     "library": "Biblioteca",

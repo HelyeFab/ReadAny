@@ -162,7 +162,8 @@
     "bookNotFound": "书籍不存在",
     "importSourceFolder": "导入文件夹",
     "folderImportEmpty": "该文件夹中没有找到书籍。",
-    "newFolder": "新建文件夹"
+    "newFolder": "新建文件夹",
+    "folderCreateFailed": "无法创建该文件夹。"
   },
   "home": {
     "library": "书库",

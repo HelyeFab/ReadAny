@@ -149,7 +149,8 @@
     "bookNotFound": "책을 찾을 수 없어요",
     "importSourceFolder": "폴더 가져오기",
     "folderImportEmpty": "해당 폴더에서 책을 찾을 수 없습니다.",
-    "newFolder": "새 폴더"
+    "newFolder": "새 폴더",
+    "folderCreateFailed": "폴더를 만들 수 없습니다."
   },
   "home": {
     "library": "서재",
