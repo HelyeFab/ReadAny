@@ -28,6 +28,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useStreamingChat } from "@/hooks";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
+import { readingContextService } from "@readany/core/ai/reading-context-service";
 import { useLibraryStore } from "@/stores";
 import { useChatStore } from "@/stores/chat-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -113,6 +114,24 @@ export function BookChatScreen({ route, navigation }: Props) {
   const handleRemoveQuote = useCallback((id: string) => {
     setQuotes((prev) => prev.filter((q) => q.id !== id));
   }, []);
+
+  // The reader drops its DOM selection the moment this screen is pushed, which left
+  // getSelection() answering "No text selected" for the very quote the user opened the
+  // chat with. The attached quote is the selection as far as the conversation is
+  // concerned, so keep the AI tool context in step with it.
+  useEffect(() => {
+    const quote = quotes[0];
+    if (!quote) {
+      readingContextService.clearSelection();
+      return;
+    }
+    readingContextService.updateSelection({
+      text: quote.text,
+      cfi: "",
+      chapterIndex: 0,
+      chapterTitle: quote.source || chapterTitle || "",
+    });
+  }, [quotes, chapterTitle]);
 
   const threads = useChatStore((s) => s.threads);
   const loadThreads = useChatStore((s) => s.loadThreads);
