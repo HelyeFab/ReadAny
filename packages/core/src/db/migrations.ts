@@ -1,5 +1,10 @@
 /**
  * Database migration management — platform-agnostic via IDatabase
+ *
+ * ⚠️ runMigrations() has no callers. Schema changes actually reach an existing
+ * database through the guarded ALTER statements in db-core.ts's initDatabase.
+ * A column added only to this list will not exist at runtime, and the failure
+ * shows up far away as "no such column".
  */
 import type { IDatabase } from "../services/platform";
 import { getPlatformService } from "../services/platform";

@@ -1374,8 +1374,15 @@ export function LibraryScreen() {
       <FolderColorSheet
         group={colorPickerGroup}
         onPick={(color) => {
-          if (colorPickerGroup) setGroupColor(colorPickerGroup.id, color);
+          const target = colorPickerGroup;
           setColorPickerGroup(null);
+          if (!target) return;
+          void setGroupColor(target.id, color).catch((err) => {
+            Alert.alert(
+              t("library.folderColor", "Colour"),
+              err instanceof Error ? err.message : String(err),
+            );
+          });
         }}
         onClose={() => setColorPickerGroup(null)}
       />
