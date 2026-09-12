@@ -14,6 +14,7 @@ import en_stats from "./locales/en/stats.json";
 import en_onboarding from "./locales/en/onboarding.json";
 import en_profile from "./locales/en/profile.json";
 import en_misc from "./locales/en/misc.json";
+import en_dictionary from "./locales/en/dictionary.json";
 
 // --- Simplified Chinese ---
 import zh_common from "./locales/zh/common.json";
@@ -28,6 +29,7 @@ import zh_stats from "./locales/zh/stats.json";
 import zh_onboarding from "./locales/zh/onboarding.json";
 import zh_profile from "./locales/zh/profile.json";
 import zh_misc from "./locales/zh/misc.json";
+import zh_dictionary from "./locales/zh/dictionary.json";
 
 // --- Traditional Chinese ---
 import zhTW_common from "./locales/zh-TW/common.json";
@@ -42,6 +44,7 @@ import zhTW_stats from "./locales/zh-TW/stats.json";
 import zhTW_onboarding from "./locales/zh-TW/onboarding.json";
 import zhTW_profile from "./locales/zh-TW/profile.json";
 import zhTW_misc from "./locales/zh-TW/misc.json";
+import zhTW_dictionary from "./locales/zh-TW/dictionary.json";
 
 // --- Japanese ---
 import ja_common from "./locales/ja/common.json";
@@ -56,6 +59,7 @@ import ja_stats from "./locales/ja/stats.json";
 import ja_onboarding from "./locales/ja/onboarding.json";
 import ja_profile from "./locales/ja/profile.json";
 import ja_misc from "./locales/ja/misc.json";
+import ja_dictionary from "./locales/ja/dictionary.json";
 
 // --- Korean ---
 import ko_common from "./locales/ko/common.json";
@@ -70,6 +74,7 @@ import ko_stats from "./locales/ko/stats.json";
 import ko_onboarding from "./locales/ko/onboarding.json";
 import ko_profile from "./locales/ko/profile.json";
 import ko_misc from "./locales/ko/misc.json";
+import ko_dictionary from "./locales/ko/dictionary.json";
 
 // --- French ---
 import fr_common from "./locales/fr/common.json";
@@ -84,6 +89,7 @@ import fr_stats from "./locales/fr/stats.json";
 import fr_onboarding from "./locales/fr/onboarding.json";
 import fr_profile from "./locales/fr/profile.json";
 import fr_misc from "./locales/fr/misc.json";
+import fr_dictionary from "./locales/fr/dictionary.json";
 
 // --- Spanish ---
 import es_common from "./locales/es/common.json";
@@ -98,15 +104,16 @@ import es_stats from "./locales/es/stats.json";
 import es_onboarding from "./locales/es/onboarding.json";
 import es_profile from "./locales/es/profile.json";
 import es_misc from "./locales/es/misc.json";
+import es_dictionary from "./locales/es/dictionary.json";
 
 // --- Merge modules per language ---
-const en = { ...en_common, ...en_library, ...en_reader, ...en_chat, ...en_notes, ...en_settings, ...en_translation, ...en_tts, ...en_stats, ...en_onboarding, ...en_profile, ...en_misc };
-const zh = { ...zh_common, ...zh_library, ...zh_reader, ...zh_chat, ...zh_notes, ...zh_settings, ...zh_translation, ...zh_tts, ...zh_stats, ...zh_onboarding, ...zh_profile, ...zh_misc };
-const zhTW = { ...zhTW_common, ...zhTW_library, ...zhTW_reader, ...zhTW_chat, ...zhTW_notes, ...zhTW_settings, ...zhTW_translation, ...zhTW_tts, ...zhTW_stats, ...zhTW_onboarding, ...zhTW_profile, ...zhTW_misc };
-const ja = { ...ja_common, ...ja_library, ...ja_reader, ...ja_chat, ...ja_notes, ...ja_settings, ...ja_translation, ...ja_tts, ...ja_stats, ...ja_onboarding, ...ja_profile, ...ja_misc };
-const ko = { ...ko_common, ...ko_library, ...ko_reader, ...ko_chat, ...ko_notes, ...ko_settings, ...ko_translation, ...ko_tts, ...ko_stats, ...ko_onboarding, ...ko_profile, ...ko_misc };
-const fr = { ...fr_common, ...fr_library, ...fr_reader, ...fr_chat, ...fr_notes, ...fr_settings, ...fr_translation, ...fr_tts, ...fr_stats, ...fr_onboarding, ...fr_profile, ...fr_misc };
-const es = { ...es_common, ...es_library, ...es_reader, ...es_chat, ...es_notes, ...es_settings, ...es_translation, ...es_tts, ...es_stats, ...es_onboarding, ...es_profile, ...es_misc };
+const en = { ...en_common, ...en_library, ...en_reader, ...en_chat, ...en_notes, ...en_settings, ...en_translation, ...en_tts, ...en_stats, ...en_onboarding, ...en_profile, ...en_misc, ...en_dictionary };
+const zh = { ...zh_common, ...zh_library, ...zh_reader, ...zh_chat, ...zh_notes, ...zh_settings, ...zh_translation, ...zh_tts, ...zh_stats, ...zh_onboarding, ...zh_profile, ...zh_misc, ...zh_dictionary };
+const zhTW = { ...zhTW_common, ...zhTW_library, ...zhTW_reader, ...zhTW_chat, ...zhTW_notes, ...zhTW_settings, ...zhTW_translation, ...zhTW_tts, ...zhTW_stats, ...zhTW_onboarding, ...zhTW_profile, ...zhTW_misc, ...zhTW_dictionary };
+const ja = { ...ja_common, ...ja_library, ...ja_reader, ...ja_chat, ...ja_notes, ...ja_settings, ...ja_translation, ...ja_tts, ...ja_stats, ...ja_onboarding, ...ja_profile, ...ja_misc, ...ja_dictionary };
+const ko = { ...ko_common, ...ko_library, ...ko_reader, ...ko_chat, ...ko_notes, ...ko_settings, ...ko_translation, ...ko_tts, ...ko_stats, ...ko_onboarding, ...ko_profile, ...ko_misc, ...ko_dictionary };
+const fr = { ...fr_common, ...fr_library, ...fr_reader, ...fr_chat, ...fr_notes, ...fr_settings, ...fr_translation, ...fr_tts, ...fr_stats, ...fr_onboarding, ...fr_profile, ...fr_misc, ...fr_dictionary };
+const es = { ...es_common, ...es_library, ...es_reader, ...es_chat, ...es_notes, ...es_settings, ...es_translation, ...es_tts, ...es_stats, ...es_onboarding, ...es_profile, ...es_misc, ...es_dictionary };
 
 // Initialize with default "en". Each platform should call
 // `initI18nLanguage()` after setPlatformService() to restore the saved lang.

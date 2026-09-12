@@ -2,6 +2,7 @@ import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
 import { BookmarkRibbon } from "@/components/reader/BookmarkRibbon";
 import { ChapterTranslationSheet } from "@/components/reader/ChapterTranslationSheet";
 import { ReadingProgressSlider } from "@/components/reader/ReadingProgressSlider";
+import { DefinitionSheet } from "@/components/reader/DefinitionSheet";
 import { SelectionPopover } from "@/components/reader/SelectionPopover";
 import { TTSPage } from "@/components/reader/TTSPage";
 import { TranslationPanel } from "@/components/reader/TranslationPanel";
@@ -241,6 +242,7 @@ export function ReaderScreen({ route, navigation }: Props) {
   const [readerHtmlUri, setReaderHtmlUri] = useState<string | null>(null);
   const [currentCfi, setCurrentCfi] = useState("");
   const [selection, setSelection] = useState<SelectionEvent | null>(null);
+  const [definition, setDefinition] = useState<{ word: string; baseForms: string[] } | null>(null);
   const [fontServerUrl, setFontServerUrl] = useState<string | null>(null);
   const [noteViewHighlight, setNoteViewHighlight] = useState<{
     id: string;
@@ -1632,6 +1634,13 @@ export function ReaderScreen({ route, navigation }: Props) {
       )}
 
       {/* Selection Popover */}
+      <DefinitionSheet
+        visible={definition !== null}
+        word={definition?.word ?? ""}
+        baseForms={definition?.baseForms ?? []}
+        onClose={() => setDefinition(null)}
+      />
+
       {selectionPopoverSelection && (
         <SelectionPopover
           selection={selectionPopoverSelection}
@@ -1643,6 +1652,10 @@ export function ReaderScreen({ route, navigation }: Props) {
           onSpeak={(text, cfi) => {
             tts.startSelectionTTS(text, cfi);
             setSelection(null);
+          }}
+          onDefine={(text, baseForms) => {
+            setSelection(null);
+            setDefinition({ word: text.trim(), baseForms });
           }}
           onAIChat={() => {
             const selectedText = selectionPopoverSelection.text;

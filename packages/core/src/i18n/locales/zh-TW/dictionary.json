@@ -1,0 +1,14 @@
+{
+  "dictionary": {
+    "title": "詞典",
+    "description": "匯入 Yomitan 詞典壓縮檔，與瀏覽器擴充功能使用的相同。",
+    "import": "匯入詞典",
+    "importing": "匯入中…",
+    "imported": "已匯入 {{count}} 筆。",
+    "importFailed": "匯入失敗",
+    "empty": "尚無詞典。",
+    "entries": "筆",
+    "noneInstalled": "未安裝詞典。請在 設定 → 詞典 中新增。",
+    "noMatch": "找不到詞條。"
+  }
+}

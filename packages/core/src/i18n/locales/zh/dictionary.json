@@ -1,0 +1,14 @@
+{
+  "dictionary": {
+    "title": "词典",
+    "description": "导入 Yomitan 词典压缩包，与浏览器扩展使用的相同。",
+    "import": "导入词典",
+    "importing": "导入中…",
+    "imported": "已导入 {{count}} 条。",
+    "importFailed": "导入失败",
+    "empty": "尚无词典。",
+    "entries": "条",
+    "noneInstalled": "未安装词典。请在 设置 → 词典 中添加。",
+    "noMatch": "未找到词条。"
+  }
+}

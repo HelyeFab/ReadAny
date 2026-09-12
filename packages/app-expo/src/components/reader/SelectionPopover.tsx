@@ -1,4 +1,5 @@
 import {
+  BookOpenIcon,
   CopyIcon,
   HighlighterIcon,
   LanguagesIcon,
@@ -56,6 +57,7 @@ interface Props {
   onSpeak?: (text: string, cfi: string) => void;
   onNote?: (text: string, cfi: string) => void;
   onTranslate?: (text: string) => void;
+  onDefine?: (text: string, baseForms: string[]) => void;
   onRemoveHighlight?: () => void;
   existingHighlight?: { id: string; color: HighlightColor; note?: string } | null;
   defaultColor?: HighlightColor;
@@ -70,6 +72,7 @@ export function SelectionPopover({
   onSpeak,
   onNote,
   onTranslate,
+  onDefine,
   onRemoveHighlight,
   existingHighlight,
   defaultColor = "yellow",
@@ -102,6 +105,7 @@ export function SelectionPopover({
     4 +
     (onNote ? 1 : 0) +
     (onTranslate ? 1 : 0) +
+    (onDefine ? 1 : 0) +
     (onSpeak ? 1 : 0);
   const colorRowItemCount = HIGHLIGHT_COLORS.length + (canRemoveHighlight ? 2 : 0);
   const colorRowWidth = showColors
@@ -258,6 +262,15 @@ export function SelectionPopover({
           {onTranslate && (
             <TouchableOpacity style={s.iconBtn} onPress={handleTranslate}>
               <LanguagesIcon size={18} color={colors.foreground} />
+            </TouchableOpacity>
+          )}
+
+          {onDefine && (
+            <TouchableOpacity
+              style={s.iconBtn}
+              onPress={() => onDefine(selection.text, selection.baseForms ?? [])}
+            >
+              <BookOpenIcon size={18} color={colors.foreground} />
             </TouchableOpacity>
           )}
 

@@ -1,0 +1,14 @@
+{
+  "dictionary": {
+    "title": "辞書",
+    "description": "Yomitanの辞書ファイルを読み込みます。ブラウザ拡張と同じものが使えます。",
+    "import": "辞書を読み込む",
+    "importing": "読み込み中…",
+    "imported": "{{count}}件を読み込みました。",
+    "importFailed": "読み込みに失敗しました",
+    "empty": "辞書がありません。",
+    "entries": "件",
+    "noneInstalled": "辞書が未登録です。設定 → 辞書 から追加してください。",
+    "noMatch": "見つかりませんでした。"
+  }
+}
