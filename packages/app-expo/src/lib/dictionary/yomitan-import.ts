@@ -118,30 +118,26 @@ export async function importYomitanZip(
   fileUri: string,
   onProgress?: (done: number, total: number, title: string) => void,
 ): Promise<DictionaryInfo> {
-  const { Uint8ArrayReader, ZipReader, TextWriter } = await import("@zip.js/zip.js");
+  // fflate, not zip.js: zip.js is built on the browser Streams API, which
+  // React Native does not provide, so it fails with "undefined is not a
+  // function" nowhere near the call. fflate is plain JS with no platform
+  // dependencies and unzips straight from bytes.
+  const { unzipSync, strFromU8 } = await import("fflate");
   const { File } = await import("expo-file-system");
 
   // Read the archive straight into bytes. The obvious route — base64 then
-  // atob — does not work: this React Native has no atob, which surfaces as
-  // "undefined is not a function" a long way from the cause.
+  // atob — does not work either: this React Native has no atob.
   const bytes = await new File(fileUri).bytes();
+  const files = unzipSync(bytes);
 
-  // Uint8ArrayReader, not BlobReader: React Native's Blob cannot be built from
-  // an array buffer, and fails with "creating blob from array buffer" — which
-  // is a platform limitation, not a bad archive.
-  const reader = new ZipReader(new Uint8ArrayReader(bytes));
-  const entries = await reader.getEntries();
-
-  // zip.js types getData only on the union member that has it; a directory
-  // entry does not. Read through a narrow helper rather than casting at
-  // every call site.
-  const readText = async (entry: (typeof entries)[number]): Promise<string | null> => {
-    const getData = (entry as { getData?: (writer: unknown) => Promise<string> }).getData;
-    return getData ? await getData.call(entry, new TextWriter()) : null;
+  const readText = (name: string): string | null => {
+    const data = files[name];
+    return data ? strFromU8(data) : null;
   };
 
-  const indexEntry = entries.find((e) => e.filename.endsWith("index.json"));
-  const indexText = indexEntry ? await readText(indexEntry) : null;
+  const names = Object.keys(files);
+  const indexName = names.find((n) => n.endsWith("index.json"));
+  const indexText = indexName ? readText(indexName) : null;
   if (!indexText) throw new Error("Not a Yomitan dictionary: no index.json");
   const index = JSON.parse(indexText) as {
     title?: string; revision?: string;
@@ -149,9 +145,9 @@ export async function importYomitanZip(
   const title = index.title?.trim() || "Untitled dictionary";
   const revision = index.revision ?? "";
 
-  const banks = entries
-    .filter((e) => /term_bank_\d+\.json$/.test(e.filename))
-    .sort((a, b) => a.filename.localeCompare(b.filename, undefined, { numeric: true }));
+  const banks = names
+    .filter((n) => /term_bank_\d+\.json$/.test(n))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   if (banks.length === 0) throw new Error("Not a Yomitan dictionary: no term banks");
 
   const db = await getDictDb();
@@ -168,36 +164,45 @@ export async function importYomitanZip(
 
   let termCount = 0;
   for (let i = 0; i < banks.length; i += 1) {
-    const bankText = await readText(banks[i]);
+    const bankText = readText(banks[i]);
     if (!bankText) continue;
     const terms = JSON.parse(bankText) as TermRow[];
 
     // One transaction per bank: a whole-file transaction risks losing a long
     // import to one malformed entry, and per-row commits are far too slow.
-    // The statement is prepared once — JMdict is a quarter of a million rows,
-    // and re-parsing the SQL for each one dominates the import otherwise.
-    const insert = await db.prepareAsync(
-      "INSERT INTO terms (dictionary_id, expression, reading, rules, score, glossary) VALUES (?, ?, ?, ?, ?, ?)",
-    );
-    try {
-      await db.withTransactionAsync(async () => {
-        for (const term of terms) {
-          if (!Array.isArray(term) || typeof term[0] !== "string") continue;
-          const text = glossaryToText(term[5]);
-          if (!text) continue;
-          await insert.executeAsync(
-            dictId, term[0], term[1] ?? "", term[3] ?? "", Number(term[4]) || 0, text,
-          );
-          termCount += 1;
-        }
-      });
-    } finally {
-      await insert.finalizeAsync();
-    }
+    // Rows go in batched, because JMdict English is over half a million of
+    // them and each statement is a round trip across the native bridge.
+    const rows: (string | number)[] = [];
+    let pending = 0;
+
+    const flush = async () => {
+      if (pending === 0) return;
+      const values = Array.from({ length: pending }, () => "(?, ?, ?, ?, ?, ?)").join(", ");
+      await db.runAsync(
+        `INSERT INTO terms (dictionary_id, expression, reading, rules, score, glossary) VALUES ${values}`,
+        ...rows,
+      );
+      rows.length = 0;
+      pending = 0;
+    };
+
+    await db.withTransactionAsync(async () => {
+      for (const term of terms) {
+        if (!Array.isArray(term) || typeof term[0] !== "string") continue;
+        const text = glossaryToText(term[5]);
+        if (!text) continue;
+        rows.push(dictId, term[0], term[1] ?? "", term[3] ?? "", Number(term[4]) || 0, text);
+        pending += 1;
+        termCount += 1;
+        // SQLite's default variable limit is 999, so 6 columns caps a batch
+        // at 166 rows. 150 leaves headroom.
+        if (pending >= 150) await flush();
+      }
+      await flush();
+    });
     onProgress?.(i + 1, banks.length, title);
   }
 
-  await reader.close();
   await db.runAsync("UPDATE dictionaries SET term_count = ? WHERE id = ?", termCount, dictId);
   return { id: dictId, title, revision, termCount, importedAt: Date.now() };
 }
