@@ -141,3 +141,110 @@ export async function hasDictionaries(): Promise<boolean> {
   const row = await db.getFirstAsync<{ n: number }>("SELECT COUNT(*) AS n FROM dictionaries");
   return (row?.n ?? 0) > 0;
 }
+
+/** One word found inside a longer selection, with what the dictionaries say. */
+export interface PhraseHit {
+  surface: string;
+  entries: Definition[];
+}
+
+const JAPANESE_CHAR =
+  /[ぁ-ゟ゠-ヿ々〇㐀-䶿一-鿿豈-﫿]/;
+const SINGLE_KANA = /^[ぁ-ゟ゠-ヿ]$/;
+const SEGMENT_BREAK = /[\s、。「」『』（）()！？!?・…―ー〜,.:;"']/;
+
+/** Longest word we will try to match in one step. */
+const MAX_TOKEN_LENGTH = 8;
+/** SQLite allows 999 bound variables; stay well under it. */
+const QUERY_BATCH = 400;
+/** Enough of a sentence to gloss without turning into a wall of entries. */
+const MAX_PHRASE_LENGTH = 200;
+
+/**
+ * Which of these candidate strings actually exist in the dictionaries, either
+ * as a headword or as a reading.
+ */
+async function knownSurfaces(candidates: string[]): Promise<Set<string>> {
+  const db = await getDictDb();
+  const known = new Set<string>();
+  for (let i = 0; i < candidates.length; i += QUERY_BATCH) {
+    const batch = candidates.slice(i, i + QUERY_BATCH);
+    const placeholders = batch.map(() => "?").join(", ");
+    const rows = await db.getAllAsync<{ expression: string; reading: string | null }>(
+      `SELECT DISTINCT expression, reading FROM terms
+        WHERE expression IN (${placeholders}) OR reading IN (${placeholders})`,
+      ...batch,
+      ...batch,
+    );
+    const wanted = new Set(batch);
+    for (const row of rows) {
+      if (wanted.has(row.expression)) known.add(row.expression);
+      if (row.reading && wanted.has(row.reading)) known.add(row.reading);
+    }
+  }
+  return known;
+}
+
+/**
+ * Gloss a whole selection word by word.
+ *
+ * Japanese writes no spaces, so the words have to be found before they can be
+ * looked up. The reader does that with kuromoji, but a web page has no
+ * tokenizer behind it, so the dictionary segments the text itself: at each
+ * position take the longest run that is a real headword, and move past it.
+ * That is cruder than a morphological analyser and quite good enough to gloss
+ * a sentence someone has just selected.
+ *
+ * Bare particles are dropped. A list that opens with は and を is noise, and
+ * nobody selected a sentence to be told what を means.
+ */
+export async function lookupPhrase(text: string, limit = 12): Promise<PhraseHit[]> {
+  const source = text.trim().slice(0, MAX_PHRASE_LENGTH);
+  if (!source) return [];
+
+  let surfaces: string[];
+
+  if (!JAPANESE_CHAR.test(source)) {
+    surfaces = source
+      .split(/[^A-Za-z'\-]+/)
+      .map((word) => word.trim())
+      .filter((word) => word.length > 1);
+  } else {
+    const candidates: string[] = [];
+    for (let i = 0; i < source.length; i += 1) {
+      if (SEGMENT_BREAK.test(source[i])) continue;
+      for (let length = Math.min(MAX_TOKEN_LENGTH, source.length - i); length > 0; length -= 1) {
+        const slice = source.slice(i, i + length);
+        if (!SEGMENT_BREAK.test(slice)) candidates.push(slice);
+      }
+    }
+    const known = await knownSurfaces([...new Set(candidates)]);
+
+    surfaces = [];
+    let i = 0;
+    while (i < source.length) {
+      if (SEGMENT_BREAK.test(source[i])) {
+        i += 1;
+        continue;
+      }
+      let matched = 0;
+      for (let length = Math.min(MAX_TOKEN_LENGTH, source.length - i); length > 0; length -= 1) {
+        const slice = source.slice(i, i + length);
+        if (!known.has(slice)) continue;
+        if (length === 1 && SINGLE_KANA.test(slice)) continue;
+        surfaces.push(slice);
+        matched = length;
+        break;
+      }
+      i += matched || 1;
+    }
+  }
+
+  const ordered = [...new Set(surfaces)].slice(0, limit);
+  const hits: PhraseHit[] = [];
+  for (const surface of ordered) {
+    const entries = await lookup(surface, [], 4);
+    if (entries.length > 0) hits.push({ surface, entries });
+  }
+  return hits;
+}
