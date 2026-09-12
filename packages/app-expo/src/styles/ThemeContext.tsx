@@ -427,8 +427,11 @@ export function ThemeProvider({
 
   useEffect(() => {
     SecureStore.getItemAsync(STORAGE_KEY).then((saved) => {
-      if (saved === "light" || saved === "dark" || saved === "sepia" || saved === "oled") {
-        setModeState(saved);
+      // Checked against the theme map rather than a written-out list: a
+      // hardcoded list silently discards any theme added later, so the choice
+      // is saved and then refused on the next launch.
+      if (saved && Object.hasOwn(THEME_MAP, saved)) {
+        setModeState(saved as ThemeMode);
       }
     });
   }, []);
