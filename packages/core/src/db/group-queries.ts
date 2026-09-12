@@ -6,9 +6,22 @@ interface BookGroupRow {
   id: string;
   name: string;
   parent_id: string | null;
+  color: string | null;
+  view_prefs: string | null;
   sort_order: number | null;
   created_at: number;
   updated_at: number;
+}
+
+/** Stored as JSON; a corrupt value must not take the whole library down. */
+function parseViewPrefs(raw: string | null): BookGroup["viewPrefs"] {
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as BookGroup["viewPrefs"];
+    return parsed && typeof parsed === "object" ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function rowToBookGroup(row: BookGroupRow): BookGroup {
@@ -16,6 +29,8 @@ function rowToBookGroup(row: BookGroupRow): BookGroup {
     id: row.id,
     name: row.name,
     parentId: row.parent_id ?? undefined,
+    color: row.color ?? undefined,
+    viewPrefs: parseViewPrefs(row.view_prefs),
     sortOrder: row.sort_order ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at || row.created_at,
@@ -69,7 +84,7 @@ export async function insertGroup(input: {
 
 export async function updateGroup(
   id: string,
-  updates: Partial<Pick<BookGroup, "name" | "sortOrder" | "parentId">>,
+  updates: Partial<Pick<BookGroup, "name" | "sortOrder" | "parentId" | "color" | "viewPrefs">>,
 ): Promise<void> {
   const database = await getDB();
   const sets: string[] = [];
@@ -86,6 +101,14 @@ export async function updateGroup(
   if (updates.parentId !== undefined) {
     sets.push("parent_id = ?");
     values.push(updates.parentId || null);
+  }
+  if (updates.color !== undefined) {
+    sets.push("color = ?");
+    values.push(updates.color || null);
+  }
+  if (updates.viewPrefs !== undefined) {
+    sets.push("view_prefs = ?");
+    values.push(updates.viewPrefs ? JSON.stringify(updates.viewPrefs) : null);
   }
   if (sets.length === 0) return;
 

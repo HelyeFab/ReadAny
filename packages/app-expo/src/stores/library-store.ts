@@ -13,7 +13,14 @@ import {
 import * as db from "@readany/core/db/database";
 import { runWithDbRetry } from "@readany/core/db/write-retry";
 import { getPlatformService } from "@readany/core/services";
-import type { Book, BookGroup, LibraryFilter, SortField, SortOrder } from "@readany/core/types";
+import type {
+  Book,
+  BookGroup,
+  GroupViewPrefs,
+  LibraryFilter,
+  SortField,
+  SortOrder,
+} from "@readany/core/types";
 import { generateId } from "@readany/core/utils";
 import { create } from "zustand";
 import { debouncedSave, loadFromFS } from "./persist";
@@ -99,6 +106,8 @@ export interface LibraryState {
   renameTag: (oldName: string, newName: string) => void;
   addGroup: (name: string, parentId?: string) => Promise<BookGroup | null>;
   renameGroup: (groupId: string, name: string) => void;
+  setGroupColor: (groupId: string, color?: string) => void;
+  setGroupViewPrefs: (groupId: string, prefs: GroupViewPrefs) => void;
   removeGroup: (groupId: string) => Promise<void>;
   moveBookToGroup: (bookId: string, groupId?: string) => void;
   moveBooksToGroup: (bookIds: string[], groupId?: string) => void;
@@ -1374,6 +1383,36 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     });
     db.updateGroup(groupId, { name: trimmed }).catch((err) =>
       console.error("Failed to rename group:", err),
+    );
+  },
+
+  setGroupColor: (groupId, color) => {
+    set((state) => {
+      const groups = state.groups.map((group) =>
+        group.id === groupId ? { ...group, color, updatedAt: Date.now() } : group,
+      );
+      debouncedSave("library-groups", groups);
+      return { groups };
+    });
+    db.updateGroup(groupId, { color: color ?? "" }).catch((err) =>
+      console.error("Failed to set folder colour:", err),
+    );
+  },
+
+  /** Merged, not replaced: changing the sort should not forget the layout. */
+  setGroupViewPrefs: (groupId, prefs) => {
+    let merged: GroupViewPrefs = prefs;
+    set((state) => {
+      const groups = state.groups.map((group) => {
+        if (group.id !== groupId) return group;
+        merged = { ...group.viewPrefs, ...prefs };
+        return { ...group, viewPrefs: merged, updatedAt: Date.now() };
+      });
+      debouncedSave("library-groups", groups);
+      return { groups };
+    });
+    db.updateGroup(groupId, { viewPrefs: merged }).catch((err) =>
+      console.error("Failed to save folder view:", err),
     );
   },
 
