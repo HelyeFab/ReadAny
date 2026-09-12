@@ -1,4 +1,6 @@
+import { renderRubyText } from "@/components/chat/RubyText";
 import { MermaidView } from "@/components/common/MermaidView";
+import { hasRubyParens } from "@/lib/ruby/parse-ruby-parens";
 import { fontSize as fs, radius, useColors } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 import type { CitationPart } from "@readany/core/types/message";
@@ -226,6 +228,15 @@ export function MarkdownRenderer({
             </Text>
           );
         }
+        // Sensei writes furigana as 漢字（かんじ）because the stream is plain
+        // markdown. Draw it as stacked ruby rather than leaving the parentheses.
+        if (hasRubyParens(text)) {
+          return (
+            <Text key={node.key} style={readableStyle}>
+              {renderRubyText(text, readableStyle, node.key)}
+            </Text>
+          );
+        }
         return (
           <Text key={node.key} style={readableStyle}>
             {text}
@@ -250,7 +261,9 @@ const makeMarkdownStyles = (colors: ThemeColors) =>
     body: {
       color: colors.foreground,
       fontSize: fs.sm,
-      lineHeight: 20,
+      // Leaves room in the leading for the stacked readings RubyText draws, so
+      // a line carrying furigana is no taller than a plain one.
+      lineHeight: 28,
     },
     text: {
       color: colors.foreground,
@@ -282,7 +295,7 @@ const makeMarkdownStyles = (colors: ThemeColors) =>
     paragraph: {
       color: colors.foreground,
       fontSize: fs.sm,
-      lineHeight: 20,
+      lineHeight: 28,
       marginBottom: 8,
       marginTop: 0,
     },
