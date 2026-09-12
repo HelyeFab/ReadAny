@@ -590,6 +590,16 @@ export const StrikethroughIcon = icon(() => (
   </>
 ));
 
+/** Four squares — the counterpart to ListIcon for the library layout toggle. */
+export const LayoutGridIcon = icon(() => (
+  <>
+    <Rect width="7" height="7" x="3" y="3" rx="1" />
+    <Rect width="7" height="7" x="14" y="3" rx="1" />
+    <Rect width="7" height="7" x="14" y="14" rx="1" />
+    <Rect width="7" height="7" x="3" y="14" rx="1" />
+  </>
+));
+
 export const ListIcon = icon(() => (
   <>
     <Line x1="8" x2="21" y1="6" y2="6" />

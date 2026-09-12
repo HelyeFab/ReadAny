@@ -152,7 +152,9 @@
     "newFolder": "Nouveau dossier",
     "folderCreateFailed": "Ce dossier n'a pas pu être créé.",
     "folderColor": "Couleur",
-    "folderColorNone": "Aucune"
+    "folderColorNone": "Aucune",
+    "listView": "Vue liste",
+    "gridView": "Vue grille"
   },
   "home": {
     "library": "Bibliothèque",
