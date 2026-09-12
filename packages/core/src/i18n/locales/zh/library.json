@@ -167,7 +167,10 @@
     "folderColor": "颜色",
     "folderColorNone": "无颜色",
     "listView": "列表视图",
-    "gridView": "网格视图"
+    "gridView": "网格视图",
+    "menu": "书库选项",
+    "folderView": "文件夹",
+    "layout": "布局"
   },
   "home": {
     "library": "书库",

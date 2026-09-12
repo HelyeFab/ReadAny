@@ -154,7 +154,10 @@
     "folderColor": "Color",
     "folderColorNone": "Sin color",
     "listView": "Vista de lista",
-    "gridView": "Vista de cuadrícula"
+    "gridView": "Vista de cuadrícula",
+    "menu": "Opciones de la biblioteca",
+    "folderView": "Carpetas",
+    "layout": "Diseño"
   },
   "home": {
     "library": "Biblioteca",

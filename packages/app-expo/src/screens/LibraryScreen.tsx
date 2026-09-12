@@ -3,6 +3,8 @@ import { GroupCard } from "@/components/library/GroupCard";
 import { FolderColorSheet } from "@/components/library/FolderColorSheet";
 import { GroupPickerSheet } from "@/components/library/GroupPickerSheet";
 import { LibraryListRow } from "@/components/library/LibraryListRow";
+import { LibraryMenuSheet } from "@/components/library/LibraryMenuSheet";
+import { cafeIllustration } from "@/lib/library/cafe-illustration";
 import { type ExtractorRef, ExtractorWebView } from "@/components/rag/ExtractorWebView";
 import {
   ArrowDownAZIcon,
@@ -15,6 +17,7 @@ import {
   FolderPlusIcon,
   LayoutGridIcon,
   ListIcon,
+  MoreVerticalIcon,
   FolderMinusIcon,
   HashIcon,
   LayersIcon,
@@ -188,6 +191,7 @@ export function LibraryScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedBookIds, setSelectedBookIds] = useState<Set<string>>(new Set());
   const [showGroupPicker, setShowGroupPicker] = useState(false);
+  const [showLibraryMenu, setShowLibraryMenu] = useState(false);
   const [colorPickerGroup, setColorPickerGroup] = useState<BookGroup | null>(null);
   const [batchTagBookIds, setBatchTagBookIds] = useState<string[]>([]);
   const [groupNameModal, setGroupNameModal] = useState<{
@@ -1024,61 +1028,10 @@ export function LibraryScreen() {
                 {hasBooks && (
                   <TouchableOpacity
                     style={s.headerBtn}
-                    onPress={() => {
-                      if (showSearch) {
-                        closeSearch();
-                        Keyboard.dismiss();
-                      } else {
-                        openSearch();
-                      }
-                    }}
-                    activeOpacity={0.7}
+                    onPress={() => setShowLibraryMenu(true)}
+                    accessibilityLabel={t("library.menu", "Library options")}
                   >
-                    <SearchIcon
-                      size={18}
-                      color={showSearch ? colors.primary : colors.mutedForeground}
-                    />
-                  </TouchableOpacity>
-                )}
-                {hasBooks && (
-                  <TouchableOpacity style={s.headerBtn} onPress={() => setShowSort(!showSort)}>
-                    <SortAscIcon size={18} color={colors.mutedForeground} />
-                  </TouchableOpacity>
-                )}
-                {hasBooks && (
-                  <TouchableOpacity
-                    style={s.headerBtn}
-                    onPress={() => {
-                      setActiveGroupId("");
-                      setGroupView(!isGroupView);
-                    }}
-                  >
-                    <LayersIcon
-                      size={18}
-                      color={isGroupView ? colors.primary : colors.mutedForeground}
-                    />
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  style={s.headerBtn}
-                  onPress={toggleListView}
-                  accessibilityLabel={
-                    isListView ? t("library.gridView", "Grid view") : t("library.listView", "List view")
-                  }
-                >
-                  {isListView ? (
-                    <LayoutGridIcon size={18} color={colors.mutedForeground} />
-                  ) : (
-                    <ListIcon size={18} color={colors.mutedForeground} />
-                  )}
-                </TouchableOpacity>
-                {isGroupView && (
-                  <TouchableOpacity
-                    style={s.headerBtn}
-                    onPress={() => openGroupNameModal("create")}
-                    accessibilityLabel={t("library.newFolder", "New folder")}
-                  >
-                    <FolderPlusIcon size={18} color={colors.mutedForeground} />
+                    <MoreVerticalIcon size={18} color={colors.mutedForeground} />
                   </TouchableOpacity>
                 )}
                 <View ref={importButtonAnchorRef} collapsable={false}>
@@ -1243,8 +1196,9 @@ export function LibraryScreen() {
           {isLoaded && books.length === 0 && (
             <View style={s.emptyWrap}>
               <Image
-                source={isDark ? BOOK_DARK_PNG : BOOK_PNG}
-                style={{ width: 160, height: 160 }}
+                source={cafeIllustration()}
+                style={{ width: 300, height: 224, borderRadius: radius.lg }}
+                resizeMode="contain"
               />
               <Text style={s.emptyTitle}>{t("library.empty", "暂无书籍")}</Text>
               <Text style={s.emptyHint}>{t("library.emptyHint", "导入电子书开始阅读之旅")}</Text>
@@ -1370,6 +1324,21 @@ export function LibraryScreen() {
         visible={temporaryWebDavOpen}
         onClose={() => setTemporaryWebDavOpen(false)}
         onSubmit={handleConnectTemporaryWebDav}
+      />
+      <LibraryMenuSheet
+        visible={showLibraryMenu}
+        isGroupView={isGroupView}
+        isListView={isListView}
+        canCreateFolder={isGroupView}
+        onClose={() => setShowLibraryMenu(false)}
+        onSearch={() => (showSearch ? closeSearch() : openSearch())}
+        onSort={() => setShowSort(true)}
+        onToggleFolders={() => {
+          setActiveGroupId("");
+          setGroupView(!isGroupView);
+        }}
+        onToggleListView={toggleListView}
+        onNewFolder={() => openGroupNameModal("create")}
       />
       <FolderColorSheet
         group={colorPickerGroup}

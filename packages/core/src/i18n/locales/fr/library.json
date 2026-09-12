@@ -154,7 +154,10 @@
     "folderColor": "Couleur",
     "folderColorNone": "Aucune",
     "listView": "Vue liste",
-    "gridView": "Vue grille"
+    "gridView": "Vue grille",
+    "menu": "Options de la bibliothèque",
+    "folderView": "Dossiers",
+    "layout": "Disposition"
   },
   "home": {
     "library": "Bibliothèque",

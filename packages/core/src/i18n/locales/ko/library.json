@@ -154,7 +154,10 @@
     "folderColor": "색상",
     "folderColorNone": "없음",
     "listView": "목록 보기",
-    "gridView": "그리드 보기"
+    "gridView": "그리드 보기",
+    "menu": "서재 옵션",
+    "folderView": "폴더",
+    "layout": "레이아웃"
   },
   "home": {
     "library": "서재",

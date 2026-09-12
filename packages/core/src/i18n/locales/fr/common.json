@@ -47,7 +47,9 @@
     "selectAll": "Tout sélectionner",
     "rename": "Renommer",
     "reset": "Réinitialiser",
-    "writeYourThoughts": "Écrivez vos réflexions..."
+    "writeYourThoughts": "Écrivez vos réflexions...",
+    "on": "Activé",
+    "off": "Désactivé"
   },
   "sidebar": {
     "library": "Bibliothèque",

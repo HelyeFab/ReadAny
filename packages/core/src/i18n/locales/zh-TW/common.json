@@ -47,7 +47,9 @@
     "selectAll": "全選",
     "rename": "重新命名",
     "reset": "復原",
-    "writeYourThoughts": "寫下你的想法..."
+    "writeYourThoughts": "寫下你的想法...",
+    "on": "開",
+    "off": "關"
   },
   "sidebar": {
     "library": "書庫",

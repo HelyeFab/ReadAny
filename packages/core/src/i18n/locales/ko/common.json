@@ -47,7 +47,9 @@
     "selectAll": "모두 선택",
     "rename": "이름 변경",
     "reset": "초기화",
-    "writeYourThoughts": "생각을 적어보세요..."
+    "writeYourThoughts": "생각을 적어보세요...",
+    "on": "켜기",
+    "off": "꺼짐"
   },
   "sidebar": {
     "library": "서재",
