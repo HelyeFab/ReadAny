@@ -146,7 +146,9 @@
     "detailsSelectedTags": "{{count}} seleccionadas",
     "detailsNoTagsSelected": "Sin etiquetas seleccionadas",
     "detailsManagedMetadataNote": "ReadAny mantiene estos metadatos para mostrar, buscar y nombrar en la sincronización. El archivo original del libro no se modifica.",
-    "bookNotFound": "Libro no encontrado"
+    "bookNotFound": "Libro no encontrado",
+    "importSourceFolder": "Importar una carpeta",
+    "folderImportEmpty": "No se encontraron libros en esa carpeta."
   },
   "home": {
     "library": "Biblioteca",

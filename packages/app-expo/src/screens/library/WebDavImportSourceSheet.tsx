@@ -33,6 +33,7 @@ interface WebDavImportSourceSheetProps {
   onClose: () => void;
   onDismiss?: () => void;
   onPickLocal: () => void;
+  onPickFolder: () => void;
   onPickSavedWebDav: () => void;
   onPickTemporaryWebDav: () => void;
 }
@@ -45,6 +46,7 @@ export function WebDavImportSourceSheet({
   onClose,
   onDismiss,
   onPickLocal,
+  onPickFolder,
   onPickSavedWebDav,
   onPickTemporaryWebDav,
 }: WebDavImportSourceSheetProps) {
@@ -160,6 +162,24 @@ export function WebDavImportSourceSheet({
                 </View>
                 <View style={s.optionText}>
                   <Text style={s.optionTitle}>{t("library.importSourceLocal", "本地文件")}</Text>
+                </View>
+                <ChevronRightIcon size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              <View style={s.separator} />
+
+              <TouchableOpacity
+                style={[s.optionCard, localImportBusy && s.optionDisabled]}
+                onPress={onPickFolder}
+                activeOpacity={0.85}
+                disabled={localImportBusy}
+              >
+                <View style={s.iconWrap}>
+                  <BookOpenIcon size={18} color={colors.primary} />
+                </View>
+                <View style={s.optionText}>
+                  <Text style={s.optionTitle}>
+                    {t("library.importSourceFolder", "Import a folder")}
+                  </Text>
                 </View>
                 <ChevronRightIcon size={16} color={colors.mutedForeground} />
               </TouchableOpacity>
