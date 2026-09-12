@@ -432,6 +432,42 @@ export function LibraryScreen() {
     }
   }, [importBooks, t]);
 
+  /**
+   * Import every book in a folder, recursively. The document picker can only
+   * multi-select files, so a shelf had to be tapped in one by one.
+   */
+  const handleFolderImport = useCallback(async () => {
+    if (localImportInFlightRef.current) return;
+    localImportInFlightRef.current = true;
+    setIsPickingImport(true);
+    try {
+      const { pickFolderBooks } = await import("@/lib/library/folder-import");
+      const candidates = await pickFolderBooks();
+      if (!candidates) return;
+      if (candidates.length === 0) {
+        Alert.alert(
+          t("library.importSourceFolder", "Import a folder"),
+          t("library.folderImportEmpty", "No books were found in that folder."),
+        );
+        return;
+      }
+      const summary = await importBooks(candidates);
+      Alert.alert(
+        t("common.success", "成功！"),
+        t("library.importResultSummary", {
+          imported: summary.imported.length,
+          skipped: summary.skippedDuplicates.length,
+          failed: summary.failures.length,
+        }),
+      );
+    } catch (err) {
+      console.error("Folder import failed:", err);
+    } finally {
+      localImportInFlightRef.current = false;
+      setIsPickingImport(false);
+    }
+  }, [importBooks, t]);
+
   const handlePickLocalFromSourceMenu = useCallback(() => {
     if (localImportInFlightRef.current || pendingLocalImport) return;
     setPendingLocalImport(true);
@@ -1164,6 +1200,10 @@ export function LibraryScreen() {
         onClose={() => setSourceSheetOpen(false)}
         onDismiss={handleSourceSheetDismiss}
         onPickLocal={handlePickLocalFromSourceMenu}
+        onPickFolder={() => {
+          setSourceSheetOpen(false);
+          void handleFolderImport();
+        }}
         onPickSavedWebDav={() => void handleOpenSavedWebDav()}
         onPickTemporaryWebDav={handleOpenTemporaryWebDav}
       />
