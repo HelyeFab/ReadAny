@@ -22,7 +22,13 @@ function joinUrl(baseUrl: string, path: string): string {
   return `${normalizedBase}/${normalizedPath}`;
 }
 
-function openAIHeaders(apiKey: string): Record<string, string> {
+function openAIHeaders(apiKey: string, headerName?: string): Record<string, string> {
+  const name = headerName?.trim();
+  // A custom header carries the key bare: `X-API-Key: Bearer …` authenticates
+  // nowhere, and prefixing it is the mistake that makes this look broken.
+  if (name && name.toLowerCase() !== "authorization") {
+    return { "Content-Type": "application/json", [name]: apiKey };
+  }
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${apiKey}`,
@@ -118,7 +124,7 @@ export async function fetchOpenAITTSAudio(text: string, config: TTSConfig): Prom
   if (config.openaiTtsEndpoint === "chat-completions") {
     const response = await platform.fetch(joinUrl(config.openaiTtsBaseUrl, "/chat/completions"), {
       method: "POST",
-      headers: openAIHeaders(config.openaiTtsApiKey),
+      headers: openAIHeaders(config.openaiTtsApiKey, config.openaiTtsApiKeyHeader),
       body: JSON.stringify({
         model: config.openaiTtsModel,
         messages: buildOpenAIChatTTSMessages(text, config),
@@ -143,7 +149,7 @@ export async function fetchOpenAITTSAudio(text: string, config: TTSConfig): Prom
 
   const response = await platform.fetch(joinUrl(config.openaiTtsBaseUrl, "/audio/speech"), {
     method: "POST",
-    headers: openAIHeaders(config.openaiTtsApiKey),
+    headers: openAIHeaders(config.openaiTtsApiKey, config.openaiTtsApiKeyHeader),
     body: JSON.stringify({
       model: config.openaiTtsModel,
       input: text,

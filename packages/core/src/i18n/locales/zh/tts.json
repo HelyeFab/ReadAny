@@ -139,7 +139,9 @@
     "systemVoiceNote": "系统音色请在设备系统设置中选择",
     "browserVoiceNote": "系统音色请在设备系统设置中选择",
     "stop": "停止",
-    "noTextFound": "当前页面未找到可朗读的文本"
+    "noTextFound": "当前页面未找到可朗读的文本",
+    "apiKeyHeader": "API 密钥请求头",
+    "apiKeyHeaderHint": "留空使用 OpenAI 默认值。自建服务通常需要 X-API-Key。"
   },
   "fonts": {
     "title": "字体",

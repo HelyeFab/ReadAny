@@ -138,7 +138,9 @@
     "nextChapter": "下一章",
     "systemVoiceNote": "系統音色請在裝置系統設定中選擇",
     "browserVoiceNote": "系統音色請在裝置系統設定中選擇",
-    "stop": "停止"
+    "stop": "停止",
+    "apiKeyHeader": "API 金鑰標頭",
+    "apiKeyHeaderHint": "留空使用 OpenAI 預設值。自建服務通常需要 X-API-Key。"
   },
   "fonts": {
     "title": "字型",
