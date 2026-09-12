@@ -152,7 +152,9 @@
     "newFolder": "新增資料夾",
     "folderCreateFailed": "無法建立該資料夾。",
     "folderColor": "顏色",
-    "folderColorNone": "無顏色"
+    "folderColorNone": "無顏色",
+    "listView": "清單檢視",
+    "gridView": "格狀檢視"
   },
   "home": {
     "library": "書庫",

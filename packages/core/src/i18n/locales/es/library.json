@@ -152,7 +152,9 @@
     "newFolder": "Nueva carpeta",
     "folderCreateFailed": "No se pudo crear esa carpeta.",
     "folderColor": "Color",
-    "folderColorNone": "Sin color"
+    "folderColorNone": "Sin color",
+    "listView": "Vista de lista",
+    "gridView": "Vista de cuadrícula"
   },
   "home": {
     "library": "Biblioteca",

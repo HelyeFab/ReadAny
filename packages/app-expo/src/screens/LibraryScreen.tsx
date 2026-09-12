@@ -2,6 +2,7 @@ import { BookCard } from "@/components/library/BookCard";
 import { GroupCard } from "@/components/library/GroupCard";
 import { FolderColorSheet } from "@/components/library/FolderColorSheet";
 import { GroupPickerSheet } from "@/components/library/GroupPickerSheet";
+import { LibraryListRow } from "@/components/library/LibraryListRow";
 import { type ExtractorRef, ExtractorWebView } from "@/components/rag/ExtractorWebView";
 import {
   ArrowDownAZIcon,
@@ -12,6 +13,8 @@ import {
   DatabaseIcon,
   FolderInputIcon,
   FolderPlusIcon,
+  LayoutGridIcon,
+  ListIcon,
   FolderMinusIcon,
   HashIcon,
   LayersIcon,
@@ -222,6 +225,8 @@ export function LibraryScreen() {
     addGroup,
     setGroupColor,
     setGroupViewPrefs,
+    viewMode,
+    setViewMode,
     renameGroup,
     removeGroup,
     moveBooksToGroup,
@@ -697,6 +702,24 @@ export function LibraryScreen() {
     // would immediately undo the change being made.
   }, [activeGroupId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * A folder may prefer a different layout from the library — a shelf of
+   * reference books reads better as a list than as a wall of covers.
+   */
+  const isListView = useMemo(() => {
+    if (activeGroupId) {
+      const prefs = groups.find((g) => g.id === activeGroupId)?.viewPrefs;
+      if (prefs?.viewMode) return prefs.viewMode === "list";
+    }
+    return viewMode === "list";
+  }, [activeGroupId, groups, viewMode]);
+
+  const toggleListView = useCallback(() => {
+    const next = isListView ? "grid" : "list";
+    if (activeGroupId) setGroupViewPrefs(activeGroupId, { viewMode: next });
+    else setViewMode(next);
+  }, [activeGroupId, isListView, setGroupViewPrefs, setViewMode]);
+
   const isEmpty = gridItems.length === 0;
   const hasBooks = books.length > 0;
 
@@ -847,6 +870,36 @@ export function LibraryScreen() {
     moveBooksToGroup([...selectedBookIds], undefined);
     exitSelectionMode();
   }, [exitSelectionMode, moveBooksToGroup, selectedBookIds]);
+
+  const renderListItem = useCallback(
+    ({ item }: { item: LibraryGridItem }) =>
+      item.type === "group" ? (
+        <LibraryListRow
+          group={item.group}
+          bookCount={item.totalCount ?? item.books.length}
+          onPress={() => setActiveGroupId(item.group.id)}
+          onLongPress={() => handleGroupLongPress(item.group)}
+        />
+      ) : (
+        <LibraryListRow
+          book={item.book}
+          selected={selectedBookIds.has(item.book.id)}
+          onPress={() =>
+            selectionMode ? toggleBookSelection(item.book) : handleOpen(item.book)
+          }
+          onLongPress={() => (selectionMode ? undefined : enterSelectionMode(item.book))}
+        />
+      ),
+    [
+      enterSelectionMode,
+      handleGroupLongPress,
+      handleOpen,
+      selectedBookIds,
+      selectionMode,
+      setActiveGroupId,
+      toggleBookSelection,
+    ],
+  );
 
   const renderGridItem = useCallback(
     ({ item }: { item: LibraryGridItem }) => (
@@ -1006,6 +1059,19 @@ export function LibraryScreen() {
                     />
                   </TouchableOpacity>
                 )}
+                <TouchableOpacity
+                  style={s.headerBtn}
+                  onPress={toggleListView}
+                  accessibilityLabel={
+                    isListView ? t("library.gridView", "Grid view") : t("library.listView", "List view")
+                  }
+                >
+                  {isListView ? (
+                    <LayoutGridIcon size={18} color={colors.mutedForeground} />
+                  ) : (
+                    <ListIcon size={18} color={colors.mutedForeground} />
+                  )}
+                </TouchableOpacity>
                 {isGroupView && (
                   <TouchableOpacity
                     style={s.headerBtn}
@@ -1208,14 +1274,16 @@ export function LibraryScreen() {
           {isLoaded && !isEmpty && (
             <FlatList
               data={gridItems}
-              renderItem={renderGridItem}
+              renderItem={isListView ? renderListItem : renderGridItem}
               extraData={{ vectorProgress, vectorizingBookId }}
               keyExtractor={(item) =>
                 item.type === "group" ? `group-${item.group.id}` : item.book.id
               }
-              key={`library-grid-${columnCount}`}
-              numColumns={columnCount}
-              columnWrapperStyle={s.gridRow}
+              // FlatList will not change numColumns in place, so the key must
+              // change with it or the list keeps its old layout.
+              key={`library-${isListView ? "list" : `grid-${columnCount}`}`}
+              numColumns={isListView ? 1 : columnCount}
+              columnWrapperStyle={isListView ? undefined : s.gridRow}
               contentContainerStyle={s.gridContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"

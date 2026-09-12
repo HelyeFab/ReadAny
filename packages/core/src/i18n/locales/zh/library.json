@@ -165,7 +165,9 @@
     "newFolder": "新建文件夹",
     "folderCreateFailed": "无法创建该文件夹。",
     "folderColor": "颜色",
-    "folderColorNone": "无颜色"
+    "folderColorNone": "无颜色",
+    "listView": "列表视图",
+    "gridView": "网格视图"
   },
   "home": {
     "library": "书库",
