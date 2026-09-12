@@ -9,6 +9,7 @@ import {
   resolveSystemVoiceValue,
 } from "@/lib/platform/system-voices";
 import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
+import { clearTTSCache, ttsCacheLastError, ttsCacheSize } from "@/lib/platform/tts-cache";
 import { useTTSStore } from "@/stores";
 import {
   DASHSCOPE_VOICES,
@@ -65,6 +66,15 @@ export default function TTSSettingsScreen() {
   const { config, updateConfig, stop } = useTTSStore();
   const [systemVoices, setSystemVoices] = useState<NativeSystemVoiceOption[]>([]);
   const [isPreviewing, setIsPreviewing] = useState(false);
+  /**
+   * Shown because a cache that silently fails to fill looks exactly like one
+   * that is working. This phone's logs are encrypted, so the only way to know
+   * is to put the number on screen.
+   */
+  const [cache, setCache] = useState({ files: 0, bytes: 0 });
+  useEffect(() => {
+    setCache(ttsCacheSize());
+  }, [isPreviewing]);
   const previewRunRef = useRef(0);
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const profiles = config.profiles;
@@ -646,6 +656,53 @@ export default function TTSSettingsScreen() {
                     />
                   </View>
                 )}
+              </View>
+            </View>
+
+            {/* Saved speech */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t("tts.cacheTitle", "Saved speech")}</Text>
+              <View style={styles.paramsCard}>
+                <View style={styles.paramRow}>
+                  <View style={styles.paramHeader}>
+                    <Text style={styles.paramLabel}>
+                      {cache.files === 0
+                        ? t("tts.cacheEmpty", "Nothing saved yet")
+                        : `${cache.files} ${t("tts.cacheClips", "clips")} · ${
+                            cache.bytes < 1024 * 1024
+                              ? `${Math.round(cache.bytes / 1024)} KB`
+                              : `${(cache.bytes / 1024 / 1024).toFixed(1)} MB`
+                          }`}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        clearTTSCache();
+                        setCache(ttsCacheSize());
+                      }}
+                      disabled={cache.files === 0}
+                    >
+                      <Text
+                        style={{
+                          color: cache.files === 0 ? colors.mutedForeground : colors.destructive,
+                        }}
+                      >
+                        {t("common.clear", "Clear")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                    {t(
+                      "tts.cacheHint",
+                      "A line already spoken is played from here instead of being synthesised again.",
+                    )}
+                  </Text>
+                  {ttsCacheLastError() ? (
+                    <Text style={{ color: colors.destructive, fontSize: 11 }}>
+                      {ttsCacheLastError()}
+                    </Text>
+                  ) : null}
+
+                </View>
               </View>
             </View>
           </View>
