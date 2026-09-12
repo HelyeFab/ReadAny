@@ -59,9 +59,15 @@ async function materialise(uri: string, name: string): Promise<FolderCandidate> 
   return { uri: target, name };
 }
 
+export interface FolderPick {
+  /** The chosen folder's own name — the obvious default for a new shelf. */
+  folderName: string;
+  candidates: FolderCandidate[];
+}
+
 export async function pickFolderBooks(
   onProgress?: (found: number, scanned: number) => void,
-): Promise<FolderCandidate[] | null> {
+): Promise<FolderPick | null> {
   const permission =
     await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
   if (!permission.granted) return null;
@@ -111,5 +117,8 @@ export async function pickFolderBooks(
   };
 
   await walk(permission.directoryUri, 0);
-  return found;
+  return {
+    folderName: displayNameFromSafUri(permission.directoryUri),
+    candidates: found,
+  };
 }

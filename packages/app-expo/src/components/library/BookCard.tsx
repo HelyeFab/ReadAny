@@ -5,6 +5,7 @@ import { getPlatformService } from "@readany/core/services";
  * BookCard — Touch-optimized book card matching Tauri mobile MobileBookCard exactly.
  * Cover (28:41), progress bar, vectorization overlay, tag badges, long-press action sheet.
  */
+import { COVER_PLACEHOLDER } from "@/lib/library/cover-placeholder";
 import type { Book } from "@readany/core/types";
 import { getBookProgressPercent } from "@readany/core/utils";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -261,6 +262,16 @@ export const BookCard = memo(function BookCard({
               {/* Simulate gradient: stone-100 top half, stone-200 bottom half */}
               <View style={s.fallbackGradientTop} />
               <View style={s.fallbackGradientBottom} />
+              {/* Tinted from the theme rather than drawn in its own colours, so
+                  it reads as part of the shelf on every palette. */}
+              <View style={s.fallbackArt} pointerEvents="none">
+                <Image
+                  source={COVER_PLACEHOLDER}
+                  style={s.fallbackArtImage}
+                  resizeMode="contain"
+                  tintColor={colors.stone400}
+                />
+              </View>
               <View style={s.fallbackContentOverlay}>
                 <View style={s.fallbackTitleWrap}>
                   <Text style={s.fallbackTitle} numberOfLines={3}>

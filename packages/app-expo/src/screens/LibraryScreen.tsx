@@ -1,3 +1,5 @@
+import { ImportDestinationSheet } from "@/components/library/ImportDestinationSheet";
+import type { ImportDestination } from "@/components/library/ImportDestinationSheet";
 import { BookCard } from "@/components/library/BookCard";
 import { GroupCard } from "@/components/library/GroupCard";
 import { FolderColorSheet } from "@/components/library/FolderColorSheet";
@@ -189,6 +191,15 @@ export function LibraryScreen() {
   const [isPickingImport, setIsPickingImport] = useState(false);
   const [pendingLocalImport, setPendingLocalImport] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
+  /**
+   * Files chosen but not yet imported. The destination sheet sits in this gap,
+   * so books can be filed as they arrive instead of being fished back out of
+   * the shelf afterwards.
+   */
+  const [pendingImport, setPendingImport] = useState<{
+    files: Array<{ uri: string; name?: string }>;
+    suggestedName?: string;
+  } | null>(null);
   const [selectedBookIds, setSelectedBookIds] = useState<Set<string>>(new Set());
   const [showGroupPicker, setShowGroupPicker] = useState(false);
   const [showLibraryMenu, setShowLibraryMenu] = useState(false);
@@ -464,6 +475,61 @@ export function LibraryScreen() {
     [groupedEntries, isGroupView, visibleBooks, hasSearch],
   );
 
+  /**
+   * Import the staged files and file them where the sheet said. The folder is
+   * applied after the import because the books do not have ids until then.
+   */
+  const runStagedImport = useCallback(
+    async (destination: ImportDestination) => {
+      const staged = pendingImport;
+      setPendingImport(null);
+      if (!staged) return;
+
+      setIsPickingImport(true);
+      try {
+        let groupId: string | undefined;
+        if (destination.kind === "existing") {
+          groupId = destination.groupId;
+        } else if (destination.kind === "new") {
+          const created = await addGroup(destination.name, destination.parentId);
+          if (!created) {
+            Alert.alert(
+              t("common.error", "Error"),
+              t("library.folderCreateFailed", "That folder could not be created."),
+            );
+            return;
+          }
+          groupId = created.id;
+        }
+
+        const summary = await importBooks(staged.files);
+        if (groupId && summary.imported.length > 0) {
+          moveBooksToGroup(
+            summary.imported.map((book) => book.id),
+            groupId,
+          );
+        }
+        Alert.alert(
+          t("common.success", "成功！"),
+          t("library.importResultSummary", {
+            imported: summary.imported.length,
+            skipped: summary.skippedDuplicates.length,
+            failed: summary.failures.length,
+          }),
+        );
+      } catch (err) {
+        console.error("Import failed:", err);
+        Alert.alert(
+          t("common.error", "Error"),
+          err instanceof Error ? err.message : String(err),
+        );
+      } finally {
+        setIsPickingImport(false);
+      }
+    },
+    [pendingImport, addGroup, importBooks, moveBooksToGroup, t],
+  );
+
   const handleLocalImport = useCallback(async () => {
     if (localImportInFlightRef.current) return;
     localImportInFlightRef.current = true;
@@ -485,16 +551,9 @@ export function LibraryScreen() {
         copyToCacheDirectory: true,
       });
       if (result.canceled || !result.assets || result.assets.length === 0) return;
-      const files = result.assets.map((a) => ({ uri: a.uri, name: a.name }));
-      const summary = await importBooks(files);
-      Alert.alert(
-        t("common.success", "成功！"),
-        t("library.importResultSummary", {
-          imported: summary.imported.length,
-          skipped: summary.skippedDuplicates.length,
-          failed: summary.failures.length,
-        }),
-      );
+      setPendingImport({
+        files: result.assets.map((a) => ({ uri: a.uri, name: a.name })),
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (!message.includes("Different document picking in progress")) {
@@ -504,7 +563,7 @@ export function LibraryScreen() {
       localImportInFlightRef.current = false;
       setIsPickingImport(false);
     }
-  }, [importBooks, t]);
+  }, []);
 
   /**
    * Import every book in a folder, recursively. The document picker can only
@@ -516,31 +575,23 @@ export function LibraryScreen() {
     setIsPickingImport(true);
     try {
       const { pickFolderBooks } = await import("@/lib/library/folder-import");
-      const candidates = await pickFolderBooks();
-      if (!candidates) return;
-      if (candidates.length === 0) {
+      const pick = await pickFolderBooks();
+      if (!pick) return;
+      if (pick.candidates.length === 0) {
         Alert.alert(
           t("library.importSourceFolder", "Import a folder"),
           t("library.folderImportEmpty", "No books were found in that folder."),
         );
         return;
       }
-      const summary = await importBooks(candidates);
-      Alert.alert(
-        t("common.success", "成功！"),
-        t("library.importResultSummary", {
-          imported: summary.imported.length,
-          skipped: summary.skippedDuplicates.length,
-          failed: summary.failures.length,
-        }),
-      );
+      setPendingImport({ files: pick.candidates, suggestedName: pick.folderName });
     } catch (err) {
       console.error("Folder import failed:", err);
     } finally {
       localImportInFlightRef.current = false;
       setIsPickingImport(false);
     }
-  }, [importBooks, t]);
+  }, [t]);
 
   const handlePickLocalFromSourceMenu = useCallback(() => {
     if (localImportInFlightRef.current || pendingLocalImport) return;
@@ -788,7 +839,13 @@ export function LibraryScreen() {
     if (selectedBookIds.size === 0) return;
     Alert.alert(
       t("common.confirm", "确认"),
-      t("library.batchDeleteConfirm", `确定要删除选中的 ${selectedBookIds.size} 本书吗？`),
+      // Every locale writes this one with a {{count}} placeholder, so the count
+      // has to arrive as an option. Passed as a bare default string it printed
+      // the placeholder verbatim.
+      t("library.batchDeleteConfirm", {
+        count: selectedBookIds.size,
+        defaultValue: `确定要删除选中的 ${selectedBookIds.size} 本书吗？`,
+      }),
       [
         { text: t("common.cancel", "取消"), style: "cancel" },
         {
@@ -992,44 +1049,57 @@ export function LibraryScreen() {
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]} edges={["top"]}>
       <ExtractorWebView ref={extractorRef} />
 
+      <ImportDestinationSheet
+        visible={pendingImport !== null}
+        bookCount={pendingImport?.files.length ?? 0}
+        groups={groups}
+        suggestedName={pendingImport?.suggestedName}
+        currentGroupId={activeGroupId || undefined}
+        onConfirm={runStagedImport}
+        onCancel={() => setPendingImport(null)}
+      />
+
       {/* Header */}
       <View style={[s.header, { zIndex: 20 }]}>
         <View style={s.headerInner}>
           {selectionMode ? (
             <View style={s.headerRow}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <TouchableOpacity style={s.headerBtn} onPress={exitSelectionMode}>
+              {/* Six actions plus a count is more than a phone header fits. The
+                  count must be the part that gives way, or the actions march
+                  off the right edge instead of the label truncating. */}
+              <View style={s.selectionLead}>
+                <TouchableOpacity style={s.headerBtnTight} onPress={exitSelectionMode}>
                   <XIcon size={18} color={colors.foreground} />
                 </TouchableOpacity>
-                <Text style={s.headerTitle}>
+                <Text style={s.selectionCount} numberOfLines={1}>
                   {t("library.selectedCount", {
                     count: selectedBookIds.size,
                     defaultValue: `已选 ${selectedBookIds.size} 本`,
                   })}
                 </Text>
               </View>
-              <View style={s.headerActions}>
-                <TouchableOpacity style={s.headerBtn} onPress={toggleSelectAll}>
+              <View style={s.selectionActions}>
+                <TouchableOpacity style={s.headerBtnTight} onPress={toggleSelectAll}>
                   <CheckCheckIcon
                     size={18}
                     color={isAllSelected ? colors.primary : colors.mutedForeground}
                   />
                 </TouchableOpacity>
-                <TouchableOpacity style={s.headerBtn} onPress={handleBatchTag}>
+                <TouchableOpacity style={s.headerBtnTight} onPress={handleBatchTag}>
                   <HashIcon size={18} color={colors.mutedForeground} />
                 </TouchableOpacity>
-                <TouchableOpacity style={s.headerBtn} onPress={handleBatchMoveGroup}>
+                <TouchableOpacity style={s.headerBtnTight} onPress={handleBatchMoveGroup}>
                   <FolderInputIcon size={18} color={colors.mutedForeground} />
                 </TouchableOpacity>
                 {activeGroupId ? (
-                  <TouchableOpacity style={s.headerBtn} onPress={handleBatchRemoveFromGroup}>
+                  <TouchableOpacity style={s.headerBtnTight} onPress={handleBatchRemoveFromGroup}>
                     <FolderMinusIcon size={18} color={colors.mutedForeground} />
                   </TouchableOpacity>
                 ) : null}
-                <TouchableOpacity style={s.headerBtn} onPress={handleBatchVectorize}>
+                <TouchableOpacity style={s.headerBtnTight} onPress={handleBatchVectorize}>
                   <DatabaseIcon size={18} color={colors.mutedForeground} />
                 </TouchableOpacity>
-                <TouchableOpacity style={s.headerBtn} onPress={handleBatchDelete}>
+                <TouchableOpacity style={s.headerBtnTight} onPress={handleBatchDelete}>
                   <Trash2Icon size={18} color={colors.destructive} />
                 </TouchableOpacity>
               </View>
@@ -1432,6 +1502,27 @@ const makeStyles = (
       color: colors.foreground,
     },
     headerActions: { flexDirection: "row", alignItems: "center", gap: 4 },
+    selectionLead: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      flex: 1,
+      minWidth: 0,
+    },
+    selectionCount: {
+      fontSize: fontSize.base,
+      fontWeight: fontWeight.semibold,
+      color: colors.foreground,
+      flexShrink: 1,
+    },
+    selectionActions: { flexDirection: "row", alignItems: "center", gap: 0, flexShrink: 0 },
+    headerBtnTight: {
+      width: 34,
+      height: 36,
+      borderRadius: radius.full,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     headerBtn: {
       width: 36,
       height: 36,

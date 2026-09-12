@@ -51,15 +51,39 @@ export const makeStyles = (colors: ThemeColors, cardWidth: number) => {
     fallbackCover: { flex: 1, borderRadius: radius.sm, overflow: "hidden", position: "relative" },
     fallbackGradientTop: { position: "absolute", top: 0, left: 0, right: 0, height: "50%", backgroundColor: colors.stone100 },
     fallbackGradientBottom: { position: "absolute", bottom: 0, left: 0, right: 0, height: "50%", backgroundColor: colors.stone200 },
-    fallbackContentOverlay: { flex: 1, padding: 10, alignItems: "center", justifyContent: "center", zIndex: 1 },
-    fallbackTitleWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+    // The drawing takes the upper two thirds; the title sits under it rather
+    // than over it, because a title printed across the books is unreadable.
+    // A positioned box with an explicitly sized image inside it. Styling the
+    // Image directly left it drawing at its own pixel size and spilling out of
+    // the card; every image that behaves in this app is given width and height.
+    fallbackArt: {
+      position: "absolute",
+      top: 8,
+      left: 12,
+      right: 12,
+      bottom: "42%",
+    },
+    fallbackArtImage: { width: "100%", height: "100%", opacity: 0.8 },
+    fallbackContentOverlay: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: "60%",
+      bottom: 0,
+      paddingHorizontal: 8,
+      paddingBottom: 6,
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1,
+    },
+    fallbackTitleWrap: { alignItems: "center", justifyContent: "center" },
     fallbackTitle: {
       textAlign: "center", fontSize: fontSize.sm,
       fontWeight: fontWeight.medium, fontFamily: "serif",
-      color: colors.stone500, lineHeight: 18,
+      color: colors.stone500, lineHeight: 16,
     },
     fallbackDivider: { width: 32, height: 1, backgroundColor: `${colors.stone300}99`, marginVertical: 6 },
-    fallbackAuthorWrap: { height: "25%", alignItems: "center", justifyContent: "center" },
+    fallbackAuthorWrap: { alignItems: "center", justifyContent: "center" },
     fallbackAuthor: { textAlign: "center", fontSize: 12, fontFamily: "serif", color: colors.stone400 },
     progressBarBg: { position: "absolute", bottom: 0, left: 0, right: 0, height: 2, backgroundColor: "rgba(0,0,0,0.1)" },
     progressBarFill: { height: 2, backgroundColor: colors.primary, opacity: 0.8 },
