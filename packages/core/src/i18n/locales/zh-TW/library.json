@@ -150,7 +150,9 @@
     "importSourceFolder": "匯入資料夾",
     "folderImportEmpty": "該資料夾中沒有找到書籍。",
     "newFolder": "新增資料夾",
-    "folderCreateFailed": "無法建立該資料夾。"
+    "folderCreateFailed": "無法建立該資料夾。",
+    "folderColor": "顏色",
+    "folderColorNone": "無顏色"
   },
   "home": {
     "library": "書庫",

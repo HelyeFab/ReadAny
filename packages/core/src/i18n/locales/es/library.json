@@ -150,7 +150,9 @@
     "importSourceFolder": "Importar una carpeta",
     "folderImportEmpty": "No se encontraron libros en esa carpeta.",
     "newFolder": "Nueva carpeta",
-    "folderCreateFailed": "No se pudo crear esa carpeta."
+    "folderCreateFailed": "No se pudo crear esa carpeta.",
+    "folderColor": "Color",
+    "folderColorNone": "Sin color"
   },
   "home": {
     "library": "Biblioteca",

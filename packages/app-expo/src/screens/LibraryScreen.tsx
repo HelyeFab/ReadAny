@@ -1,5 +1,6 @@
 import { BookCard } from "@/components/library/BookCard";
 import { GroupCard } from "@/components/library/GroupCard";
+import { FolderColorSheet } from "@/components/library/FolderColorSheet";
 import { GroupPickerSheet } from "@/components/library/GroupPickerSheet";
 import { type ExtractorRef, ExtractorWebView } from "@/components/rag/ExtractorWebView";
 import {
@@ -48,7 +49,7 @@ import { setFallbackContentProvider } from "@readany/core/ai";
 import { onLibraryChanged } from "@readany/core/events/library-events";
 import { useSyncStore } from "@readany/core/stores";
 import { SYNC_SECRET_KEYS } from "@readany/core/sync/sync-backend";
-import type { Book, BookGroup, SortField } from "@readany/core/types";
+import type { Book, BookGroup, SortField, SortOrder } from "@readany/core/types";
 import * as DocumentPicker from "expo-document-picker";
 import { File as ExpoFile } from "expo-file-system";
 /**
@@ -184,6 +185,7 @@ export function LibraryScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedBookIds, setSelectedBookIds] = useState<Set<string>>(new Set());
   const [showGroupPicker, setShowGroupPicker] = useState(false);
+  const [colorPickerGroup, setColorPickerGroup] = useState<BookGroup | null>(null);
   const [batchTagBookIds, setBatchTagBookIds] = useState<string[]>([]);
   const [groupNameModal, setGroupNameModal] = useState<{
     mode: "create" | "rename";
@@ -218,6 +220,8 @@ export function LibraryScreen() {
     setActiveTag,
     addTag,
     addGroup,
+    setGroupColor,
+    setGroupViewPrefs,
     renameGroup,
     removeGroup,
     moveBooksToGroup,
@@ -654,18 +658,44 @@ export function LibraryScreen() {
 
   const handleSortChange = useCallback(
     (field: SortField) => {
-      if (filter.sortField === field) {
-        setFilter({ sortOrder: filter.sortOrder === "asc" ? "desc" : "asc" });
-      } else {
-        setFilter({
-          sortField: field,
-          sortOrder: field === "title" || field === "author" ? "asc" : "desc",
-        });
-      }
+      const next =
+        filter.sortField === field
+          ? { sortField: field, sortOrder: (filter.sortOrder === "asc" ? "desc" : "asc") as SortOrder }
+          : {
+              sortField: field,
+              sortOrder: (field === "title" || field === "author" ? "asc" : "desc") as SortOrder,
+            };
+      setFilter(next);
+      // Sorting chosen inside a folder belongs to that folder: a shelf of
+      // manga wants a different order from a shelf of textbooks.
+      if (activeGroupId) setGroupViewPrefs(activeGroupId, next);
       setShowSort(false);
     },
-    [filter, setFilter],
+    [activeGroupId, filter, setFilter, setGroupViewPrefs],
   );
+
+  /**
+   * Entering a folder applies its remembered sort; leaving restores the
+   * library's own. Without the restore, the last folder opened would quietly
+   * become the library default.
+   */
+  const libraryFilterRef = useRef<{ sortField: SortField; sortOrder: SortOrder } | null>(null);
+  useEffect(() => {
+    if (activeGroupId) {
+      const prefs = groups.find((g) => g.id === activeGroupId)?.viewPrefs;
+      if (!libraryFilterRef.current) {
+        libraryFilterRef.current = { sortField: filter.sortField, sortOrder: filter.sortOrder };
+      }
+      if (prefs?.sortField) {
+        setFilter({ sortField: prefs.sortField, sortOrder: prefs.sortOrder ?? "desc" });
+      }
+    } else if (libraryFilterRef.current) {
+      setFilter(libraryFilterRef.current);
+      libraryFilterRef.current = null;
+    }
+    // Only on entering or leaving a folder — not on every sort change, which
+    // would immediately undo the change being made.
+  }, [activeGroupId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isEmpty = gridItems.length === 0;
   const hasBooks = books.length > 0;
@@ -772,6 +802,10 @@ export function LibraryScreen() {
         {
           text: t("common.rename", "重命名"),
           onPress: () => openGroupNameModal("rename", group),
+        },
+        {
+          text: t("library.folderColor", "Colour"),
+          onPress: () => setColorPickerGroup(group),
         },
         {
           text: t("common.delete", "删除"),
@@ -1268,6 +1302,14 @@ export function LibraryScreen() {
         visible={temporaryWebDavOpen}
         onClose={() => setTemporaryWebDavOpen(false)}
         onSubmit={handleConnectTemporaryWebDav}
+      />
+      <FolderColorSheet
+        group={colorPickerGroup}
+        onPick={(color) => {
+          if (colorPickerGroup) setGroupColor(colorPickerGroup.id, color);
+          setColorPickerGroup(null);
+        }}
+        onClose={() => setColorPickerGroup(null)}
       />
       <GroupPickerSheet
         visible={showGroupPicker}

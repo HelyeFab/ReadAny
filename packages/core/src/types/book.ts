@@ -55,11 +55,22 @@ export interface Book {
   syncStatus: "local" | "remote" | "downloading"; // File availability status
 }
 
+/** A folder's own layout, remembered separately from the library's. */
+export interface GroupViewPrefs {
+  viewMode?: "grid" | "list";
+  sortField?: SortField;
+  sortOrder?: "asc" | "desc";
+}
+
 export interface BookGroup {
   id: string;
   name: string;
   /** Parent folder, or undefined at the top level. */
   parentId?: string;
+  /** Folder colour, one of FOLDER_COLORS. Undefined means the default. */
+  color?: string;
+  /** How this folder wants to be shown. Undefined means the library default. */
+  viewPrefs?: GroupViewPrefs;
   sortOrder: number;
   createdAt: number;
   updatedAt: number;

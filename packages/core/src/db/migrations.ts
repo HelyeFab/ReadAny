@@ -129,6 +129,14 @@ const migrations: Migration[] = [
       "CREATE INDEX IF NOT EXISTS idx_book_groups_parent ON book_groups(parent_id)",
     ],
   },
+  {
+    version: 15,
+    description: "Give folders a colour and their own view preferences",
+    up: [
+      "ALTER TABLE book_groups ADD COLUMN color TEXT",
+      "ALTER TABLE book_groups ADD COLUMN view_prefs TEXT",
+    ],
+  },
 ];
 
 /** Run pending migrations */

@@ -150,7 +150,9 @@
     "importSourceFolder": "フォルダを読み込む",
     "folderImportEmpty": "そのフォルダに本が見つかりませんでした。",
     "newFolder": "新しいフォルダ",
-    "folderCreateFailed": "フォルダを作成できませんでした。"
+    "folderCreateFailed": "フォルダを作成できませんでした。",
+    "folderColor": "色",
+    "folderColorNone": "なし"
   },
   "home": {
     "library": "ライブラリ",

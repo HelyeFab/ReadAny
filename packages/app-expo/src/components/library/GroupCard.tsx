@@ -1,6 +1,7 @@
 import { FolderIcon, MoreVerticalIcon } from "@/components/ui/Icon";
 import { type ThemeColors, radius, useColors } from "@/styles/theme";
 import { getPlatformService } from "@readany/core/services";
+import { folderColor } from "@/lib/library/folder-colors";
 import type { Book, BookGroup } from "@readany/core/types";
 import { memo, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -150,6 +151,7 @@ export const GroupCard = memo(function GroupCard({
   onLongPress,
 }: GroupCardProps) {
   const colors = useColors();
+  const tone = folderColor(group.color);
   const { t } = useTranslation();
   const bookStyles = makeBookCardStyles(colors, cardWidth);
   const previewBooks = useMemo(
@@ -169,7 +171,15 @@ export const GroupCard = memo(function GroupCard({
       onLongPress={() => onLongPress?.(group)}
       delayLongPress={450}
     >
-      <View style={[bookStyles.coverWrap, { backgroundColor: colors.muted }]}>
+      <View
+        style={[
+          bookStyles.coverWrap,
+          { backgroundColor: tone?.tint ?? colors.muted },
+          // A coloured folder keeps its colour visible even when covers fill
+          // the tile, so the colour survives the folder having books in it.
+          tone ? { borderWidth: 2, borderColor: tone.accent } : null,
+        ]}
+      >
         {previewBooks.length > 0 ? (
           previewBooks.map((book, index) => (
             <GroupCoverLayer
@@ -183,7 +193,7 @@ export const GroupCard = memo(function GroupCard({
           ))
         ) : (
           <View style={styles.emptyIcon}>
-            <FolderIcon size={40} color={colors.mutedForeground} />
+            <FolderIcon size={40} color={tone?.accent ?? colors.mutedForeground} />
           </View>
         )}
         {onLongPress ? (

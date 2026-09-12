@@ -163,7 +163,9 @@
     "importSourceFolder": "Import a folder",
     "folderImportEmpty": "No books were found in that folder.",
     "newFolder": "New folder",
-    "folderCreateFailed": "That folder could not be created."
+    "folderCreateFailed": "That folder could not be created.",
+    "folderColor": "Colour",
+    "folderColorNone": "No colour"
   },
   "home": {
     "library": "Library",

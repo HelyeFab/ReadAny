@@ -150,7 +150,9 @@
     "importSourceFolder": "Importer un dossier",
     "folderImportEmpty": "Aucun livre trouvé dans ce dossier.",
     "newFolder": "Nouveau dossier",
-    "folderCreateFailed": "Ce dossier n'a pas pu être créé."
+    "folderCreateFailed": "Ce dossier n'a pas pu être créé.",
+    "folderColor": "Couleur",
+    "folderColorNone": "Aucune"
   },
   "home": {
     "library": "Bibliothèque",
