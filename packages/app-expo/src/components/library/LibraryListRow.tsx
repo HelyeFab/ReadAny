@@ -8,6 +8,7 @@
 import { memo, useEffect, useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { COVER_PLACEHOLDER } from "@/lib/library/cover-placeholder";
 import { FolderIcon } from "@/components/ui/Icon";
 import { folderColor } from "@/lib/library/folder-colors";
 import { radius, spacing, useColors } from "@/styles/theme";
@@ -105,7 +106,14 @@ export const LibraryListRow = memo(function LibraryListRow({
           <FolderIcon size={20} color={tone?.accent ?? colors.mutedForeground} />
         ) : coverUri ? (
           <Image source={{ uri: coverUri }} style={{ width: "100%", height: "100%" }} />
-        ) : null}
+        ) : (
+          <Image
+            source={COVER_PLACEHOLDER}
+            style={{ width: "78%", height: "78%", opacity: 0.6 }}
+            resizeMode="contain"
+            tintColor={colors.mutedForeground}
+          />
+        )}
       </View>
 
       <View style={{ flex: 1, minWidth: 0 }}>
