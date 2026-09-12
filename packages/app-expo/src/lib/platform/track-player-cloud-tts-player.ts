@@ -7,6 +7,7 @@ import {
   splitIntoChunks,
 } from "@readany/core/tts";
 import { File, Paths } from "expo-file-system";
+import { cachedAudioUri, storeAudio, ttsCacheKey } from "./tts-cache";
 import { Image } from "react-native";
 import TrackPlayer, { Event, State } from "react-native-track-player";
 
@@ -264,13 +265,35 @@ export class TrackPlayerCloudTTSPlayer implements ITTSPlayer {
   private async _fetchChunkFile(index: number, gen: number): Promise<string> {
     if (this._stopped || gen !== this._speakGen || !this._config) throw new Error("aborted");
     const config = this._config;
+    const ext = extensionForConfig(config);
+
+    // A line already spoken sounds identical the second time, so it is read off
+    // disk instead of being synthesised and charged for again. Cached files are
+    // deliberately kept out of _tempFiles: that list is wiped on the next
+    // speak, which would throw the cache away as fast as it was filled.
+    let key = "";
+    try {
+      key = await ttsCacheKey(this._chunks[index], config);
+      const hit = cachedAudioUri(key, ext);
+      if (hit) return hit;
+    } catch {
+      // A cache that cannot be read must not stop the speaking.
+    }
+
     const bytes =
       config.engine === "xiaomi"
         ? await fetchXiaomiTTSWav(this._chunks[index], config)
         : await fetchOpenAITTSAudio(this._chunks[index], config);
     if (this._stopped || gen !== this._speakGen) throw new Error("aborted");
 
-    const ext = extensionForConfig(config);
+    if (key) {
+      try {
+        return storeAudio(key, ext, bytes);
+      } catch {
+        // Fall through to a temp file rather than failing to speak.
+      }
+    }
+
     const tmpFile = new File(Paths.cache, `tts_${config.engine}_${index}_${Date.now()}.${ext}`);
     const audioUri = tmpFile.uri;
     this._tempFiles.push(audioUri);
