@@ -140,7 +140,8 @@
     "browserVoiceNote": "系統音色請在裝置系統設定中選擇",
     "stop": "停止",
     "apiKeyHeader": "API 金鑰標頭",
-    "apiKeyHeaderHint": "留空使用 OpenAI 預設值。自建服務通常需要 X-API-Key。"
+    "apiKeyHeaderHint": "留空使用 OpenAI 預設值。自建服務通常需要 X-API-Key。",
+    "previewFailed": "試聽失敗"
   },
   "fonts": {
     "title": "字型",
