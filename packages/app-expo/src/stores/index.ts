@@ -29,3 +29,6 @@ export { useVectorModelStore } from "./vector-model-store";
 export type { BuiltinModelStatus, BuiltinModelState, VectorModelState } from "./vector-model-store";
 
 export { debouncedSave, loadFromFS, flushAllWrites, withPersist } from "./persist";
+
+export { useWebStore, isSavedUrl } from "./web-store";
+export type { WebPage, WebState } from "./web-store";
