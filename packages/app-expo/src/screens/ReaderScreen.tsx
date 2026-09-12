@@ -835,7 +835,12 @@ export function ReaderScreen({ route, navigation }: Props) {
     },
     onSelectionCleared: () => {
       setSelection(null);
-      readingContextService.clearSelection();
+      // The WebView drops its selection while the reader sits behind the AI chat, and
+      // clearing shared context from a backgrounded screen wiped the quote the chat was
+      // opened with. Only the focused reader owns the selection.
+      if (isFocused) {
+        readingContextService.clearSelection();
+      }
     },
     onTap: () => {
       if (noteTooltipVisibleRef.current || Date.now() < suppressReaderTapUntilRef.current) {
