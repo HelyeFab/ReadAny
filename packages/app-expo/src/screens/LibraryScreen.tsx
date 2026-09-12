@@ -1181,6 +1181,14 @@ export function LibraryScreen() {
 
       {/* Content */}
       <View style={s.content}>
+        {/*
+          A café scene behind the shelf. Held at low opacity and ignored by
+          touch: it has to read as paper the books sit on, not as something
+          competing with the covers or swallowing taps meant for them.
+        */}
+        <View style={s.backdrop} pointerEvents="none">
+          <Image source={cafeIllustration()} style={s.backdropImage} resizeMode="contain" />
+        </View>
         <View style={s.contentInner}>
           {!isLoaded && (
             <View style={s.loadingWrap}>
@@ -1196,9 +1204,8 @@ export function LibraryScreen() {
           {isLoaded && books.length === 0 && (
             <View style={s.emptyWrap}>
               <Image
-                source={cafeIllustration()}
-                style={{ width: 300, height: 224, borderRadius: radius.lg }}
-                resizeMode="contain"
+                source={isDark ? BOOK_DARK_PNG : BOOK_PNG}
+                style={{ width: 160, height: 160 }}
               />
               <Text style={s.emptyTitle}>{t("library.empty", "暂无书籍")}</Text>
               <Text style={s.emptyHint}>{t("library.emptyHint", "导入电子书开始阅读之旅")}</Text>
@@ -1489,6 +1496,16 @@ const makeStyles = (
     sortText: { fontSize: fontSize.xs, color: colors.foreground },
     sortTextActive: { fontWeight: fontWeight.medium },
     content: { flex: 1, paddingHorizontal: layout.horizontalPadding, alignItems: "center" },
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    backdropImage: {
+      width: "86%",
+      height: "44%",
+      opacity: 0.14,
+    },
     contentInner: { flex: 1, width: "100%", maxWidth: layout.contentWidth },
     loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
     importBanner: {
