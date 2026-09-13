@@ -14,10 +14,13 @@ export interface WebState {
   lastUrl: string | null;
   recent: WebPage[];
   saved: WebPage[];
+  /** Persisted, so a shelf you folded away stays folded next time. */
+  savedCollapsed: boolean;
   _hasHydrated: boolean;
 
   recordVisit: (page: { url: string; title: string }) => void;
   toggleSaved: (page: { url: string; title: string }) => void;
+  toggleSavedCollapsed: () => void;
   removeSaved: (url: string) => void;
   clearRecent: () => void;
 }
@@ -31,6 +34,7 @@ export const useWebStore = create<WebState>()(
     lastUrl: null,
     recent: [],
     saved: [],
+    savedCollapsed: false,
     _hasHydrated: false,
 
     recordVisit: ({ url, title }) => {
@@ -52,6 +56,8 @@ export const useWebStore = create<WebState>()(
       }
       set({ saved: [{ url, title, visitedAt: Date.now() }, ...saved] });
     },
+
+    toggleSavedCollapsed: () => set({ savedCollapsed: !get().savedCollapsed }),
 
     removeSaved: (url) => set({ saved: get().saved.filter((p) => !sameUrl(p.url, url)) }),
 
