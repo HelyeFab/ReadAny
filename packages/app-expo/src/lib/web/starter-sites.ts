@@ -11,35 +11,42 @@ export interface StarterSite {
   title: string;
   note: string;
   url: string;
+  /** Which outline icon the card wears. Resolved in the screen. */
+  icon: "library" | "news" | "globe" | "book" | "search";
 }
 
 export const STARTER_SITES: StarterSite[] = [
   {
     id: "aozora",
+    icon: "library",
     title: "青空文庫",
     note: "Public-domain literature",
     url: "https://www.aozora.gr.jp/",
   },
   {
     id: "nhk-easy",
+    icon: "news",
     title: "NHK News Web Easy",
     note: "News rewritten for learners, with furigana",
     url: "https://www3.nhk.or.jp/news/easy/",
   },
   {
     id: "nhk",
+    icon: "globe",
     title: "NHK ニュース",
     note: "Full-speed news",
     url: "https://www3.nhk.or.jp/news/",
   },
   {
     id: "tadoku",
+    icon: "book",
     title: "Tadoku free books",
     note: "Graded readers, level 0 upward",
     url: "https://tadoku.org/japanese/free-books/",
   },
   {
     id: "wikipedia-ja",
+    icon: "search",
     title: "ウィキペディア",
     note: "Whatever you were curious about",
     url: "https://ja.wikipedia.org/",
