@@ -195,7 +195,14 @@ describe("WebDavClient PROPFIND parsing", () => {
       .map((segment) => encodeURIComponent(segment))
       .join("/");
     expect(calls[0]?.url).toBe(`https://dav.example.com/dav${expectedPath}`);
-    expect(Object.keys(calls[0]?.headers ?? {})).toEqual(["Authorization"]);
+    // Identification headers travel on every request; the point of this test
+    // is that nothing carries the PATH, which is where non-ASCII would leak
+    // into a header and break the request.
+    expect(Object.keys(calls[0]?.headers ?? {}).sort()).toEqual([
+      "Accept",
+      "Authorization",
+      "User-Agent",
+    ]);
     expect(
       Object.values(calls[0]?.headers ?? {}).every((value) =>
         Array.from(value).every((char) => char.charCodeAt(0) <= 0x7f),
