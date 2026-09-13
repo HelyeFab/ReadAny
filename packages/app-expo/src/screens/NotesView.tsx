@@ -16,7 +16,19 @@ import { useColors, useTheme } from "@/styles/theme";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { HighlightWithBook } from "@readany/core/db/database";
-import { AnnotationExporter, type ExportFormat } from "@readany/core/export";
+import { AnnotationExporter } from "@readany/core/export";
+import {
+  DEFAULT_EXPORT_PREFS,
+  type HighlightExportPrefs,
+  loadHighlightExportPrefs,
+  saveHighlightExportPrefs,
+} from "@readany/core/export/highlight-export-prefs";
+import { buildFiledPath } from "@readany/core/export/highlight-filing";
+import {
+  type WebDavCredentials,
+  loadSyncWebDavCredentials,
+  publishHighlightsToWebDav,
+} from "@readany/core/export/highlight-publisher";
 import { sortAnnotationsByPosition } from "@readany/core/reader";
 import type { Highlight } from "@readany/core/types";
 import { eventBus } from "@readany/core/utils/event-bus";
@@ -27,20 +39,13 @@ import { eventBus } from "@readany/core/utils/event-bus";
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Alert,
-  FlatList,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, FlatList, Image, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import {
+  type ExportDestination,
+  HighlightExportSheet,
+} from "@/components/notes/HighlightExportSheet";
 import { HighlightCard } from "./notes/HighlightCard";
 import { NoteCard } from "./notes/NoteCard";
 import { NotebookCard } from "./notes/NotebookCard";
@@ -87,6 +92,20 @@ export function NotesView({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNote, setEditNote] = useState("");
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportPrefs, setExportPrefs] = useState<HighlightExportPrefs>(DEFAULT_EXPORT_PREFS);
+  const [webDavCreds, setWebDavCreds] = useState<WebDavCredentials | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Shown on the save button so it is obvious which server this is going to,
+  // rather than a generic "server" the user has to remember the meaning of.
+  const webDavHost = useMemo(() => {
+    if (!webDavCreds?.url) return undefined;
+    try {
+      return new URL(webDavCreds.url).hostname;
+    } catch {
+      return undefined;
+    }
+  }, [webDavCreds]);
 
   useFocusEffect(
     useCallback(() => {
@@ -269,31 +288,123 @@ export function NotesView({
     setEditNote("");
   }, []);
 
+  // The sheet is a question about where things go, so it opens on the last
+  // answer and on whatever server sync is already signed in to.
+  const openExportSheet = useCallback(async () => {
+    setShowExportMenu(true);
+    const [prefs, creds] = await Promise.all([
+      loadHighlightExportPrefs(),
+      loadSyncWebDavCredentials(),
+    ]);
+    setExportPrefs(prefs);
+    setWebDavCreds(creds);
+  }, []);
+
+  /** The books this export covers, paired with their library records. */
+  const gatherExportData = useCallback(() => {
+    const notebooks =
+      exportPrefs.scope === "all" ? bookNotebooks : selectedBook ? [selectedBook] : [];
+    return notebooks.flatMap((notebook) => {
+      const book = books.find((b) => b.id === notebook.bookId);
+      if (!book) return [];
+      return [{ book, highlights: notebook.highlights as Highlight[], notes: [] }];
+    });
+  }, [exportPrefs.scope, bookNotebooks, selectedBook, books]);
+
   const handleExport = useCallback(
-    async (format: ExportFormat) => {
-      setShowExportMenu(false);
-      if (!selectedBook) return;
+    async (destination: ExportDestination) => {
+      const data = gatherExportData();
+      if (data.length === 0) {
+        Alert.alert(
+          t("common.error", "错误"),
+          t("notes.exportNothing", "There is nothing to export"),
+        );
+        return;
+      }
 
-      const book = books.find((b) => b.id === selectedBook.bookId);
-      if (!book) return;
-
+      const { format, scope } = exportPrefs;
       const exporter = new AnnotationExporter();
-      const content = exporter.export(selectedBook.highlights as Highlight[], [], book, { format });
+      const isAll = scope === "all";
+      const content = isAll
+        ? exporter.exportMultipleBooks(data, { format })
+        : exporter.export(data[0].highlights, [], data[0].book, { format });
 
+      const filed = buildFiledPath(
+        {
+          baseFolder: exportPrefs.baseFolder,
+          scheme: exportPrefs.scheme,
+          filenameTemplate: exportPrefs.filenameTemplate,
+          format,
+        },
+        {
+          title: isAll
+            ? t("notes.allBooksFileName", { count: data.length, defaultValue: "All books" })
+            : data[0].book.meta.title,
+          author: isAll ? t("notes.variousAuthors", "Various") : data[0].book.meta.author,
+          now: new Date(),
+        },
+      );
+
+      setIsExporting(true);
       try {
+        // Remember the shape of this export whichever way it goes out.
+        await saveHighlightExportPrefs(exportPrefs);
+
         if (format === "notion") {
           await exporter.copyToClipboard(content);
           Alert.alert(t("common.success", "成功"), t("notes.copiedToClipboard", "已复制到剪贴板"));
+        } else if (destination === "webdav") {
+          if (!webDavCreds) {
+            Alert.alert(
+              t("common.error", "错误"),
+              t(
+                "notes.webDavNotConfigured",
+                "Connect a WebDAV server in Settings → Sync to save highlights there.",
+              ),
+            );
+            return;
+          }
+          const result = await publishHighlightsToWebDav(webDavCreds, {
+            content,
+            format,
+            filing: {
+              baseFolder: exportPrefs.baseFolder,
+              scheme: exportPrefs.scheme,
+              filenameTemplate: exportPrefs.filenameTemplate,
+              format,
+            },
+            context: {
+              title: isAll
+                ? t("notes.allBooksFileName", { count: data.length, defaultValue: "All books" })
+                : data[0].book.meta.title,
+              author: isAll ? t("notes.variousAuthors", "Various") : data[0].book.meta.author,
+              now: new Date(),
+            },
+            conflict: exportPrefs.conflict,
+          });
+          Alert.alert(
+            t("common.success", "成功"),
+            t("notes.savedToServer", {
+              path: result.path,
+              defaultValue: `Saved to ${result.path}`,
+            }),
+          );
         } else {
-          const ext = format === "json" ? "json" : "md";
-          await exporter.downloadAsFile(content, `${selectedBook.title}-${format}.${ext}`, format);
+          await exporter.downloadAsFile(content, filed.filename, format);
         }
+        setShowExportMenu(false);
       } catch (err) {
         console.error("Export failed:", err);
-        Alert.alert(t("common.error", "错误"), t("notes.exportFailed", "导出失败"));
+        const detail = err instanceof Error ? err.message : String(err);
+        Alert.alert(
+          t("common.error", "错误"),
+          `${t("notes.exportFailed", "导出失败")}\n\n${detail}`,
+        );
+      } finally {
+        setIsExporting(false);
       }
     },
-    [selectedBook, books, t],
+    [exportPrefs, gatherExportData, webDavCreds, t],
   );
 
   const totalHighlights = stats?.totalHighlights ?? 0;
@@ -372,10 +483,7 @@ export function NotesView({
                 </View>
 
                 {/* Export button */}
-                <TouchableOpacity
-                  style={s.exportBtn}
-                  onPress={() => setShowExportMenu(!showExportMenu)}
-                >
+                <TouchableOpacity style={s.exportBtn} onPress={() => void openExportSheet()}>
                   <ShareIcon size={16} color={colors.foreground} />
                 </TouchableOpacity>
               </View>
@@ -481,30 +589,19 @@ export function NotesView({
           </KeyboardAwareScrollView>
         )}
 
-        {/* Export menu */}
-        <Modal
+        <HighlightExportSheet
           visible={showExportMenu}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowExportMenu(false)}
-        >
-          <Pressable style={s.exportOverlay} onPress={() => setShowExportMenu(false)} />
-          <View style={s.exportDropdown}>
-            {(["markdown", "json", "obsidian", "notion"] as const).map((fmt) => (
-              <TouchableOpacity key={fmt} style={s.exportItem} onPress={() => handleExport(fmt)}>
-                <Text style={s.exportItemText}>
-                  {fmt === "markdown"
-                    ? "Markdown"
-                    : fmt === "json"
-                      ? "JSON"
-                      : fmt === "obsidian"
-                        ? "Obsidian"
-                        : "Notion"}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Modal>
+          bookTitle={selectedBook.title}
+          bookAuthor={selectedBook.author}
+          bookCount={bookNotebooks.length}
+          prefs={exportPrefs}
+          webDavConfigured={!!webDavCreds}
+          webDavLabel={webDavHost}
+          busy={isExporting}
+          onChange={setExportPrefs}
+          onExport={(destination) => void handleExport(destination)}
+          onCancel={() => setShowExportMenu(false)}
+        />
       </SafeAreaView>
     );
   }
