@@ -1,6 +1,7 @@
 import { ImportDestinationSheet } from "@/components/library/ImportDestinationSheet";
 import type { ImportDestination } from "@/components/library/ImportDestinationSheet";
 import { BookCard } from "@/components/library/BookCard";
+import { ContinueReadingCard } from "@/components/library/ContinueReadingCard";
 import { GroupCard } from "@/components/library/GroupCard";
 import { FolderColorSheet } from "@/components/library/FolderColorSheet";
 import { GroupPickerSheet } from "@/components/library/GroupPickerSheet";
@@ -416,6 +417,36 @@ export function LibraryScreen() {
     });
     return result;
   }, [books, filter, activeTag, activeGroupId]);
+
+  /**
+   * The book to hand straight back. Most visits to a shelf are not a browse —
+   * they are the middle of something — so the most recently opened unfinished
+   * book gets a card of its own above the covers. Only at the top of the
+   * library, and only when nothing is being searched or filtered: inside a
+   * folder or a search the shelf is already an answer to a question, and a
+   * card about a different book would be answering a question nobody asked.
+   */
+  const continueBook = useMemo(() => {
+    if (activeGroupId || activeTag || filter.search.trim()) return null;
+    // An import stamps lastOpenedAt too, so a book dropped on the shelf a
+    // minute ago would otherwise shove aside the one actually being read.
+    // Anything started wins; an untouched book is only the answer when
+    // nothing is in progress at all.
+    let started: Book | null = null;
+    let untouched: Book | null = null;
+    for (const book of books) {
+      if (book.deletedAt) continue;
+      if (!book.lastOpenedAt) continue;
+      if (book.progress >= 0.995) continue; // finished — offering it back is noise
+      if (book.syncStatus === "downloading") continue;
+      const slot = book.progress > 0 ? started : untouched;
+      if (!slot || (book.lastOpenedAt || 0) > (slot.lastOpenedAt || 0)) {
+        if (book.progress > 0) started = book;
+        else untouched = book;
+      }
+    }
+    return started ?? untouched;
+  }, [books, activeGroupId, activeTag, filter.search]);
 
   const activeGroup = useMemo(
     () => groups.find((group) => group.id === activeGroupId) ?? null,
@@ -1430,6 +1461,9 @@ export function LibraryScreen() {
             <Text style={s.resultsCount}>
               {t("library.resultsCount", { count: gridItems.length })}
             </Text>
+          )}
+          {isLoaded && !isEmpty && !selectionMode && continueBook && (
+            <ContinueReadingCard book={continueBook} onOpen={handleOpen} />
           )}
           {isLoaded && !isEmpty && (
             <FlatList
