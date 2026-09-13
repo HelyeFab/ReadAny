@@ -39,7 +39,9 @@ import {
   BookmarkFilledIcon,
   BookmarkIcon,
   ChevronLeftIcon,
+  ChevronDownIcon,
   ChevronRightIcon,
+  ChevronUpIcon,
   GlobeIcon,
   RefreshCwIcon,
   ScanTextIcon,
@@ -56,6 +58,7 @@ import { useSettingsStore } from "@/stores";
 import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
 import { SELECTION_BRIDGE_JS, parseWebBridgeMessage } from "@/lib/web/selection-bridge";
 import { STARTER_SITES, resolveInputToUrl } from "@/lib/web/starter-sites";
+import { colorForUrl, hostOf, initialOf, relativeTime } from "@/lib/web/page-identity";
 import type { TabParamList } from "@/navigation/TabNavigator";
 import { isSavedUrl, useTTSStore, useWebStore } from "@/stores";
 import { fontSize as fs, fontWeight as fw, radius, spacing, useColors } from "@/styles/theme";
@@ -69,8 +72,18 @@ export function WebReaderScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<TabParamList>>();
 
   const webRef = useRef<WebView>(null);
-  const { lastUrl, recent, saved, _hasHydrated, recordVisit, toggleSaved, removeSaved, clearRecent } =
-    useWebStore();
+  const {
+    lastUrl,
+    recent,
+    saved,
+    savedCollapsed,
+    _hasHydrated,
+    recordVisit,
+    toggleSaved,
+    toggleSavedCollapsed,
+    removeSaved,
+    clearRecent,
+  } = useWebStore();
   const ttsConfig = useTTSStore((state) => state.config);
 
   const [url, setUrl] = useState<string | null>(null);
@@ -352,7 +365,8 @@ export function WebReaderScreen() {
         ) : null}
       </View>
 
-      {loading ? <ActivityIndicator style={s.spinner} color={colors.primary} /> : null}
+      {/* Under the address row, never on top of it. */}
+      {loading ? <View style={s.loadingBar} /> : null}
 
       {url ? (
         // collapsable={false} keeps a real view behind this on Android, which
@@ -398,72 +412,118 @@ export function WebReaderScreen() {
           contentContainerStyle={[s.homeContent, { paddingBottom: tabBarHeight + spacing.xl }]}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={s.homeLead}>
-            {t(
-              "web.lead",
-              "Open a page and read it here. Selecting text gives you the dictionary, the voice, and Sensei, the same as in a book.",
-            )}
-          </Text>
+          {saved.length === 0 ? (
+            <Text style={s.homeLead}>
+              {t(
+                "web.lead",
+                "Open a page and read it here. Selecting text gives you the dictionary, the voice and Sensei, exactly as in a book. Saved pages appear here.",
+              )}
+            </Text>
+          ) : null}
 
-          <Section title={t("web.startHere", "Start here")} colors={colors}>
-            {STARTER_SITES.map((site) => (
-              <TouchableOpacity key={site.id} style={s.row} onPress={() => open(site.url)}>
-                <GlobeIcon color={colors.mutedForeground} size={18} />
-                <View style={s.rowText}>
-                  <Text style={s.rowTitle}>{site.title}</Text>
-                  <Text style={s.rowNote}>{site.note}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </Section>
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>{t("web.startHere", "Start here")}</Text>
+            <View style={s.chips}>
+              {STARTER_SITES.map((site) => {
+                const tone = colorForUrl(site.url);
+                return (
+                  <TouchableOpacity
+                    key={site.id}
+                    style={[s.chip, { borderColor: tone.accent, backgroundColor: tone.tint }]}
+                    onPress={() => open(site.url)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[s.chipText, { color: tone.accent }]}>{site.title}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
 
           {saved.length > 0 ? (
-            <Section title={t("web.saved", "Saved")} colors={colors}>
-              {saved.map((page) => (
-                <View key={page.url} style={s.row}>
-                  <TouchableOpacity style={s.rowMain} onPress={() => open(page.url)}>
-                    <BookmarkFilledIcon color={colors.primary} size={18} />
-                    <View style={s.rowText}>
-                      <Text style={s.rowTitle} numberOfLines={1}>
-                        {page.title || page.url}
+            <View style={s.section}>
+              <TouchableOpacity
+                style={s.sectionHeader}
+                onPress={toggleSavedCollapsed}
+                activeOpacity={0.7}
+              >
+                <Text style={s.sectionTitle}>
+                  {t("web.saved", "Saved")}
+                  <Text style={s.sectionCount}>{`  ${saved.length}`}</Text>
+                </Text>
+                {savedCollapsed ? (
+                  <ChevronDownIcon size={18} color={colors.mutedForeground} />
+                ) : (
+                  <ChevronUpIcon size={18} color={colors.mutedForeground} />
+                )}
+              </TouchableOpacity>
+              {savedCollapsed ? null : (
+                <View style={s.grid}>
+                {saved.map((page) => {
+                  const tone = colorForUrl(page.url);
+                  return (
+                    <TouchableOpacity
+                      key={page.url}
+                      style={[s.tile, { backgroundColor: tone.tint, borderColor: tone.accent }]}
+                      onPress={() => open(page.url)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={s.tileTop}>
+                        <View style={[s.tileBadge, { backgroundColor: tone.accent }]}>
+                          <Text style={s.tileBadgeText}>{initialOf(page.url, page.title)}</Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => removeSaved(page.url)}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          accessibilityLabel={t("web.unsave", "Remove saved page")}
+                        >
+                          <XIcon size={15} color={tone.accent} />
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={s.tileTitle} numberOfLines={2}>
+                        {page.title || hostOf(page.url)}
                       </Text>
-                      <Text style={s.rowNote} numberOfLines={1}>
-                        {page.url}
+                      <Text style={[s.tileHost, { color: tone.accent }]} numberOfLines={1}>
+                        {hostOf(page.url)}
                       </Text>
-                    </View>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => removeSaved(page.url)} style={s.rowAction}>
-                    <Trash2Icon color={colors.mutedForeground} size={16} />
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                  );
+                })}
                 </View>
-              ))}
-            </Section>
+              )}
+            </View>
           ) : null}
 
           {recent.length > 0 ? (
-            <Section
-              title={t("web.recent", "Recent")}
-              colors={colors}
-              action={
+            <View style={s.section}>
+              <View style={s.sectionHeader}>
+                <Text style={s.sectionTitle}>{t("web.recent", "Recent")}</Text>
                 <TouchableOpacity onPress={clearRecent}>
                   <Text style={s.clear}>{t("web.clear", "Clear")}</Text>
                 </TouchableOpacity>
-              }
-            >
-              {recent.map((page) => (
-                <TouchableOpacity key={page.url} style={s.row} onPress={() => open(page.url)}>
-                  <GlobeIcon color={colors.mutedForeground} size={18} />
-                  <View style={s.rowText}>
-                    <Text style={s.rowTitle} numberOfLines={1}>
-                      {page.title || page.url}
-                    </Text>
-                    <Text style={s.rowNote} numberOfLines={1}>
-                      {page.url}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </Section>
+              </View>
+              {recent.map((page) => {
+                const tone = colorForUrl(page.url);
+                return (
+                  <TouchableOpacity
+                    key={page.url}
+                    style={s.row}
+                    onPress={() => open(page.url)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[s.dot, { backgroundColor: tone.accent }]} />
+                    <View style={s.rowText}>
+                      <Text style={s.rowTitle} numberOfLines={1}>
+                        {page.title || hostOf(page.url)}
+                      </Text>
+                      <Text style={s.rowNote} numberOfLines={1}>
+                        {hostOf(page.url)} · {relativeTime(page.visitedAt)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           ) : null}
         </ScrollView>
       )}
@@ -555,11 +615,11 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.foreground,
       fontSize: fs.sm,
     },
-    spinner: {
-      position: "absolute",
-      top: 64,
-      alignSelf: "center",
-      zIndex: 2,
+    // A slim line under the address row. The old spinner sat at a fixed offset
+    // that put it inside the address field.
+    loadingBar: {
+      height: 3,
+      backgroundColor: colors.primary,
     },
     web: {
       flex: 1,
@@ -570,7 +630,76 @@ const makeStyles = (colors: ThemeColors) =>
     },
     homeContent: {
       padding: spacing.lg,
-      gap: spacing.xl,
+      gap: spacing.xxl,
+    },
+    grid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.md,
+    },
+    // Two to a row, so a saved page is a thing you can see rather than a line
+    // of text among other lines.
+    tile: {
+      flexGrow: 1,
+      flexBasis: "46%",
+      minHeight: 104,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      padding: spacing.md,
+      justifyContent: "space-between",
+    },
+    tileTop: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+    },
+    tileBadge: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tileBadgeText: {
+      color: "#fff",
+      fontSize: fs.sm,
+      fontWeight: fw.semibold,
+    },
+    tileTitle: {
+      color: colors.foreground,
+      fontSize: fs.sm,
+      fontWeight: fw.medium,
+      marginTop: spacing.sm,
+    },
+    tileHost: {
+      fontSize: fs.xs,
+      marginTop: 2,
+    },
+    // The count keeps the section informative while it is folded away.
+    sectionCount: {
+      color: colors.mutedForeground,
+      fontSize: fs.xs,
+      fontWeight: fw.medium,
+    },
+    chips: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.sm,
+    },
+    chip: {
+      borderWidth: 1,
+      borderRadius: radius.full,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+    },
+    chipText: {
+      fontSize: fs.xs,
+      fontWeight: fw.medium,
+    },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
     },
     homeLead: {
       color: colors.mutedForeground,
