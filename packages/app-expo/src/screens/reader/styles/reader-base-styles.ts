@@ -114,9 +114,16 @@ export const makeToolbarStyles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "space-between",
       gap: 2,
+      // Spread across the full width while everything fits; overflow and
+      // scroll once it does not.
+      flexGrow: 1,
     },
     bottomDockBtn: {
-      flex: 1, height: 54, borderRadius: 10,
+      // Sized by its own label rather than a fixed share of the screen, so a
+      // long word gets the room it needs instead of breaking across two lines.
+      minWidth: 68,
+      paddingHorizontal: 10,
+      height: 54, borderRadius: 10,
       alignItems: "center", justifyContent: "center",
       gap: 4, paddingTop: 4,
     },
