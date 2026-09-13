@@ -199,7 +199,7 @@ export const GroupCard = memo(function GroupCard({
         {onLongPress ? (
           <View style={[bookStyles.moreButtonWrap, styles.moreButtonWrap]} pointerEvents="box-none">
             <TouchableOpacity
-              style={bookStyles.moreButton}
+              style={styles.moreButtonPlain}
               activeOpacity={0.85}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               onPress={(event) => {
@@ -207,7 +207,7 @@ export const GroupCard = memo(function GroupCard({
                 onLongPress(group);
               }}
             >
-              <MoreVerticalIcon size={14} color="#fff" />
+              <MoreVerticalIcon size={18} color={tone?.accent ?? colors.mutedForeground} />
             </TouchableOpacity>
           </View>
         ) : null}
@@ -251,6 +251,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     opacity: 0.45,
+  },
+  /**
+   * No dark chip behind the dots here. A book card needs one because it sits
+   * over cover art of unknown colour; a folder card is a flat tint, so the
+   * scrim only reads as a smudge. The dots take the folder's own accent.
+   */
+  moreButtonPlain: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
   },
   moreButtonWrap: {
     zIndex: 80,
