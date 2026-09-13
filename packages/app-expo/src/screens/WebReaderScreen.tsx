@@ -34,6 +34,7 @@ import { captureRef } from "react-native-view-shot";
 import { WebView } from "react-native-webview";
 import type { WebViewNavigation } from "react-native-webview";
 
+import ReadingSvg from "../../assets/illustrations/reading.svg";
 import { DefinitionSheet } from "@/components/reader/DefinitionSheet";
 import {
   BookmarkFilledIcon,
@@ -43,6 +44,10 @@ import {
   ChevronRightIcon,
   ChevronUpIcon,
   GlobeIcon,
+  LibraryIcon,
+  ScrollTextIcon,
+  SearchIcon,
+  BookOpenIcon,
   RefreshCwIcon,
   ScanTextIcon,
   Trash2Icon,
@@ -412,32 +417,32 @@ export function WebReaderScreen() {
           contentContainerStyle={[s.homeContent, { paddingBottom: tabBarHeight + spacing.xl }]}
           keyboardShouldPersistTaps="handled"
         >
-          {saved.length === 0 ? (
-            <Text style={s.homeLead}>
+          <View style={s.hero}>
+            <ReadingSvg width={132} height={132} color={colors.mutedForeground} />
+            <Text style={s.heroTitle}>{t("web.heroTitle", "What would you like to read?")}</Text>
+            <Text style={s.heroSubtitle}>
               {t(
-                "web.lead",
-                "Open a page and read it here. Selecting text gives you the dictionary, the voice and Sensei, exactly as in a book. Saved pages appear here.",
+                "web.heroSubtitle",
+                "A page opened here gets the dictionary, the voice and Sensei, exactly as a book does.",
               )}
             </Text>
-          ) : null}
+          </View>
 
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>{t("web.startHere", "Start here")}</Text>
-            <View style={s.chips}>
-              {STARTER_SITES.map((site) => {
-                const tone = colorForUrl(site.url);
-                return (
-                  <TouchableOpacity
-                    key={site.id}
-                    style={[s.chip, { borderColor: tone.accent, backgroundColor: tone.tint }]}
-                    onPress={() => open(site.url)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[s.chipText, { color: tone.accent }]}>{site.title}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+          <View style={s.grid}>
+            {STARTER_SITES.map((site) => (
+              <TouchableOpacity
+                key={site.id}
+                style={s.startCard}
+                onPress={() => open(site.url)}
+                activeOpacity={0.8}
+              >
+                {starterIcon(site.icon, colors.mutedForeground)}
+                <Text style={s.startTitle}>{site.title}</Text>
+                <Text style={s.startNote} numberOfLines={2}>
+                  {site.note}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           {saved.length > 0 ? (
@@ -585,6 +590,16 @@ function Section({
   );
 }
 
+/** The starter cards wear an outline icon, the way the AI page's cards do. */
+function starterIcon(kind: string, color: string) {
+  const size = 22;
+  if (kind === "library") return <LibraryIcon size={size} color={color} />;
+  if (kind === "news") return <ScrollTextIcon size={size} color={color} />;
+  if (kind === "book") return <BookOpenIcon size={size} color={color} />;
+  if (kind === "search") return <SearchIcon size={size} color={color} />;
+  return <GlobeIcon size={size} color={color} />;
+}
+
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: {
@@ -674,6 +689,48 @@ const makeStyles = (colors: ThemeColors) =>
     tileHost: {
       fontSize: fs.xs,
       marginTop: 2,
+    },
+    // Mirrors the AI tab's empty state: a centred drawing, a question, a line
+    // of explanation, then a grid of ways in.
+    hero: {
+      alignItems: "center",
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.xs,
+      gap: spacing.sm,
+    },
+    heroTitle: {
+      color: colors.foreground,
+      fontSize: fs.xl,
+      fontWeight: fw.bold,
+      textAlign: "center",
+      marginTop: spacing.sm,
+    },
+    heroSubtitle: {
+      color: colors.mutedForeground,
+      fontSize: fs.sm,
+      textAlign: "center",
+      lineHeight: 20,
+      paddingHorizontal: spacing.md,
+    },
+    startCard: {
+      flexGrow: 1,
+      flexBasis: "46%",
+      minHeight: 112,
+      borderRadius: radius.xl,
+      backgroundColor: colors.muted,
+      padding: spacing.md,
+      gap: spacing.xs,
+    },
+    startTitle: {
+      color: colors.foreground,
+      fontSize: fs.sm,
+      fontWeight: fw.medium,
+      marginTop: spacing.xs,
+    },
+    startNote: {
+      color: colors.mutedForeground,
+      fontSize: fs.xs,
+      lineHeight: 16,
     },
     // The count keeps the section informative while it is folded away.
     sectionCount: {
