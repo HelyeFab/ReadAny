@@ -1002,7 +1002,13 @@ export function LibraryScreen() {
           onPress: () => void removeGroup(group.id),
         },
         { text: t("common.cancel", "取消"), style: "cancel" },
-      ]);
+      ],
+      // Android's alert shows at most three buttons and silently drops the
+      // rest, so the cancel above never rendered here and the dialog had no
+      // visible way out. Without this it also refused the back button and a
+      // tap outside, which left it genuinely inescapable.
+      { cancelable: true },
+    );
     },
     [openGroupNameModal, removeGroup, t],
   );
