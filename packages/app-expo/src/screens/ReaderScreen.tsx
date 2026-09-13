@@ -1889,7 +1889,20 @@ export function ReaderScreen({ route, navigation }: Props) {
               trackColor={withOpacity(colors.foreground, 0.12)}
               textColor={withOpacity(colors.foreground, 0.6)}
             />
-            <View style={s.bottomDockRow}>
+            {/*
+              The dock scrolls sideways. Five labelled buttons across a phone
+              left each about a fifth of the width, which broke "Bookmarks"
+              across two lines mid-word. Each button now takes the room its
+              own label needs and the row slides when they no longer fit, so
+              a sixth action costs a swipe rather than squeezing the other
+              five. While they do all fit, flexGrow keeps them spread across
+              the full width exactly as before.
+            */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.bottomDockRow}
+            >
               <TouchableOpacity
                 style={s.bottomDockBtn}
                 onPress={() => {
@@ -1898,7 +1911,9 @@ export function ReaderScreen({ route, navigation }: Props) {
                 }}
               >
                 <ListIcon size={bottomDockIconSize} color={colors.foreground} />
-                <Text style={s.bottomDockLabel}>{t("reader.toc", "目录")}</Text>
+                <Text style={s.bottomDockLabel} numberOfLines={1}>
+                  {t("reader.toc", "目录")}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.bottomDockBtn, isBookmarked && s.bottomDockBtnActive]}
@@ -1909,7 +1924,10 @@ export function ReaderScreen({ route, navigation }: Props) {
                 ) : (
                   <BookmarkIcon size={bottomDockIconSize} color={colors.foreground} />
                 )}
-                <Text style={[s.bottomDockLabel, isBookmarked && s.bottomDockLabelActive]}>
+                <Text
+                  style={[s.bottomDockLabel, isBookmarked && s.bottomDockLabelActive]}
+                  numberOfLines={1}
+                >
                   {t("reader.bookmarks", "书签")}
                 </Text>
               </TouchableOpacity>
@@ -1918,7 +1936,9 @@ export function ReaderScreen({ route, navigation }: Props) {
                 onPress={() => navigation.navigate("FullScreenNotes", { bookId })}
               >
                 <NotebookPenIcon size={bottomDockIconSize} color={colors.foreground} />
-                <Text style={s.bottomDockLabel}>{t("notes.title", "笔记")}</Text>
+                <Text style={s.bottomDockLabel} numberOfLines={1}>
+                  {t("notes.title", "笔记")}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={s.bottomDockBtn}
@@ -1934,13 +1954,17 @@ export function ReaderScreen({ route, navigation }: Props) {
                 }}
               >
                 <SearchIcon size={bottomDockIconSize} color={colors.foreground} />
-                <Text style={s.bottomDockLabel}>{t("reader.search", "搜索")}</Text>
+                <Text style={s.bottomDockLabel} numberOfLines={1}>
+                  {t("reader.search", "搜索")}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.bottomDockBtn} onPress={() => setShowSettings(true)}>
                 <SettingsIcon size={bottomDockIconSize} color={colors.foreground} />
-                <Text style={s.bottomDockLabel}>{t("common.settings", "设置")}</Text>
+                <Text style={s.bottomDockLabel} numberOfLines={1}>
+                  {t("common.settings", "设置")}
+                </Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </View>
         </Animated.View>
       )}
