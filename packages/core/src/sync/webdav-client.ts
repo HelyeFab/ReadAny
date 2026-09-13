@@ -19,6 +19,48 @@ function stripControlChars(value: string): string {
     .join("");
 }
 
+/**
+ * What the server said, in a form that fits in an error message.
+ *
+ * A bare status number sends you hunting: a 403 from Nextcloud (XML naming
+ * the permission) and a 403 from an edge proxy ("error code: 1010") mean
+ * completely different fixes, and the number alone cannot tell them apart.
+ * The body usually says which in its first line.
+ */
+async function describeFailure(resp: {
+  status: number;
+  statusText?: string;
+  text?: () => Promise<string>;
+}): Promise<string> {
+  const head = `${resp.status}${resp.statusText ? ` ${resp.statusText}` : ""}`;
+  if (!resp.text) return head;
+  try {
+    const body = (await resp.text()).replace(/\s+/g, " ").trim();
+    if (!body) return head;
+    const sabre = body.match(/<s:message>(.*?)<\/s:message>/);
+    const detail = sabre ? sabre[1] : body;
+    return `${head} — ${detail.slice(0, 160)}`;
+  } catch {
+    return head;
+  }
+}
+
+/**
+ * Headers every request carries.
+ *
+ * React Native's XHR sends an extremely sparse request — an okhttp
+ * User-Agent, no Accept — and edge protections (Cloudflare's Browser
+ * Integrity Check among them) read that shape as a bot and answer 403
+ * before the server ever sees the request. Every serious WebDAV client
+ * identifies itself the same way ours now does: a Mozilla-prefixed
+ * User-Agent naming the product, and an explicit Accept. It is also simply
+ * more polite — a server operator reading logs can tell who called.
+ */
+const DEFAULT_REQUEST_HEADERS: Record<string, string> = {
+  "User-Agent": "Mozilla/5.0 (compatible; ReadAny WebDAV client)",
+  Accept: "*/*",
+};
+
 export function sanitizeWebDavUrl(url: string): string {
   return stripControlChars(url).trim().replace(/\/+$/, "");
 }
@@ -314,6 +356,7 @@ export class WebDavClient {
     const platform = getPlatformService();
     const url = this.buildUrl(path);
     const headers: Record<string, string> = {
+      ...DEFAULT_REQUEST_HEADERS,
       Authorization: this.authHeader,
       ...options.headers,
     };
@@ -434,7 +477,7 @@ export class WebDavClient {
       console.warn(`[WebDAV] MKCOL ${path} returned ${status} but directory exists; continuing`);
       return;
     }
-    throw new Error(`WebDAV MKCOL failed for ${path}: ${status} ${resp.statusText || ""}`);
+    throw new Error(`WebDAV MKCOL failed for ${path}: ${await describeFailure(resp)}`);
   }
 
   /** Ensure a full directory path exists (creates each segment) */
@@ -473,7 +516,7 @@ export class WebDavClient {
       contentType,
     });
     if (!resp.ok) {
-      throw new Error(`WebDAV PUT failed for ${path}: ${resp.status} ${resp.statusText || ""}`);
+      throw new Error(`WebDAV PUT failed for ${path}: ${await describeFailure(resp)}`);
     }
   }
 
