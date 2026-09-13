@@ -914,6 +914,37 @@ export function LibraryScreen() {
   const isEmpty = gridItems.length === 0;
   const hasBooks = books.length > 0;
 
+  /**
+   * What sits above the shelf: the drawing, a line of welcome, and the book
+   * you were last in the middle of.
+   *
+   * It rides inside the list rather than above it so that it scrolls away.
+   * A greeting is worth the space the first time you look at the screen and
+   * worth none of it once you are hunting for a particular cover, and pinning
+   * it would charge you that space on every scroll.
+   *
+   * It stands down entirely while searching or selecting, when the screen is
+   * being used as a tool rather than entered as a room.
+   */
+  const shelfHeader = useMemo(() => {
+    if (selectionMode || filter.search) return null;
+    return (
+      <View>
+        <View style={s.hero}>
+          <Image source={cafeIllustration()} style={s.heroArt} resizeMode="contain" />
+          <Text style={s.heroTitle}>{t("library.heroTitle", "What will you read next?")}</Text>
+          <Text style={s.heroSubtitle}>
+            {t("library.heroSubtitle", {
+              count: books.length,
+              defaultValue: "{{count}} books on your shelf",
+            })}
+          </Text>
+        </View>
+        {continueBook ? <ContinueReadingCard book={continueBook} onOpen={handleOpen} /> : null}
+      </View>
+    );
+  }, [selectionMode, filter.search, s, colors, t, books.length, continueBook, handleOpen]);
+
   const toggleBookSelection = useCallback((book: Book) => {
     setSelectedBookIds((prev) => {
       const next = new Set(prev);
@@ -1411,14 +1442,6 @@ export function LibraryScreen() {
 
       {/* Content */}
       <View style={s.content}>
-        {/*
-          A café scene behind the shelf. Held at low opacity and ignored by
-          touch: it has to read as paper the books sit on, not as something
-          competing with the covers or swallowing taps meant for them.
-        */}
-        <View style={s.backdrop} pointerEvents="none">
-          <Image source={cafeIllustration()} style={s.backdropImage} resizeMode="contain" />
-        </View>
         <View style={s.contentInner}>
           {!isLoaded && (
             <View style={s.loadingWrap}>
@@ -1462,12 +1485,10 @@ export function LibraryScreen() {
               {t("library.resultsCount", { count: gridItems.length })}
             </Text>
           )}
-          {isLoaded && !isEmpty && !selectionMode && continueBook && (
-            <ContinueReadingCard book={continueBook} onOpen={handleOpen} />
-          )}
           {isLoaded && !isEmpty && (
             <FlatList
               data={gridItems}
+              ListHeaderComponent={shelfHeader}
               renderItem={isListView ? renderListItem : renderGridItem}
               extraData={{ vectorProgress, vectorizingBookId }}
               keyExtractor={(item) =>
@@ -1750,16 +1771,6 @@ const makeStyles = (
     sortText: { fontSize: fontSize.xs, color: colors.foreground },
     sortTextActive: { fontWeight: fontWeight.medium },
     content: { flex: 1, paddingHorizontal: layout.horizontalPadding, alignItems: "center" },
-    backdrop: {
-      ...StyleSheet.absoluteFillObject,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    backdropImage: {
-      width: "86%",
-      height: "44%",
-      opacity: 0.14,
-    },
     contentInner: { flex: 1, width: "100%", maxWidth: layout.contentWidth },
     loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
     importBanner: {
@@ -1842,6 +1853,30 @@ const makeStyles = (
     resultsCount: { fontSize: fontSize.xs, color: colors.mutedForeground, marginBottom: 8 },
     gridRow: { gap: layout.gridGap, justifyContent: "flex-start" },
     gridContent: { paddingBottom: 24, paddingTop: 4, width: "100%" },
+    heroArt: {
+      width: "88%",
+      height: 168,
+    },
+    hero: {
+      alignItems: "center",
+      paddingTop: 12,
+      paddingBottom: 4,
+      gap: 8,
+    },
+    heroTitle: {
+      color: colors.foreground,
+      fontSize: fontSize.xl,
+      fontWeight: fontWeight.bold,
+      textAlign: "center",
+      marginTop: 8,
+    },
+    heroSubtitle: {
+      color: colors.mutedForeground,
+      fontSize: fontSize.sm,
+      textAlign: "center",
+      lineHeight: 20,
+      marginBottom: 12,
+    },
     gridItem: { width: layout.gridItemWidth, marginBottom: layout.gridGap },
     groupModalKeyboardRoot: { flex: 1 },
     groupModalOverlay: {

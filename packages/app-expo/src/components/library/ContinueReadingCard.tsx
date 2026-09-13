@@ -1,4 +1,3 @@
-import { BookOpenIcon, PlayIcon } from "@/components/ui/Icon";
 /**
  * ContinueReadingCard — the one book the shelf already knows you want.
  *
@@ -6,6 +5,12 @@ import { BookOpenIcon, PlayIcon } from "@/components/ui/Icon";
  * nothing to pick, because you are in the middle of a book and simply want the
  * page you left. This sits above the shelf and hands that page straight back,
  * so the common case costs one tap instead of a hunt through the covers.
+ *
+ * It is drawn as a book rather than as a row in a list: the cover at real
+ * proportions, a ribbon marking the place, and the title set in the reading
+ * serif. The whole card is the target, so there is no button competing with
+ * the cover for the tap — on a card whose only action is "open this", a
+ * separate play button is a second thing to aim at for no gain.
  */
 import { COVER_PLACEHOLDER } from "@/lib/library/cover-placeholder";
 import {
@@ -23,8 +28,13 @@ import { memo, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const COVER_WIDTH = 46;
+const COVER_WIDTH = 72;
 const COVER_HEIGHT = Math.round(COVER_WIDTH * (41 / 28));
+
+/** How far the ribbon hangs above the cover, and how deep its notch cuts. */
+const RIBBON_WIDTH = 14;
+const RIBBON_OVERHANG = 5;
+const RIBBON_NOTCH = 6;
 
 interface ContinueReadingCardProps {
   book: Book;
@@ -72,6 +82,19 @@ export const ContinueReadingCard = memo(function ContinueReadingCard({
   const progressPct = getBookProgressPercent(book.progress);
   const started = progressPct > 0;
 
+  // A page number is friendlier than a percentage, but only when the book has
+  // actually been paginated. Most books carry no page count at all, so this
+  // line appears when it can be true and is simply absent when it cannot.
+  const totalPages = book.meta.totalPages;
+  const pageLine =
+    totalPages && totalPages > 0
+      ? t("library.continuePage", {
+          page: Math.max(1, Math.round((progressPct / 100) * totalPages)),
+          total: totalPages,
+          defaultValue: "page {{page}} of {{total}}",
+        })
+      : null;
+
   return (
     <TouchableOpacity
       style={s.card}
@@ -84,43 +107,46 @@ export const ContinueReadingCard = memo(function ContinueReadingCard({
         defaultValue: "Continue reading {{title}}, {{percent}} percent through",
       })}
     >
-      <View style={s.coverWrap}>
-        {resolvedCoverUrl ? (
-          <Image source={{ uri: resolvedCoverUrl }} style={s.coverImage} resizeMode="cover" />
-        ) : (
-          <View style={s.coverFallback}>
-            <Image
-              source={COVER_PLACEHOLDER}
-              style={s.coverFallbackArt}
-              resizeMode="contain"
-              tintColor={colors.stone400}
-            />
-          </View>
-        )}
+      <View style={s.coverSlot}>
+        <View style={s.coverWrap}>
+          {resolvedCoverUrl ? (
+            <Image source={{ uri: resolvedCoverUrl }} style={s.coverImage} resizeMode="cover" />
+          ) : (
+            <View style={s.coverFallback}>
+              <Image
+                source={COVER_PLACEHOLDER}
+                style={s.coverFallbackArt}
+                resizeMode="contain"
+                tintColor={colors.stone400}
+              />
+            </View>
+          )}
+        </View>
+        {/* Sits outside the clipped cover so it can overhang the top edge. */}
+        <View style={s.ribbon} pointerEvents="none">
+          <View style={s.ribbonNotch} />
+        </View>
       </View>
 
       <View style={s.body}>
-        <View style={s.eyebrowRow}>
-          <BookOpenIcon size={11} color={colors.mutedForeground} />
-          <Text style={s.eyebrow} numberOfLines={1}>
-            {started
-              ? t("library.continueReading", "Continue reading")
-              : t("library.startReading", "Pick up where you left off")}
-          </Text>
-        </View>
-        <Text style={s.title} numberOfLines={1}>
+        <Text style={s.eyebrow} numberOfLines={1}>
+          {started
+            ? t("library.continueReading", "Continue reading")
+            : t("library.startReading", "Pick up where you left off")}
+        </Text>
+        <Text style={s.title} numberOfLines={2}>
           {book.meta.title}
         </Text>
+
+        <View style={s.rule} />
+
         <View style={s.progressRow}>
+          {pageLine ? <Text style={s.pageText}>{pageLine}</Text> : null}
           <View style={s.progressTrack}>
             <View style={[s.progressFill, { width: `${Math.max(progressPct, 1)}%` }]} />
           </View>
           <Text style={s.progressText}>{progressPct}%</Text>
         </View>
-      </View>
-
-      <View style={s.playButton}>
-        <PlayIcon size={15} color={colors.primaryForeground} />
       </View>
     </TouchableOpacity>
   );
@@ -131,8 +157,8 @@ const makeStyles = (colors: ThemeColors) =>
     card: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
-      padding: 10,
+      gap: 14,
+      padding: 14,
       marginBottom: 12,
       borderRadius: radius.xl,
       backgroundColor: colors.card,
@@ -143,6 +169,12 @@ const makeStyles = (colors: ThemeColors) =>
       shadowOpacity: 0.08,
       shadowRadius: 6,
       elevation: 2,
+    },
+    // Holds the cover and the ribbon; the ribbon overhangs, so this must not clip.
+    coverSlot: {
+      width: COVER_WIDTH,
+      height: COVER_HEIGHT,
+      marginTop: RIBBON_OVERHANG,
     },
     coverWrap: {
       width: COVER_WIDTH,
@@ -159,20 +191,56 @@ const makeStyles = (colors: ThemeColors) =>
       backgroundColor: colors.stone100,
     },
     coverFallbackArt: { width: "78%", height: "78%", opacity: 0.8 },
-    body: { flex: 1, minWidth: 0, gap: 3 },
-    eyebrowRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+    ribbon: {
+      position: "absolute",
+      top: -RIBBON_OVERHANG,
+      right: 12,
+      width: RIBBON_WIDTH,
+      height: Math.round(COVER_HEIGHT * 0.42),
+      backgroundColor: colors.primary,
+      borderTopLeftRadius: 2,
+      borderTopRightRadius: 2,
+    },
+    // A triangle in the card's own colour, cutting the ribbon's tail into a V.
+    ribbonNotch: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      width: 0,
+      height: 0,
+      borderLeftWidth: RIBBON_WIDTH / 2,
+      borderRightWidth: RIBBON_WIDTH / 2,
+      borderBottomWidth: RIBBON_NOTCH,
+      borderLeftColor: "transparent",
+      borderRightColor: "transparent",
+      borderBottomColor: colors.card,
+    },
+    body: { flex: 1, minWidth: 0, gap: 4 },
     eyebrow: {
-      flexShrink: 1,
-      fontSize: fontSize.xs,
+      fontSize: fontSize.xs - 1,
       color: colors.mutedForeground,
-      letterSpacing: 0.3,
+      letterSpacing: 1.1,
+      textTransform: "uppercase",
     },
     title: {
-      fontSize: fontSize.base,
+      fontFamily: "serif",
+      fontSize: fontSize.md,
       fontWeight: fontWeight.semibold,
       color: colors.foreground,
+      lineHeight: 23,
     },
-    progressRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
+    rule: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+      marginTop: 4,
+      marginBottom: 2,
+    },
+    progressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    pageText: {
+      fontSize: fontSize.xs,
+      color: colors.mutedForeground,
+      fontVariant: ["tabular-nums"],
+    },
     progressTrack: {
       flex: 1,
       height: 3,
@@ -185,13 +253,5 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.xs,
       color: colors.mutedForeground,
       fontVariant: ["tabular-nums"],
-    },
-    playButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.primary,
     },
   });
