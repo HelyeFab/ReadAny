@@ -22,6 +22,14 @@
      */
     :root {
       --overlayer-highlight-opacity: 1;
+      /*
+       * A highlight drawn ON TOP of the text mixes with it: black under a half
+       * opaque colour comes out brown, which is what "the text goes brown"
+       * was. Multiply is what a highlighter actually does — white paper times
+       * the colour is the colour, black text times the colour is still black —
+       * so the paper takes the ink and the letters stay as dark as they were.
+       */
+      --overlayer-highlight-blend-mode: multiply;
     }
 
     * {
