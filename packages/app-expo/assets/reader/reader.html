@@ -3181,6 +3181,26 @@ html, body {
 
       doc.addEventListener('touchmove', (e) => {
         if (!pullState || e.touches.length !== 1) return;
+
+        // ⚠️ Stand down once a selection has taken the gesture.
+        //
+        // This used to happen by itself: the check at touchstart bailed when a
+        // non-collapsed selection existed, and the WebView's own selection
+        // always did. Paginated mode no longer has one — selection is ours and
+        // user-select is none — so nothing was left to keep this out, and a
+        // downward sweep to select near the top of a page pulled the page down
+        // underneath it. That is the shake.
+        //
+        // Checked on move rather than at touchstart because a selection arms
+        // 350ms in, by which time this gesture has already started.
+        if (doc.__readany_selection_interaction) {
+          if (!pullState.cancelled) {
+            pullState.cancelled = true;
+            resetPullBookmarkUI(false);
+          }
+          return;
+        }
+
         const touch = e.touches[0];
         const deltaX = touch.clientX - pullState.startX;
         const deltaY = touch.clientY - pullState.startY;
