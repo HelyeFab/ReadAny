@@ -181,6 +181,7 @@
 
   <!-- __READANY_JUSTIFIED_TEXT_INSERT_POINT_6c18f4d2__ -->
   <!-- __READANY_BIONIC_INSERT_POINT_4a91c7e5__ -->
+  <!-- __READANY_PEN_SELECTION_INSERT_POINT_8b3e6d14__ -->
 
   <script>
     // ═══════════════════════════════════════════════════════════════
@@ -1584,6 +1585,8 @@
             pdfDocIndexMap.set(doc, index);
             applyPdfPageThemeFilter(doc, index);
           }
+          syncOwnSelectionMode(doc);
+          attachPenSelection(doc);
           attachTapListener(doc);
           attachPullBookmarkListener(doc);
           attachSelectionListener(doc);
@@ -1865,6 +1868,11 @@
       const renderer = view.renderer;
       if (settings.justifyBodyText !== undefined) {
         currentJustifyBodyText = settings.justifyBodyText !== false;
+      }
+      if (settings.viewMode !== undefined) {
+        // Ownership of selection follows the mode: paginated takes it from the
+        // WebView, scrolled leaves it alone because there it works.
+        syncOwnSelectionModeForAllDocs();
       }
       if (settings.bionicReading !== undefined) {
         var nextBionic = settings.bionicReading === true;
@@ -2581,6 +2589,17 @@ html, body {
       const { bg, fg, primary } = currentThemeColors;
       style.textContent = `
         * { -webkit-touch-callout: none !important; -webkit-user-select: text !important; user-select: text !important; }
+        /*
+         * Paginated mode takes text selection away from the WebView. Its own
+         * hit-testing resolves a touch against the whole column strip rather
+         * than the page on screen, which is how a selection reached two pages
+         * away. Attribute rather than a rebuilt stylesheet so switching view
+         * mode takes effect without reloading the document.
+         */
+        html[data-readany-own-selection="1"] * {
+          -webkit-user-select: none !important;
+          user-select: none !important;
+        }
         html, body { background-color: ${bg} !important; color: ${fg} !important; }
         img, picture, svg, image, canvas {
           -webkit-user-drag: none !important;
@@ -3080,6 +3099,174 @@ html, body {
       } catch (e) {
         resnapToPage();
       }
+    }
+
+    /**
+     * Selection in paginated mode, driven by us instead of by the WebView.
+     *
+     * ⭐ THE PROPERTY THAT MATTERS: both ends of every range built here come
+     * from a coordinate the pen actually touched, and a touched coordinate is
+     * on the visible page by definition. A selection therefore cannot reach
+     * another page — not because it is checked and rejected, but because there
+     * is no step at which an untouched coordinate could enter. The WebView's
+     * own selection had no such property: its trace showed a range growing to
+     * 835 characters with nothing on the screen, one end at a column two pages
+     * over that no one had touched.
+     *
+     * Refusing its answers afterwards did not work; it rebuilt the selection
+     * faster than it could be declined. So in paginated mode it is not asked.
+     */
+    function syncOwnSelectionMode(doc) {
+      if (!doc || !doc.documentElement) return;
+      try {
+        if (currentViewMode !== 'scroll') {
+          doc.documentElement.setAttribute('data-readany-own-selection', '1');
+        } else {
+          doc.documentElement.removeAttribute('data-readany-own-selection');
+        }
+      } catch (e) {}
+    }
+
+    function syncOwnSelectionModeForAllDocs() {
+      for (const content of getRendererContents()) {
+        if (content && content.doc) syncOwnSelectionMode(content.doc);
+      }
+    }
+
+    const PEN_PREVIEW_KEY = 'readany-pen-selection-preview';
+
+    function attachPenSelection(doc) {
+      if (doc.__readany_pen_selection) return;
+      doc.__readany_pen_selection = true;
+
+      const PS = globalThis.ReadAnyPenSelection;
+      if (!PS) return;
+
+      let gesture = PS.idleGesture();
+      let holdTimer = null;
+      let previewRange = null;
+
+      function contentEntry() {
+        try {
+          return getRendererContents().find((c) => c.doc === doc) || null;
+        } catch (e) { return null; }
+      }
+
+      function clearPreview() {
+        const entry = contentEntry();
+        if (entry && entry.overlayer) {
+          try { entry.overlayer.remove(PEN_PREVIEW_KEY); } catch (e) {}
+        }
+        previewRange = null;
+      }
+
+      function paintPreview(range) {
+        const entry = contentEntry();
+        if (!entry || !entry.overlayer) return;
+        try { entry.overlayer.remove(PEN_PREVIEW_KEY); } catch (e) {}
+        try {
+          entry.overlayer.add(PEN_PREVIEW_KEY, range, Overlayer.highlight, {
+            color: 'rgba(96, 165, 250, 0.45)',
+          });
+        } catch (e) {}
+      }
+
+      /** Grow a range out to whole words, so a sweep never cuts one in half. */
+      function snapToWords(range) {
+        try {
+          const sc = range.startContainer;
+          if (sc.nodeType === 3) {
+            const t = sc.nodeValue || '';
+            let so = range.startOffset;
+            while (so > 0 && /\S/.test(t.charAt(so - 1))) so--;
+            range.setStart(sc, so);
+          }
+          const ec = range.endContainer;
+          if (ec.nodeType === 3) {
+            const t = ec.nodeValue || '';
+            let eo = range.endOffset;
+            while (eo < t.length && /\S/.test(t.charAt(eo))) eo++;
+            range.setEnd(ec, eo);
+          }
+        } catch (e) {}
+      }
+
+      function rangeBetween(a, b) {
+        if (typeof doc.caretRangeFromPoint !== 'function') return null;
+        const ca = doc.caretRangeFromPoint(a.x, a.y);
+        const cb = doc.caretRangeFromPoint(b.x, b.y);
+        if (!ca || !cb) return null;
+        const range = doc.createRange();
+        try {
+          const forward = ca.compareBoundaryPoints(Range.START_TO_START, cb) <= 0;
+          const first = forward ? ca : cb;
+          const second = forward ? cb : ca;
+          range.setStart(first.startContainer, first.startOffset);
+          range.setEnd(second.startContainer, second.startOffset);
+        } catch (e) { return null; }
+        if (range.collapsed) return null;
+        snapToWords(range);
+        return range.collapsed ? null : range;
+      }
+
+      function endGesture() {
+        if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+        gesture = PS.onPointerUp();
+        doc.__readany_selection_interaction = false;
+      }
+
+      doc.addEventListener('pointerdown', (e) => {
+        if (currentViewMode === 'scroll') return;
+        clearPreview();
+        gesture = PS.onPointerDown({ x: e.clientX, y: e.clientY }, Date.now());
+        if (holdTimer) clearTimeout(holdTimer);
+        holdTimer = setTimeout(() => {
+          holdTimer = null;
+          gesture = PS.onHoldElapsed(gesture);
+          if (PS.isSelecting(gesture)) {
+            // Own the gesture: the tap handler and the bookmark pull both
+            // stand off while this flag is set.
+            doc.__readany_selection_interaction = true;
+            const ends = PS.selectionEndpoints(gesture);
+            const range = ends ? rangeBetween(ends[0], ends[1]) : null;
+            if (range) { previewRange = range; paintPreview(range); }
+          }
+        }, PS.SELECTION_HOLD_MS);
+      }, { passive: true, capture: true });
+
+      doc.addEventListener('pointermove', (e) => {
+        if (currentViewMode === 'scroll') return;
+        gesture = PS.onPointerMove(gesture, { x: e.clientX, y: e.clientY });
+        if (!PS.isSelecting(gesture)) return;
+        const ends = PS.selectionEndpoints(gesture);
+        const range = ends ? rangeBetween(ends[0], ends[1]) : null;
+        if (!range) return;
+        // Repaint only when the range actually changed — every repaint is a
+        // refresh on e-ink.
+        if (previewRange && range.toString() === previewRange.toString()) return;
+        previewRange = range;
+        paintPreview(range);
+      }, { passive: true, capture: true });
+
+      const finish = () => {
+        if (currentViewMode === 'scroll') { endGesture(); return; }
+        const wasSelecting = PS.isSelecting(gesture);
+        endGesture();
+        if (!wasSelecting) return;
+        if (!previewRange) { postToRN('selectionCleared', {}); return; }
+        // The popover and everything downstream is unchanged: it is handed the
+        // same shape the WebView's selection used to produce.
+        doc.__readany_selection_interaction = true;
+        emitSelection(doc, { toString: () => previewRange.toString() }, previewRange);
+      };
+
+      doc.addEventListener('pointerup', finish, { passive: true, capture: true });
+      doc.addEventListener('pointercancel', () => {
+        // ⚠️ The WebView cancels the pointer freely on this device — that was
+        // the trigger for the old runaway. Here it simply ends the gesture with
+        // whatever was legitimately swept so far.
+        finish();
+      }, { passive: true, capture: true });
     }
 
     function emitSelection(doc, sel, range) {
