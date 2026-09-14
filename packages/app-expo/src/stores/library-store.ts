@@ -52,7 +52,8 @@ try {
   console.error("[text-encoding] Polyfill BROKEN: gb18030 not supported!", e);
 }
 
-export type LibraryViewMode = "grid" | "list";
+/** How the library draws itself. "shelf" is covers only, folders as a filter. */
+export type LibraryViewMode = "grid" | "list" | "shelf";
 export interface RemoveBookOptions {
   preserveData?: boolean;
 }

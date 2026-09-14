@@ -173,7 +173,12 @@
     "gridView": "Grid view",
     "menu": "Library options",
     "folderView": "Folders",
-    "layout": "Layout"
+    "layout": "Layout",
+    "shelfView": "Shelf view",
+    "shelfScopeTitle": "What to show on the shelf",
+    "shelfEverything": "All books",
+    "shelfFolderCount": "{{count}} folders",
+    "shelfCount": "{{count}} books"
   },
   "home": {
     "library": "Library",

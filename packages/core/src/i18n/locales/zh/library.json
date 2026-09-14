@@ -173,7 +173,12 @@
     "gridView": "网格视图",
     "menu": "书库选项",
     "folderView": "文件夹",
-    "layout": "布局"
+    "layout": "布局",
+    "shelfView": "书架视图",
+    "shelfScopeTitle": "书架显示哪些书",
+    "shelfEverything": "全部书籍",
+    "shelfFolderCount": "{{count}} 个文件夹",
+    "shelfCount": "{{count}} 本"
   },
   "home": {
     "library": "书库",
