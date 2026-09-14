@@ -99,6 +99,16 @@ export class MobileSyncAdapter implements ISyncAdapter {
     return file.bytes();
   }
 
+  async readFileRange(filePath: string, offset: number, length: number): Promise<Uint8Array> {
+    const handle = new File(filePath).open();
+    try {
+      handle.offset = offset;
+      return handle.readBytes(length);
+    } finally {
+      handle.close();
+    }
+  }
+
   async getFileSize(filePath: string): Promise<number | null> {
     try {
       const file = new File(filePath);

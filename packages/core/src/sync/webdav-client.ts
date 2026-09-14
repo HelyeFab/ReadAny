@@ -9,6 +9,13 @@ import { Buffer } from "buffer";
 import i18n from "../i18n";
 import { getPlatformService } from "../services/platform";
 import type { DavResource } from "./sync-types";
+import {
+  DEFAULT_CHUNK_SIZE,
+  chunkName,
+  deriveUploadsRoot,
+  newUploadId,
+  planChunks,
+} from "./webdav-chunked-upload";
 
 function stripControlChars(value: string): string {
   return Array.from(value)
@@ -544,6 +551,111 @@ export class WebDavClient {
     });
     this.hadAuthSuccess = true;
     console.log(`[WebDAV] PUT ${logPath} completed in ${Date.now() - startTime}ms`);
+  }
+
+  /** Absolute-URL request, for the upload endpoint that sits beside the files root. */
+  private async absoluteRequest(
+    method: string,
+    url: string,
+    options: {
+      body?: Uint8Array;
+      headers?: Record<string, string>;
+      timeoutMs?: number;
+    } = {},
+  ): Promise<Response> {
+    const platform = getPlatformService();
+    return await platform.fetch(url, {
+      method,
+      headers: {
+        ...DEFAULT_REQUEST_HEADERS,
+        Authorization: this.authHeader,
+        ...options.headers,
+      },
+      body: options.body as BodyInit | undefined,
+      allowInsecure: this.allowInsecure,
+      timeoutMs: options.timeoutMs ?? TRANSFER_TIMEOUT_MS,
+    });
+  }
+
+  /** Whether this server is shaped like one that supports chunked uploads. */
+  supportsChunkedUpload(): boolean {
+    return deriveUploadsRoot(this.baseUrl) !== null;
+  }
+
+  /**
+   * Upload a large file as a sequence of small requests.
+   *
+   * Chunks are read from disk one at a time, so peak memory is one chunk and
+   * not one book. On any failure the half-built session is deleted, because a
+   * left-behind upload folder counts against quota and will never assemble.
+   */
+  async putFileChunked(
+    path: string,
+    totalSize: number,
+    readRange: (offset: number, length: number) => Promise<Uint8Array>,
+    onProgress?: (loaded: number, total: number) => void,
+  ): Promise<void> {
+    const uploadsRoot = deriveUploadsRoot(this.baseUrl);
+    if (!uploadsRoot) {
+      throw new Error("Chunked upload needs a Nextcloud-style /remote.php/dav/files/<user> URL");
+    }
+
+    const destinationUrl = this.buildUrl(path);
+    const sessionUrl = `${uploadsRoot}/${newUploadId()}`;
+    const chunks = planChunks(totalSize, DEFAULT_CHUNK_SIZE);
+    const logPath = path.startsWith("/") ? path : `/${path}`;
+    console.log(
+      `[WebDAV] chunked PUT ${logPath}: ${chunks.length} chunk(s) of up to ${DEFAULT_CHUNK_SIZE} bytes`,
+    );
+    const startTime = Date.now();
+
+    const mkcol = await this.absoluteRequest("MKCOL", sessionUrl, {
+      headers: { Destination: destinationUrl },
+    });
+    if (!mkcol.ok && mkcol.status !== 405) {
+      throw new Error(`Chunked upload could not start: ${await describeFailure(mkcol)}`);
+    }
+
+    try {
+      let loaded = 0;
+      for (const chunk of chunks) {
+        const body = await readRange(chunk.offset, chunk.length);
+        const resp = await this.absoluteRequest("PUT", `${sessionUrl}/${chunkName(chunk.index)}`, {
+          body,
+          headers: { "Content-Type": "application/octet-stream" },
+        });
+        if (!resp.ok) {
+          throw new Error(
+            `Chunk ${chunk.index + 1}/${chunks.length} failed: ${await describeFailure(resp)}`,
+          );
+        }
+        loaded += chunk.length;
+        onProgress?.(loaded, totalSize);
+      }
+
+      const move = await this.absoluteRequest("MOVE", `${sessionUrl}/.file`, {
+        headers: {
+          Destination: destinationUrl,
+          "OC-Total-Length": String(totalSize),
+          Overwrite: "T",
+        },
+      });
+      if (!move.ok) {
+        throw new Error(`Chunked upload could not be assembled: ${await describeFailure(move)}`);
+      }
+      this.hadAuthSuccess = true;
+      console.log(
+        `[WebDAV] chunked PUT ${logPath} completed in ${Date.now() - startTime}ms (${chunks.length} chunks)`,
+      );
+    } catch (e) {
+      // A session left behind occupies quota and can never finish on its own.
+      try {
+        await this.absoluteRequest("DELETE", sessionUrl);
+      } catch (cleanupError) {
+        console.warn(`[WebDAV] Could not clean up upload session ${sessionUrl}:`, cleanupError);
+      }
+      throw e;
+    }
   }
 
   /** Upload a JSON object */
