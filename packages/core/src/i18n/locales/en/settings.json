@@ -600,6 +600,27 @@
     "sage": "Sage",
     "jade": "Jade",
     "teal": "Teal",
-    "indigo": "Deep Blue"
+    "indigo": "Deep Blue",
+    "backupTitle": "Backup & Restore",
+    "backupIntro": "A backup records your library: book entries, groups, highlights, notes, bookmarks, tags, chats and reading progress. The book files themselves are not included — a restored device downloads them from your sync server.",
+    "backupCreate": "Create a backup",
+    "backupCreateDesc": "Write a backup file you can keep anywhere or send to another device.",
+    "backupCreateAction": "Create backup file",
+    "backupShareTitle": "Save backup file",
+    "backupDone": "Backup created",
+    "backupSavedAt": "Saved to: {{path}}",
+    "backupFailed": "Backup failed: {{error}}",
+    "restoreTitle": "Restore from a backup",
+    "restoreDesc": "Pick a backup file; its entries are merged into your current library.",
+    "restoreAction": "Choose backup file",
+    "restoreNotABackup": "That is not a ReadAny backup file.",
+    "restoreConfirmTitle": "Restore this backup?",
+    "restoreFrom": "From {{device}}, {{when}}",
+    "restoreRecordCount": "{{count}} records",
+    "restoreMergeExplainer": "Entries in the backup are merged into your library: where both have the same entry the backup wins, and entries only on this device are kept. Book files are not in the backup and will be downloaded on the next sync.",
+    "restoreUnreadable": "⚠️ This backup holds data this version cannot restore: {{tables}}",
+    "restoreDone": "Restore complete",
+    "restoreResult": "Restored {{applied}}, skipped {{skipped}}.",
+    "restoreFailed": "Restore failed: {{error}}"
   }
 }
