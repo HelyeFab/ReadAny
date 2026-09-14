@@ -3003,6 +3003,12 @@ html, body {
         text,
         cfi,
         pointerType: lastPointerType,
+        // ⚠️ A selection is reported every time it settles for 300ms, which
+        // during a slow pen sweep happens SEVERAL TIMES over a growing range,
+        // each with a different CFI. Anything that acts on a selection by
+        // creating something must wait for the pointer to leave the glass, or
+        // it creates one of those things per pause.
+        pointerActive: isPointerActive(),
         baseForms: japaneseBaseForms(text),
         position: {
           x: iframeRect.left + rect.left + rect.width / 2,
@@ -3027,13 +3033,48 @@ html, body {
      * keeps exactly today's behaviour.
      */
     var lastPointerType = '';
+    var pointersDown = 0;
 
     function trackPointerType(doc) {
       if (doc.__readany_pointer_type) return;
       doc.__readany_pointer_type = true;
+
       doc.addEventListener('pointerdown', (e) => {
         lastPointerType = e && e.pointerType ? String(e.pointerType) : '';
+        pointersDown++;
       }, { passive: true, capture: true });
+
+      // ⚠️ Both of these, and the guard below. A pointer can leave without an
+      // "up" — lifted outside the document, cancelled by the system — and a
+      // counter that only ever increments would report a finger as still down
+      // for the rest of the session, which silently disables everything that
+      // waits for the gesture to finish.
+      const release = () => {
+        pointersDown = Math.max(0, pointersDown - 1);
+        if (pointersDown > 0) return;
+
+        // Report the selection once more now the pointer has gone. Without
+        // this, a sweep that pauses long enough for the 300ms settle to fire
+        // mid-gesture would have its only report marked "pointer still down"
+        // and nothing would ever see the finished selection. Re-reporting the
+        // same range is harmless — it resolves to the same CFI.
+        setTimeout(() => {
+          if (pointersDown > 0) return;
+          const sel = doc.getSelection();
+          const range = getSelectionRange(sel);
+          if (range) emitSelection(doc, sel, range);
+        }, 60);
+      };
+      doc.addEventListener('pointerup', release, { passive: true, capture: true });
+      doc.addEventListener('pointercancel', release, { passive: true, capture: true });
+      doc.addEventListener('touchend', () => {
+        if (pointersDown > 0 && (!doc.defaultView || !doc.defaultView.PointerEvent)) release();
+      }, { passive: true, capture: true });
+    }
+
+    /** True while a finger or pen is still on the glass. */
+    function isPointerActive() {
+      return pointersDown > 0;
     }
 
     function armSelectionTapGuardForDocument(doc) {

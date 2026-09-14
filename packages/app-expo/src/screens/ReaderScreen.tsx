@@ -833,9 +833,23 @@ export function ReaderScreen({ route, navigation }: Props) {
       //
       // `=== "pen"` rather than `!== "touch"` on purpose: a reader that
       // reports no pointer type at all must behave exactly as it does today.
+      //
+      // ⚠️ `pointerActive` is what stops this stacking highlights. A selection
+      // is reported every time it settles for 300ms, so a slow sweep reports
+      // several times over a growing range, each with its own CFI. Committing
+      // on each of those left a pile of overlapping highlights that had to be
+      // deleted one by one — and the colour later chosen in the popover
+      // applied to the final range only, so the earlier ones survived it in
+      // the previous colour. Only the report made after the pen leaves the
+      // glass describes what was actually selected.
       const current = useSettingsStore.getState().readSettings;
-      if (detail.cfi && detail.pointerType === "pen" && current.penHighlights !== false) {
-        commitHighlightRef.current(detail, current.defaultHighlightColor ?? "yellow");
+      if (
+        detail.cfi &&
+        detail.pointerType === "pen" &&
+        !detail.pointerActive &&
+        current.penHighlights !== false
+      ) {
+        commitPenHighlightRef.current(detail, current.defaultHighlightColor ?? "yellow");
       }
 
       // Sync selection for AI tools
@@ -850,6 +864,9 @@ export function ReaderScreen({ route, navigation }: Props) {
     },
     onSelectionCleared: () => {
       setSelection(null);
+      // This selection is over; the next pen sweep starts a new highlight
+      // rather than moving the one this sweep made.
+      penHighlightRef.current = null;
       // The WebView drops its selection while the reader sits behind the AI chat, and
       // clearing shared context from a backgrounded screen wiped the quote the chat was
       // opened with. Only the focused reader owns the selection.
@@ -1069,11 +1086,12 @@ export function ReaderScreen({ route, navigation }: Props) {
           color,
           note: existingHighlight.note,
         });
-        return;
+        return existingHighlight.id;
       }
 
+      const id = `hl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       addHighlight({
-        id: `hl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        id,
         bookId,
         cfi: sel.cfi,
         text: sel.text,
@@ -1083,6 +1101,7 @@ export function ReaderScreen({ route, navigation }: Props) {
         updatedAt: Date.now(),
       });
       bridge.addAnnotation({ value: sel.cfi, type: "highlight", color });
+      return id;
     },
     [
       updateReadSettings,
@@ -1101,6 +1120,32 @@ export function ReaderScreen({ route, navigation }: Props) {
    */
   const commitHighlightRef = useRef(commitHighlight);
   commitHighlightRef.current = commitHighlight;
+
+  /**
+   * The highlight the pen made for the selection currently on screen.
+   *
+   * Kept so that a selection which changes after the pen has lifted — dragging
+   * a handle to take in another line — MOVES that highlight instead of leaving
+   * the old one underneath the new one. Cleared when the selection goes away,
+   * which is what makes the next sweep a new highlight rather than a move.
+   */
+  const penHighlightRef = useRef<{ cfi: string; id: string } | null>(null);
+
+  const commitPenHighlight = useCallback(
+    (sel: { cfi: string; text: string }, color: HighlightColor) => {
+      const previous = penHighlightRef.current;
+      if (previous && previous.cfi !== sel.cfi) {
+        removeHighlight(previous.id);
+        bridge.removeAnnotation({ value: previous.cfi });
+      }
+      const id = commitHighlightRef.current(sel, color);
+      penHighlightRef.current = id ? { cfi: sel.cfi, id } : null;
+    },
+    [removeHighlight, bridge],
+  );
+
+  const commitPenHighlightRef = useRef(commitPenHighlight);
+  commitPenHighlightRef.current = commitPenHighlight;
 
   // Selection popover handlers
   const handleHighlight = useCallback(

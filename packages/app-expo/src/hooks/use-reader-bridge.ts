@@ -29,6 +29,13 @@ export interface SelectionEvent {
    * reader could not tell. Absent must never be read as a pen.
    */
   pointerType?: string;
+  /**
+   * True when the finger or pen was still on the glass as this was reported.
+   * A selection is reported each time it settles, so a slow sweep produces
+   * several of these over a growing range — only the one reported after the
+   * pointer leaves describes what the reader actually selected.
+   */
+  pointerActive?: boolean;
   position: {
     x: number;
     y: number;
