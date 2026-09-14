@@ -2031,15 +2031,20 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
           if (!draw || !annotation) return;
           console.log('[draw-annotation] annotation:', JSON.stringify(annotation));
           const color = annotation.color || 'yellow';
+          // Fluorescent rather than pastel, and at 0.5 rather than 0.4. A
+          // colour e-ink panel desaturates everything on its way to the eye,
+          // so a colour that looks strong here arrives merely tinted — and one
+          // that looked polite here arrived grey. Must stay light enough to
+          // read black text through: these are all high-luminance.
           const colorMap = {
-            red: 'rgba(248, 113, 113, 0.4)',
-            yellow: 'rgba(250, 204, 21, 0.4)',
-            green: 'rgba(74, 222, 128, 0.4)',
-            blue: 'rgba(96, 165, 250, 0.4)',
-            pink: 'rgba(236, 72, 153, 0.4)',
-            purple: 'rgba(192, 132, 252, 0.4)',
-            violet: 'rgba(167, 139, 250, 0.4)',
-            orange: 'rgba(251, 146, 60, 0.5)',
+            red: 'rgba(255, 59, 48, 0.5)',
+            yellow: 'rgba(255, 232, 0, 0.5)',
+            green: 'rgba(0, 230, 118, 0.5)',
+            blue: 'rgba(0, 176, 255, 0.5)',
+            pink: 'rgba(255, 45, 149, 0.5)',
+            purple: 'rgba(169, 59, 255, 0.5)',
+            violet: 'rgba(124, 77, 255, 0.5)',
+            orange: 'rgba(255, 145, 0, 0.5)',
           };
           
           if (annotation.type === 'tts-highlight') {
@@ -3550,7 +3555,10 @@ html, body {
         try { entry.overlayer.remove(PEN_PREVIEW_KEY); } catch (e) {}
         try {
           entry.overlayer.add(PEN_PREVIEW_KEY, range, Overlayer.highlight, {
-            color: 'rgba(96, 165, 250, 0.45)',
+            // Deliberately a different colour from any highlight: this is the
+            // sweep in progress, not a decision. Bright enough to be legible
+            // through the same e-ink desaturation as the rest.
+            color: 'rgba(0, 176, 255, 0.5)',
           });
         } catch (e) {}
       }

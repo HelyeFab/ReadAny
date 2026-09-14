@@ -14,6 +14,7 @@ import {
   ChevronRightIcon,
   HeadphonesIcon,
   LanguagesIcon,
+  MoreVerticalIcon,
   NotebookPenIcon,
   SearchIcon,
   XIcon,
@@ -1830,7 +1831,10 @@ export function ReaderScreen({ route, navigation }: Props) {
 
       {!showSearch && !showControls && showBottomTimeBattery && (
         <View
-          pointerEvents="none"
+          // box-none, not none: the bar itself stays untouchable so it never
+          // swallows a page-turn tap, while the menu button inside it can be
+          // pressed.
+          pointerEvents="box-none"
           style={[
             s.bottomInfoBar,
             {
@@ -1850,6 +1854,20 @@ export function ReaderScreen({ route, navigation }: Props) {
               charging={isBatteryCharging}
             />
             <Text style={s.bottomInfoText}>{batteryLabel}</Text>
+            {/*
+              Opening the controls used to mean hitting the middle of the page
+              — a target you have to aim for, on a device where a mis-tap turns
+              the page instead. Same action, somewhere to put your thumb.
+            */}
+            <TouchableOpacity
+              onPress={toggleControls}
+              hitSlop={{ top: 16, bottom: 16, left: 12, right: 16 }}
+              accessibilityRole="button"
+              accessibilityLabel={t("reader.openMenu", "打开菜单")}
+              style={s.bottomInfoMenuButton}
+            >
+              <MoreVerticalIcon size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
           </View>
         </View>
       )}

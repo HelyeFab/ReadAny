@@ -212,6 +212,7 @@ export const makeToolbarStyles = (colors: ThemeColors) =>
       zIndex: 24,
     },
     bottomInfoSide: { flexDirection: "row", alignItems: "center", gap: 6 },
+    bottomInfoMenuButton: { paddingLeft: 10, paddingVertical: 2 },
     bottomInfoText: {
       fontSize: fontSize.xs,
       color: colors.mutedForeground,
