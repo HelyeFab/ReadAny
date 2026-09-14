@@ -79,7 +79,11 @@
     "returnToOriginal": "Return to the position before search?",
     "searchComplete": "Search complete",
     "unknownBook": "Untitled book",
-    "viewNote": "View note"
+    "viewNote": "View note",
+    "syncHighlightsTitle": "Highlights",
+    "highlightsUpToDate": "Everything is already saved to the server.",
+    "highlightsSynced": "Added {{count}} to {{path}}",
+    "openMenu": "Open menu"
   },
   "bookmarks": {
     "title": "Bookmarks",

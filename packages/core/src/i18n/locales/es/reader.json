@@ -75,7 +75,11 @@
     "returnToOriginal": "¿Volver a la posición anterior a la búsqueda?",
     "searchComplete": "Búsqueda completa",
     "unknownBook": "Libro sin título",
-    "viewNote": "Ver nota"
+    "viewNote": "Ver nota",
+    "syncHighlightsTitle": "Subrayados",
+    "highlightsUpToDate": "Todo está ya guardado en el servidor.",
+    "highlightsSynced": "Se añadieron {{count}} a {{path}}",
+    "openMenu": "Abrir menú"
   },
   "bookmarks": {
     "title": "Marcadores",

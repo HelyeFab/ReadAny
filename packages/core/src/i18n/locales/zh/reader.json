@@ -79,7 +79,11 @@
     "returnToOriginal": "是否返回搜索前的位置？",
     "searchComplete": "搜索完成",
     "unknownBook": "未命名书籍",
-    "viewNote": "查看笔记"
+    "viewNote": "查看笔记",
+    "syncHighlightsTitle": "标注",
+    "highlightsUpToDate": "所有内容已保存到服务器。",
+    "highlightsSynced": "已将 {{count}} 条添加到 {{path}}",
+    "openMenu": "打开菜单"
   },
   "bookmarks": {
     "title": "书签",

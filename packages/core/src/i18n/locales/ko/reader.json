@@ -75,7 +75,11 @@
     "returnToOriginal": "검색 전 위치로 돌아갈까요?",
     "searchComplete": "검색 완료",
     "unknownBook": "제목 없는 책",
-    "viewNote": "노트 보기"
+    "viewNote": "노트 보기",
+    "syncHighlightsTitle": "하이라이트",
+    "highlightsUpToDate": "모두 서버에 저장되어 있습니다.",
+    "highlightsSynced": "{{count}}개를 {{path}}에 추가했습니다",
+    "openMenu": "메뉴 열기"
   },
   "bookmarks": {
     "title": "북마크",
