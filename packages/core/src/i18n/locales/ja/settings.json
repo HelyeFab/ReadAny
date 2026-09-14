@@ -76,6 +76,8 @@
     "smoothReadingDesc": "ページめくりアニメーションとスクロール慣性を有効化。低スペック端末ではオフにすると快適です",
     "bionicReading": "バイオニックリーディング",
     "bionicReadingDesc": "単語の先頭を太字にして視線の着地点にします。ラテン文字のみで、日本語と中国語はそのままです。",
+    "penHighlights": "ペンで即ハイライト",
+    "penHighlightsDesc": "スタイラスで選択するとその場で前回の色でハイライトします。指で選択したときは従来どおりメニューが開き、辞書引きに使えます。",
     "followSystemFontScale": "システムフォントサイズに従う",
     "followSystemFontScaleDesc": "OSのアクセシビリティフォントサイズで自動調整",
     "fixedLayoutNotice": "PDFは固定レイアウト形式です。フォントとレイアウト設定は利用できません。",

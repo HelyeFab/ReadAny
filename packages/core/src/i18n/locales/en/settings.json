@@ -76,6 +76,8 @@
     "smoothReadingDesc": "Enable page-turn transition animation and scroll inertia. Disable for better performance on low-end devices",
     "bionicReading": "Bionic reading",
     "bionicReadingDesc": "Embolden the start of each word as a landing point for the eye. Latin script only — Japanese and Chinese are left as they are.",
+    "penHighlights": "Highlight with the pen",
+    "penHighlightsDesc": "Selecting with the stylus highlights straight away, in the last colour you used. A finger selection still opens the menu, for looking words up.",
     "followSystemFontScale": "Follow System Font Scale",
     "followSystemFontScaleDesc": "Auto-scale by the OS accessibility font size",
     "fixedLayoutNotice": "PDF is a fixed layout format. Font and layout settings are not available.",

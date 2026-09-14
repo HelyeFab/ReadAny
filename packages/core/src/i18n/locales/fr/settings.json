@@ -76,6 +76,8 @@
     "smoothReadingDesc": "Active l'animation de transition de page et l'inertie de défilement. Désactivez pour de meilleures performances sur les appareils modestes",
     "bionicReading": "Lecture bionique",
     "bionicReadingDesc": "Met en gras le début de chaque mot comme point d'ancrage pour l'œil. Alphabet latin uniquement — le japonais et le chinois restent inchangés.",
+    "penHighlights": "Surligner au stylet",
+    "penHighlightsDesc": "Une sélection au stylet surligne immédiatement, dans la dernière couleur utilisée. Une sélection au doigt ouvre toujours le menu, pour chercher un mot.",
     "followSystemFontScale": "Suivre l'échelle de police système",
     "followSystemFontScaleDesc": "Mise à l'échelle auto selon la taille de police d'accessibilité du système",
     "fixedLayoutNotice": "Le PDF est un format à mise en page fixe. Les paramètres de police et mise en page ne sont pas disponibles.",

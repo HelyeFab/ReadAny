@@ -76,6 +76,8 @@
     "smoothReadingDesc": "페이지 넘김 전환 애니메이션과 스크롤 관성을 켭니다. 저사양 기기에서는 끄면 더 부드럽습니다",
     "bionicReading": "바이오닉 리딩",
     "bionicReadingDesc": "각 단어의 앞부분을 굵게 표시해 시선이 머물 지점을 만듭니다. 라틴 문자에만 적용되며 한자와 일본어는 그대로 둡니다.",
+    "penHighlights": "펜으로 바로 하이라이트",
+    "penHighlightsDesc": "스타일러스로 선택하면 마지막에 쓴 색으로 곧바로 하이라이트합니다. 손가락 선택은 지금처럼 메뉴가 열려 단어를 찾아볼 수 있습니다.",
     "followSystemFontScale": "시스템 글꼴 크기 따르기",
     "followSystemFontScaleDesc": "OS 접근성 글꼴 크기에 따라 자동 조정",
     "fixedLayoutNotice": "PDF는 고정 레이아웃 형식이에요. 글꼴 및 레이아웃 설정을 사용할 수 없어요.",

@@ -61,6 +61,7 @@ export function ReaderSettingsPanel({
     showBottomTimeBattery,
     followSystemFontScale,
     bionicReading,
+    penHighlights,
   } = readSettings;
 
   return (
@@ -304,6 +305,28 @@ export function ReaderSettingsPanel({
             >
               <Text style={[s.settingToggleText, !!smoothReading && s.settingToggleTextActive]}>
                 {smoothReading ? t("settings.enabled") : t("settings.disabled")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {/* Pen selections highlight without a second tap */}
+          <View style={s.settingRow}>
+            <View style={s.settingLabelBlock}>
+              <Text style={s.settingLabel}>{t("settings.penHighlights", "手写笔即高亮")}</Text>
+              <Text style={s.settingHint}>
+                {t(
+                  "settings.penHighlightsDesc",
+                  "用手写笔划选文字即以上次颜色高亮，无需再点一次；用手指划选仍照常弹出菜单。",
+                )}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[s.settingToggleBtn, penHighlights !== false && s.settingToggleBtnActive]}
+              onPress={() => onUpdateSetting("penHighlights", penHighlights === false)}
+            >
+              <Text
+                style={[s.settingToggleText, penHighlights !== false && s.settingToggleTextActive]}
+              >
+                {penHighlights !== false ? t("settings.enabled") : t("settings.disabled")}
               </Text>
             </TouchableOpacity>
           </View>

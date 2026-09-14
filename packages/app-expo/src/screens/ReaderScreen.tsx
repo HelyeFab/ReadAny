@@ -824,6 +824,20 @@ export function ReaderScreen({ route, navigation }: Props) {
     },
     onSelection: (detail: SelectionEvent) => {
       setSelection(detail);
+
+      // A stylus selection is a decision to mark the passage, so it is marked
+      // — no second tap. A finger selection is left alone: that one is usually
+      // someone looking a word up, and silently highlighting it would be worse
+      // than the tap this saves. The popover still opens either way, so a pen
+      // highlight can be recoloured or undone immediately.
+      //
+      // `=== "pen"` rather than `!== "touch"` on purpose: a reader that
+      // reports no pointer type at all must behave exactly as it does today.
+      const current = useSettingsStore.getState().readSettings;
+      if (detail.cfi && detail.pointerType === "pen" && current.penHighlights !== false) {
+        commitHighlightRef.current(detail, current.defaultHighlightColor ?? "yellow");
+      }
+
       // Sync selection for AI tools
       if (detail.cfi) {
         readingContextService.updateSelection({
@@ -1033,21 +1047,21 @@ export function ReaderScreen({ route, navigation }: Props) {
     [bridge, updateReadSettings, computeEffectiveFontSize],
   );
 
-  // Selection popover handlers
-  const handleHighlight = useCallback(
-    (color: HighlightColor = readSettings.defaultHighlightColor ?? "yellow") => {
-      if (!selection) return;
+  /**
+   * Create or recolour the highlight for one selection.
+   *
+   * Split out of handleHighlight so it can be driven by something other than a
+   * tap on the popover — a pen selection commits through here with no popover
+   * involved at all.
+   */
+  const commitHighlight = useCallback(
+    (sel: { cfi: string; text: string }, color: HighlightColor) => {
       updateReadSettings({ defaultHighlightColor: color });
 
-      const existingHighlight = highlights.find(
-        (h) => h.bookId === bookId && h.cfi === selection.cfi,
-      );
+      const existingHighlight = highlights.find((h) => h.bookId === bookId && h.cfi === sel.cfi);
 
       if (existingHighlight) {
-        updateHighlight(existingHighlight.id, {
-          color,
-          updatedAt: Date.now(),
-        });
+        updateHighlight(existingHighlight.id, { color, updatedAt: Date.now() });
         bridge.removeAnnotation({ value: existingHighlight.cfi });
         bridge.addAnnotation({
           value: existingHighlight.cfi,
@@ -1055,27 +1069,22 @@ export function ReaderScreen({ route, navigation }: Props) {
           color,
           note: existingHighlight.note,
         });
-        setSelection(null);
         return;
       }
 
-      const highlight = {
+      addHighlight({
         id: `hl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         bookId,
-        cfi: selection.cfi,
-        text: selection.text,
+        cfi: sel.cfi,
+        text: sel.text,
         color,
         chapterTitle: currentChapter,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      };
-      addHighlight(highlight);
-      bridge.addAnnotation({ value: selection.cfi, type: "highlight", color });
-      setSelection(null);
+      });
+      bridge.addAnnotation({ value: sel.cfi, type: "highlight", color });
     },
     [
-      selection,
-      readSettings.defaultHighlightColor,
       updateReadSettings,
       highlights,
       bookId,
@@ -1084,6 +1093,23 @@ export function ReaderScreen({ route, navigation }: Props) {
       updateHighlight,
       bridge,
     ],
+  );
+
+  /**
+   * Reached from onSelection, which is built before this exists. The ref is
+   * what lets a callback defined earlier in the render call it.
+   */
+  const commitHighlightRef = useRef(commitHighlight);
+  commitHighlightRef.current = commitHighlight;
+
+  // Selection popover handlers
+  const handleHighlight = useCallback(
+    (color: HighlightColor = readSettings.defaultHighlightColor ?? "yellow") => {
+      if (!selection) return;
+      commitHighlight(selection, color);
+      setSelection(null);
+    },
+    [selection, readSettings.defaultHighlightColor, commitHighlight],
   );
 
   const handleDismissSelection = useCallback(() => {
