@@ -84,7 +84,18 @@ export function withPersist<T extends object>(
   /** Keys to always reset to these values after hydration (transient state that should not be restored) */
   resetAfterHydrate?: Partial<T>,
   migrate?: (persisted: T) => T,
+  /**
+   * Narrows what reaches the disk. Without it the whole store is written, which
+   * is wrong for anything the store holds but should not keep — an API key that
+   * belongs in the keystore and is only in memory because the UI needs it.
+   *
+   * A store that uses this is re-saved once at startup, so a file written
+   * before the rule existed is scrubbed rather than left sitting there.
+   */
+  partialize?: (state: T) => unknown,
 ): StateCreator<T> {
+  const toPersist = (state: T): unknown => (partialize ? partialize(state) : state);
+
   return (set, get, api) => {
     let persistLoaded = false;
 
@@ -98,7 +109,7 @@ export function withPersist<T extends object>(
       }
       // Only save to persist after initial load is complete
       if (persistLoaded) {
-        debouncedSave(key, (api as StoreApi<T>).getState());
+        debouncedSave(key, toPersist((api as StoreApi<T>).getState()));
       }
     }) as typeof set;
     const state = creator(wrappedSet, get, api);
@@ -109,7 +120,12 @@ export function withPersist<T extends object>(
         const migrated = migrate ? migrate(persisted) : persisted;
         // Merge persisted data with current state (don't replace methods)
         const currentState = get();
-        const mergedState = { ...currentState, ...migrated, ...(resetAfterHydrate ?? {}), _hasHydrated: true };
+        const mergedState = {
+          ...currentState,
+          ...migrated,
+          ...(resetAfterHydrate ?? {}),
+          _hasHydrated: true,
+        };
         (set as (state: T, replace: true) => void)(mergedState as T, true);
       } else {
         const currentState = get();
@@ -121,6 +137,14 @@ export function withPersist<T extends object>(
       const hydratedState = (api as StoreApi<T & { loadApiKeys?: () => Promise<void> }>).getState();
       if (typeof hydratedState.loadApiKeys === "function") {
         await hydratedState.loadApiKeys();
+      }
+
+      // Rewrite once on every launch when this store narrows what it persists.
+      // The file on disk may predate the rule — this is what actually removes
+      // secrets already sitting in it, and it must run after loadApiKeys so the
+      // state being narrowed is the complete one.
+      if (partialize) {
+        debouncedSave(key, toPersist((api as StoreApi<T>).getState()));
       }
 
       // Dispatch event to notify that persist is loaded
