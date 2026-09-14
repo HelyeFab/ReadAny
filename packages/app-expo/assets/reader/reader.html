@@ -1940,6 +1940,10 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
                 total: Math.max(1, rendererPages - 2),
               }
             : null;
+          // Where the reader is now. Kept so a selection that has to be
+          // refused can put the page back where it started, rather than
+          // wherever the drift left it.
+          if (detail.cfi) lastRelocateCfi = detail.cfi;
           postToRN('relocate', {
             fraction: detail.fraction,
             section: { current: currentSectionIndex, total: relocatedSectionTotal },
@@ -3267,7 +3271,7 @@ html, body {
             try { sel.removeAllRanges(); } catch (e) {}
             markSelectionInteraction(false);
             postToRN('selectionCleared', {});
-            resnapToPage();
+            restoreReadingPosition();
             return;
           }
 
@@ -3278,6 +3282,7 @@ html, body {
 
       doc.addEventListener('selectstart', () => {
         markSelectionInteraction(true);
+        if (lastRelocateCfi) cfiBeforeSelection = lastRelocateCfi;
       });
 
       doc.addEventListener('pointermove', () => {
@@ -3317,6 +3322,19 @@ html, body {
      * is private to the paginator; width needs only the page size, which is
      * public and exact.
      */
+    /** The page the reader is on, from the last relocate. */
+    var lastRelocateCfi = '';
+    /**
+     * The page the reader was on when this selection began.
+     *
+     * Snapshotted at selectstart, which is before the WebView has had any
+     * chance to drag the container off its page — by the time a runaway
+     * selection is detected the container has already moved, measured at 464
+     * of a 599 page, so asking "which page are we on now" answers with the
+     * previous one.
+     */
+    var cfiBeforeSelection = '';
+
     function selectionEscapedVisiblePage(range) {
       if (currentViewMode === 'scroll') return false;
       const renderer = view && view.renderer;
@@ -3345,6 +3363,28 @@ html, body {
       try {
         view?.renderer?.snap?.(0, 0, 0, 0, 1);
       } catch (e) {}
+    }
+
+    /**
+     * Put the reader back on the page the selection started from.
+     *
+     * ⚠️ Not `snap`. Snap resolves to the page under the container's CURRENT
+     * midpoint, and by this point the container has been dragged most of the
+     * way toward the previous page — so snapping faithfully lands on the wrong
+     * one, which is exactly what it did. The page recorded at selectstart is
+     * the one the reader was actually looking at.
+     */
+    function restoreReadingPosition() {
+      if (currentViewMode === 'scroll') return;
+      if (!cfiBeforeSelection) {
+        resnapToPage();
+        return;
+      }
+      try {
+        Promise.resolve(view.goTo(cfiBeforeSelection)).catch(() => resnapToPage());
+      } catch (e) {
+        resnapToPage();
+      }
     }
 
     function emitSelection(doc, sel, range) {
