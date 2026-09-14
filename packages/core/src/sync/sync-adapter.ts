@@ -33,6 +33,15 @@ export interface ISyncAdapter {
   /** Get file size in bytes, or null when unavailable. */
   getFileSize(filePath: string): Promise<number | null>;
 
+  /**
+   * Read `length` bytes starting at `offset`. Optional: platforms that cannot
+   * seek simply omit it, and callers fall back to whole-file transfers.
+   *
+   * This exists so a large file can be uploaded in pieces without ever holding
+   * all of it in memory — a 300 MB book cannot be buffered on a phone.
+   */
+  readFileRange?(filePath: string, offset: number, length: number): Promise<Uint8Array>;
+
   /** Max bytes this platform can safely buffer for fallback sync transfers. */
   maxBufferedTransferBytes?: number;
 

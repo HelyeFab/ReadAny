@@ -3,6 +3,7 @@
  * Wraps WebDavClient to implement ISyncBackend interface.
  */
 
+import { getSyncAdapter } from "./sync-adapter";
 import {
   DEFAULT_WEBDAV_REMOTE_ROOT,
   type ISyncBackend,
@@ -10,6 +11,7 @@ import {
   type WebDavConfig,
 } from "./sync-backend";
 import { REMOTE_BOOKS_ROOT, REMOTE_COVERS, REMOTE_DATA, REMOTE_FILES } from "./sync-types";
+import { isPayloadTooLarge, shouldChunk } from "./webdav-chunked-upload";
 import { WebDavClient, sanitizeWebDavRemoteRoot } from "./webdav-client";
 
 /**
@@ -101,21 +103,76 @@ export class WebDavBackend implements ISyncBackend {
     }
   }
 
+  /**
+   * Upload in chunks when the file is large enough that something between here
+   * and the server is likely to refuse it — a CDN in front of a self-hosted
+   * server typically caps a single request at 100 MB. Returns false when
+   * chunking is not available, so the caller can fall back to a plain PUT.
+   */
+  private async tryChunkedUpload(
+    resolvedPath: string,
+    localFilePath: string,
+    onProgress?: (loaded: number, total: number) => void,
+  ): Promise<boolean> {
+    if (!this.client.supportsChunkedUpload()) return false;
+
+    const adapter = getSyncAdapter();
+    if (!adapter.readFileRange) return false;
+
+    const size = await adapter.getFileSize(localFilePath);
+    if (!shouldChunk(size) || size == null) return false;
+
+    const readRange = adapter.readFileRange.bind(adapter);
+    await this.client.putFileChunked(
+      resolvedPath,
+      size,
+      (offset, length) => readRange(localFilePath, offset, length),
+      onProgress,
+    );
+    return true;
+  }
+
   async putFile(
     path: string,
     localFilePath: string,
     onProgress?: (loaded: number, total: number) => void,
   ): Promise<void> {
     const resolved = this.resolvePath(path);
+
+    const uploadOnce = async () => {
+      if (await this.tryChunkedUpload(resolved, localFilePath, onProgress)) return;
+      try {
+        await this.client.putFile(resolved, localFilePath, onProgress);
+      } catch (e) {
+        // A 413 means something in the path capped the request size. Chunking
+        // is exactly the remedy, so take it rather than reporting a failure
+        // the user can do nothing about.
+        if (!isPayloadTooLarge(e)) throw e;
+        const adapter = getSyncAdapter();
+        const size = await adapter.getFileSize(localFilePath);
+        if (!adapter.readFileRange || !this.client.supportsChunkedUpload() || size == null) throw e;
+        console.warn(
+          `[WebDAV] ${resolved} was rejected as too large for one request; retrying in chunks`,
+        );
+        const readRange = adapter.readFileRange.bind(adapter);
+        await this.client.putFileChunked(
+          resolved,
+          size,
+          (offset, length) => readRange(localFilePath, offset, length),
+          onProgress,
+        );
+      }
+    };
+
     try {
-      await this.client.putFile(resolved, localFilePath, onProgress);
+      await uploadOnce();
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       if (!/\b(403|404|409)\b/.test(message)) throw e;
       const parent = resolved.substring(0, resolved.lastIndexOf("/"));
       if (!parent || parent === "/") throw e;
       await this.client.ensureDirectory(parent);
-      await this.client.putFile(resolved, localFilePath, onProgress);
+      await uploadOnce();
     }
   }
 
