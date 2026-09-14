@@ -2,6 +2,7 @@ import { FOLDER_COLORS } from "@/lib/library/folder-colors";
 import { radius, spacing, ui, useColors } from "@/styles/theme";
 import type { BookGroup } from "@readany/core/types";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 /**
  * Pick a folder's colour. Swatches only — a name beside each is noise when the
  * thing being chosen is the colour itself.
@@ -17,6 +18,7 @@ interface Props {
 export function FolderColorSheet({ group, onPick, onClose }: Props) {
   const { t } = useTranslation();
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   if (!group) return null;
 
   return (
@@ -28,6 +30,8 @@ export function FolderColorSheet({ group, onPick, onClose }: Props) {
           borderTopLeftRadius: radius.lg,
           borderTopRightRadius: radius.lg,
           padding: spacing.lg,
+          // Edge-to-edge means the navigation bar overlaps the window bottom.
+          paddingBottom: Math.max(spacing.lg, insets.bottom + spacing.lg),
           gap: spacing.md,
         }}
       >
