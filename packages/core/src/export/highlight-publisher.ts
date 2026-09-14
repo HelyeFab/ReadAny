@@ -135,7 +135,12 @@ export async function publishHighlightsToWebDav(
  * reading". Any outcome that quietly makes a second file, or repeats quotes
  * already on the page, turns that habit into cleanup work.
  */
-export type SyncAnnotationsOutcome = "created" | "appended" | "adopted" | "upToDate";
+export type SyncAnnotationsOutcome =
+  | "created"
+  | "appended"
+  | "adopted"
+  | "upToDate"
+  | /** Nothing to add to: the caller should ask where these should go. */ "needsDestination";
 
 export interface SyncAnnotationsRequest {
   book: Book;
@@ -144,6 +149,18 @@ export interface SyncAnnotationsRequest {
   filing: FilingOptions;
   /** Injected so callers and tests control the clock. */
   now?: Date;
+  /**
+   * Stop and report `needsDestination` rather than silently creating a new
+   * file.
+   *
+   * ⚠️ Whether to ask is a question about the SERVER, not about the registry.
+   * Remembering where a book was filed is not the same as that file still
+   * being there: delete it from Nextcloud and the record still names it, and
+   * a caller that decides by looking only at the record will go quiet at
+   * exactly the moment it should have asked. So the decision is made here,
+   * after the existence checks, and handed back.
+   */
+  confirmBeforeCreating?: boolean;
 }
 
 export interface SyncAnnotationsResult {
@@ -250,6 +267,13 @@ export async function syncBookAnnotationsToWebDav(
   }
 
   // --- 3. Nothing yet: a fresh export --------------------------------------
+  // Nothing on the server holds these highlights, whatever the registry
+  // remembers. Creating a file is a choice about where things live, so it is
+  // the caller's to make.
+  if (request.confirmBeforeCreating) {
+    return { outcome: "needsDestination", path: filed.path, added: 0 };
+  }
+
   const content = exporter.export(highlights, notes, book, { format });
   const result = await publishHighlightsToWebDav(credentials, {
     content,
