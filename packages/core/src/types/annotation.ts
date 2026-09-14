@@ -4,14 +4,23 @@
 export type HighlightColor = "red" | "yellow" | "green" | "blue" | "pink" | "purple" | "violet";
 
 // Hex color values for each highlight color
+/**
+ * Highlighter-pen colours, not palette colours.
+ *
+ * These were Tailwind's 400 shades — pastels, designed to sit politely behind
+ * text on a bright LCD. On a colour e-ink panel, whose filter array cuts
+ * saturation hard before anything reaches the eye, a pastel arrives as grey.
+ * These are the saturated, fluorescent end instead: what survives that filter
+ * is what a real highlighter looks like on paper.
+ */
 export const HIGHLIGHT_COLOR_HEX: Record<HighlightColor, string> = {
-  red: "#f87171", // red-400
-  yellow: "#facc15", // yellow-400
-  green: "#4ade80", // green-400
-  blue: "#60a5fa", // blue-400
-  pink: "#f472b6", // pink-400
-  purple: "#c084fc", // purple-400
-  violet: "#a78bfa", // violet-400
+  red: "#ff3b30",
+  yellow: "#ffe800",
+  green: "#00e676",
+  blue: "#00b0ff",
+  pink: "#ff2d95",
+  purple: "#a93bff",
+  violet: "#7c4dff",
 };
 
 // All available highlight colors in display order
