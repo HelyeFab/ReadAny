@@ -27,7 +27,6 @@ import {
   loadHighlightExportPrefs,
   saveHighlightExportPrefs,
 } from "@readany/core/export/highlight-export-prefs";
-import { getPublication } from "@readany/core/export/highlight-publication";
 import {
   type WebDavCredentials,
   loadSyncWebDavCredentials,
@@ -74,8 +73,12 @@ export function useReaderAnnotationSync({ book, highlights, notes }: Params) {
 
   /** Send this book's new annotations to the server under `filing`. */
   const run = useCallback(
-    async (credentials: WebDavCredentials, filing: HighlightExportPrefs) => {
-      if (!book || inFlight.current) return;
+    async (
+      credentials: WebDavCredentials,
+      filing: HighlightExportPrefs,
+      confirmBeforeCreating = false,
+    ): Promise<"done" | "needsDestination"> => {
+      if (!book || inFlight.current) return "done";
       inFlight.current = true;
       setBusy(true);
       try {
@@ -89,7 +92,13 @@ export function useReaderAnnotationSync({ book, highlights, notes }: Params) {
             filenameTemplate: filing.filenameTemplate,
             format: filing.format,
           },
+          confirmBeforeCreating,
         });
+
+        // Nothing on the server to add to — ask, rather than quietly
+        // recreating a file the reader may have deleted on purpose.
+        if (result.outcome === "needsDestination") return "needsDestination";
+
         setSheetVisible(false);
 
         if (result.outcome === "upToDate") {
@@ -97,7 +106,7 @@ export function useReaderAnnotationSync({ book, highlights, notes }: Params) {
             t("reader.syncHighlightsTitle", "Highlights"),
             t("reader.highlightsUpToDate", "Everything is already saved to the server."),
           );
-          return;
+          return "done";
         }
         Alert.alert(
           t("reader.syncHighlightsTitle", "Highlights"),
@@ -107,12 +116,14 @@ export function useReaderAnnotationSync({ book, highlights, notes }: Params) {
             defaultValue: `Added ${result.added} to ${result.path}`,
           }),
         );
+        return "done";
       } catch (error) {
         console.error("[ReaderSync] Publishing highlights failed:", error);
         Alert.alert(
           t("common.error", "错误"),
           error instanceof Error ? error.message : String(error),
         );
+        return "done";
       } finally {
         inFlight.current = false;
         setBusy(false);
@@ -151,14 +162,20 @@ export function useReaderAnnotationSync({ book, highlights, notes }: Params) {
     }
 
     // Notion is a clipboard format with no file behind it, so it can never be
-    // the thing a silent tap writes to. Ask instead.
-    const published = await getPublication(book.id);
-    if (!published || bookPrefs.format === "notion") {
+    // the thing a silent tap writes to.
+    if (bookPrefs.format === "notion") {
       setSheetVisible(true);
       return;
     }
 
-    await run(credentials, bookPrefs);
+    // ⚠️ Do NOT decide this from the registry. A remembered path is not a
+    // promise that the file is still there — delete it from Nextcloud and the
+    // record still names it, which is exactly when the reader expects to be
+    // asked again and would instead get a new file made behind their back.
+    // The publish checks the server and says whether it needs an answer.
+    if ((await run(credentials, bookPrefs, true)) === "needsDestination") {
+      setSheetVisible(true);
+    }
   }, [book, hasAnnotations, run, t]);
 
   /** The sheet's confirm button, for the first sync of a book. */
