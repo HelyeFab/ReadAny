@@ -2894,6 +2894,24 @@ html, body {
           }
           if (!sel.rangeCount) return;
           const range = sel.getRangeAt(0);
+
+          // A selection wider than the visible page was not made by the
+          // reader — the WebView resolved a touch to a column that is off
+          // screen. Refuse it rather than report it: reporting is what put a
+          // highlight across the whole of the previous page, and leaving it
+          // in place is what stopped the page from turning, since a live
+          // selection suppresses tap-to-turn.
+          if (selectionEscapedVisiblePage(range)) {
+            postToRN('debug', {
+              message: '[SelGuard] refused a selection wider than the page',
+            });
+            try { sel.removeAllRanges(); } catch (e) {}
+            markSelectionInteraction(false);
+            postToRN('selectionCleared', {});
+            resnapToPage();
+            return;
+          }
+
           markSelectionInteraction(true);
           emitSelection(doc, sel, range);
         }, 300);
@@ -2918,6 +2936,56 @@ html, body {
       doc.addEventListener('touchcancel', () => {
         scheduleClearSelectionInteraction();
       }, { passive: true });
+    }
+
+    /**
+     * Has the selection escaped the page the reader is showing?
+     *
+     * In paginated mode the book is laid out as one wide strip of columns and
+     * the container is scrolled along it, so a range's client rects are in
+     * STRIP coordinates — measured on the Note Air 4C: a document reporting
+     * scrollWidth 15583 for a page `size` of 599.
+     *
+     * The reader can only select what it can see, and what it can see is one
+     * page wide. So a selection whose bounding box is wider than a page did
+     * not come from the reader dragging across the text; it came from the
+     * WebView resolving a touch to a column that is not on screen. Measured on
+     * the same device: selections that behaved were 52 and 544 wide against a
+     * 599 page, and the one that ran away was 734.
+     *
+     * Width rather than position on purpose. Position would need the view's
+     * own offset within the container to be reconciled with the strip, which
+     * is private to the paginator; width needs only the page size, which is
+     * public and exact.
+     */
+    function selectionEscapedVisiblePage(range) {
+      if (currentViewMode === 'scroll') return false;
+      const renderer = view && view.renderer;
+      const size = renderer && renderer.size;
+      if (!size || !isFinite(size) || size <= 0) return false;
+      try {
+        const rect = range.getBoundingClientRect();
+        if (!rect || !isFinite(rect.width)) return false;
+        return rect.width > size;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    /**
+     * Put the container back on a page boundary.
+     *
+     * When a selection escapes, the container has usually been dragged off its
+     * page too — measured at 464 out of a 599 page, which is the half-turned
+     * page with text clipped at both edges. `snap` with no velocity and no
+     * delta resolves to the page containing the current midpoint, which is the
+     * page the reader was on.
+     */
+    function resnapToPage() {
+      if (currentViewMode === 'scroll') return;
+      try {
+        view?.renderer?.snap?.(0, 0, 0, 0, 1);
+      } catch (e) {}
     }
 
     function emitSelection(doc, sel, range) {
