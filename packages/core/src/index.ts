@@ -58,6 +58,8 @@ export type {
   WebDavImportSourceKind,
 } from "./import/webdav-import-types";
 export type { ImportBooksResult, ImportDuplicateIndex } from "./import/import-dedupe";
+export { FILE_HASH_CHUNK_BYTES, hashFileSha256 } from "./import/file-hash";
+export type { ChunkedFileReader, HashFileOptions } from "./import/file-hash";
 
 // EPUB services
 export { inspectEpubBytes } from "./epub/inspect";
