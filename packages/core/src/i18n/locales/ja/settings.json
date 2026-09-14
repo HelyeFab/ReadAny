@@ -600,6 +600,14 @@
     "sage": "セージ",
     "jade": "ジェイド",
     "teal": "ティール",
-    "indigo": "ディープブルー"
+    "indigo": "ディープブルー",
+    "backupIntro": "バックアップには蔵書の記録が入ります：書籍の項目、グループ、ハイライト、ノート、しおり、タグ、チャット、読書の進捗、そして AI 設定。書籍ファイル自体は含まれません——復元した端末が同期サーバーからダウンロードします。",
+    "backupKeysTitle": "API キーを含めますか？",
+    "backupKeysBody": "バックアップには AI 設定が入ります。{{count}} 件の API キーを含めると、ファイルに平文で書き込まれます——ファイルを安全に保管できる場合にのみ選んでください。",
+    "backupKeysExclude": "キーを含めない",
+    "backupKeysInclude": "キーを含める",
+    "restoreSettingsWithKeys": "AI 設定も含まれています（接続先 {{count}} 件、API キーあり）。",
+    "restoreSettingsNoKeys": "AI 設定も含まれています（接続先 {{count}} 件、API キーなし——この端末にあるキーはそのまま残ります）。",
+    "restoreSettingsDone": "AI 設定を復元しました。"
   }
 }

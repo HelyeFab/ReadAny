@@ -12,9 +12,19 @@
  * that says what you have and where you are in it. The .epub and .pdf files
  * themselves stay where they are; a restored device knows about every book and
  * downloads the files from the sync remote.
+ *
+ * Alongside the snapshot it can carry a small settings section, because some of
+ * what makes the app yours is not in SQLite and so cannot be in a sync snapshot
+ * — the AI endpoint, model and key that a reading companion needs to say
+ * anything at all. That section is optional and additive: a file without one
+ * restores exactly as before, and a build that predates it ignores what it
+ * cannot read rather than refusing the whole restore. That is also why the
+ * format version does not move for it.
  */
 import { SYNC_TABLE_NAMES, applyChanges, collectChanges } from "../sync/simple-sync";
 import type { DeviceSyncPayload } from "../sync/simple-sync";
+import { describeBackupSettings, isBackupSettings } from "./backup-settings";
+import type { BackupSettings, BackupSettingsSummary } from "./backup-settings";
 
 /** Marker written into every backup so a stray .json can be told apart from ours. */
 export const BACKUP_FORMAT = "readany-library-backup";
@@ -39,6 +49,8 @@ export interface BackupManifest {
 export interface LibraryBackup {
   manifest: BackupManifest;
   snapshot: DeviceSyncPayload;
+  /** Settings that live outside SQLite. Absent in files made before this existed. */
+  settings?: BackupSettings;
 }
 
 /** What a backup file claims to contain, safe to show before restoring it. */
@@ -54,6 +66,8 @@ export interface BackupSummary {
    * dropped — the caller should say so rather than restore in silence.
    */
   unreadableTables: string[];
+  /** What the settings section holds, or null when the file has none. */
+  settings: BackupSettingsSummary | null;
 }
 
 /**
@@ -64,7 +78,7 @@ export interface BackupSummary {
  * path rather than a bespoke query.
  */
 export async function createLibraryBackup(
-  options: { appVersion?: string } = {},
+  options: { appVersion?: string; settings?: BackupSettings } = {},
 ): Promise<LibraryBackup> {
   const snapshot = await collectChanges(0);
 
@@ -86,6 +100,7 @@ export async function createLibraryBackup(
       totalRecords,
     },
     snapshot,
+    ...(options.settings ? { settings: options.settings } : {}),
   };
 }
 
@@ -116,6 +131,10 @@ export function isLibraryBackup(value: unknown): value is LibraryBackup {
   const snapshot = backup.snapshot;
   if (typeof snapshot !== "object" || snapshot === null) return false;
   if (typeof snapshot.tables !== "object" || snapshot.tables === null) return false;
+
+  // Absent is fine — older files have none. Present but malformed is not: it
+  // would be read as settings and applied.
+  if (backup.settings !== undefined && !isBackupSettings(backup.settings)) return false;
 
   return Object.values(snapshot.tables).every(isChangeset);
 }
@@ -149,6 +168,7 @@ export function describeBackup(backup: LibraryBackup): BackupSummary {
     counts: backup.manifest.counts ?? {},
     totalRecords: backup.manifest.totalRecords ?? 0,
     unreadableTables,
+    settings: describeBackupSettings(backup.settings),
   };
 }
 

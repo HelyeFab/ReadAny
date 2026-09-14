@@ -600,6 +600,14 @@
     "sage": "세이지",
     "jade": "제이드",
     "teal": "틸",
-    "indigo": "딥 블루"
+    "indigo": "딥 블루",
+    "backupIntro": "백업에는 서재 기록이 담깁니다: 책 항목, 그룹, 하이라이트, 노트, 북마크, 태그, 대화, 읽기 진행 상황, 그리고 AI 설정. 책 파일 자체는 포함되지 않습니다 — 복원한 기기가 동기화 서버에서 내려받습니다.",
+    "backupKeysTitle": "API 키를 포함할까요?",
+    "backupKeysBody": "백업에는 AI 설정이 담깁니다. API 키 {{count}}개를 포함하면 파일에 평문으로 기록됩니다 — 파일을 안전하게 보관할 수 있을 때만 선택하세요.",
+    "backupKeysExclude": "키 제외",
+    "backupKeysInclude": "키 포함",
+    "restoreSettingsWithKeys": "AI 설정도 들어 있습니다(엔드포인트 {{count}}개, API 키 포함).",
+    "restoreSettingsNoKeys": "AI 설정도 들어 있습니다(엔드포인트 {{count}}개, API 키 없음 — 이 기기에 있는 키는 그대로 유지됩니다).",
+    "restoreSettingsDone": "AI 설정을 복원했습니다."
   }
 }

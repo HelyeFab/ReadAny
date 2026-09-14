@@ -143,3 +143,85 @@ describe("restoreLibraryBackup", () => {
     expect(mockApplyChanges).not.toHaveBeenCalled();
   });
 });
+
+describe("the settings section", () => {
+  const settings = {
+    includesSecrets: false,
+    values: {
+      aiConfig: {
+        endpoints: [
+          {
+            id: "ep-1",
+            name: "OpenAI",
+            provider: "openai",
+            apiKey: "",
+            baseUrl: "u",
+            models: [],
+            modelsFetched: false,
+          },
+        ],
+        activeEndpointId: "ep-1",
+        activeModel: "gpt-4o",
+        temperature: 0.7,
+        maxTokens: 8192,
+        slidingWindowSize: 20,
+      },
+    },
+  };
+
+  it("is left out entirely when the caller supplies none", async () => {
+    const backup = await createLibraryBackup();
+    expect(backup.settings).toBeUndefined();
+    expect("settings" in backup).toBe(false);
+  });
+
+  it("is carried through a serialize/parse round trip", async () => {
+    const backup = await createLibraryBackup({ settings });
+    const reparsed = parseBackup(serializeBackup(backup));
+
+    expect(reparsed?.settings).toEqual(settings);
+  });
+
+  it("does not move the format version — older builds must still restore the library", async () => {
+    const backup = await createLibraryBackup({ settings });
+    expect(backup.manifest.version).toBe(BACKUP_VERSION);
+    await expect(restoreLibraryBackup(backup)).resolves.toBeDefined();
+  });
+
+  it("is reported by describeBackup", async () => {
+    const backup = await createLibraryBackup({ settings });
+
+    expect(describeBackup(backup).settings).toEqual({
+      keys: ["aiConfig"],
+      includesSecrets: false,
+      endpointCount: 1,
+      endpointsWithKeys: 0,
+    });
+  });
+
+  it("reports null for a file that has none", async () => {
+    expect(describeBackup(await createLibraryBackup()).settings).toBeNull();
+  });
+
+  it("is ignored by the restore itself — only the snapshot reaches the database", async () => {
+    const backup = await createLibraryBackup({ settings });
+    await restoreLibraryBackup(backup);
+
+    expect(mockApplyChanges).toHaveBeenCalledWith(backup.snapshot, { forceApply: true });
+  });
+
+  it("accepts a file with no section at all", () => {
+    const backup = { manifest: { format: BACKUP_FORMAT, version: 1 }, snapshot: snapshot() };
+    expect(isLibraryBackup(backup)).toBe(true);
+  });
+
+  it("rejects a file whose section is malformed rather than applying it", () => {
+    const backup = {
+      manifest: { format: BACKUP_FORMAT, version: 1 },
+      snapshot: snapshot(),
+      settings: { values: { aiConfig: {} } },
+    };
+    expect(isLibraryBackup(backup)).toBe(false);
+    expect(parseBackup(JSON.stringify(backup))).toBeNull();
+  });
+});

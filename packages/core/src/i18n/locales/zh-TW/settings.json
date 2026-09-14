@@ -600,6 +600,14 @@
     "sage": "鼠尾草",
     "jade": "翡翠",
     "teal": "青碧",
-    "indigo": "深藍"
+    "indigo": "深藍",
+    "backupIntro": "備份檔案記錄你的書庫：書籍條目、分組、標註、筆記、書籤、標籤、對話與閱讀進度，以及你的 AI 設定。書籍檔案本身不包含在內——還原後會從同步伺服器下載。",
+    "backupKeysTitle": "包含 API 金鑰？",
+    "backupKeysBody": "備份會帶上你的 AI 設定。包含這 {{count}} 個 API 金鑰會以明文寫入檔案——只有在你能安全保管該檔案時才這樣做。",
+    "backupKeysExclude": "不包含金鑰",
+    "backupKeysInclude": "包含金鑰",
+    "restoreSettingsWithKeys": "同時包含你的 AI 設定（{{count}} 個接入點，含 API 金鑰）。",
+    "restoreSettingsNoKeys": "同時包含你的 AI 設定（{{count}} 個接入點，不含 API 金鑰——本機已有的金鑰會保留）。",
+    "restoreSettingsDone": "AI 設定已還原。"
   }
 }

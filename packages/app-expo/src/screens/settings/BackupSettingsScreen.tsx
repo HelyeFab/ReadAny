@@ -1,12 +1,16 @@
 import { getPlatformService } from "@readany/core";
 import {
+  countAiConfigSecrets,
+  createBackupSettings,
   createLibraryBackup,
   describeBackup,
+  mergeRestoredAiConfig,
   parseBackup,
+  readBackupAiConfig,
   restoreLibraryBackup,
   serializeBackup,
 } from "@readany/core/backup";
-import type { BackupSummary } from "@readany/core/backup";
+import type { BackupSummary, LibraryBackup } from "@readany/core/backup";
 import * as DocumentPicker from "expo-document-picker";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
@@ -23,6 +27,7 @@ import {
 } from "react-native";
 import { FolderInputIcon, ShareIcon } from "../../components/ui/Icon";
 import { useResponsiveLayout } from "../../hooks/use-responsive-layout";
+import { useSettingsStore } from "../../stores/settings-store";
 import { fontSize, fontWeight, radius, spacing, useColors } from "../../styles/theme";
 import { SettingsHeader } from "./SettingsHeader";
 
@@ -43,14 +48,8 @@ export default function BackupSettingsScreen() {
   const { t } = useTranslation();
   const [busy, setBusy] = useState<"backup" | "restore" | null>(null);
 
-  const handleBackup = useCallback(async () => {
-    if (busy) return;
-    setBusy("backup");
-    try {
-      const backup = await createLibraryBackup({
-        appVersion: await getPlatformService().getAppVersion(),
-      });
-
+  const shareBackup = useCallback(
+    async (backup: LibraryBackup) => {
       const file = new File(Paths.cache, backupFileName());
       if (file.exists) file.delete();
       file.create();
@@ -69,16 +68,70 @@ export default function BackupSettingsScreen() {
           t("settings.backupSavedAt", "已保存到：{{path}}", { path: file.uri }),
         );
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      Alert.alert(
-        t("common.error", "错误"),
-        t("settings.backupFailed", "备份失败：{{error}}", { error: msg }),
-      );
-    } finally {
-      setBusy(null);
+    },
+    [t],
+  );
+
+  const writeBackup = useCallback(
+    async (includeSecrets: boolean) => {
+      setBusy("backup");
+      try {
+        await shareBackup(
+          await createLibraryBackup({
+            appVersion: await getPlatformService().getAppVersion(),
+            settings: createBackupSettings(useSettingsStore.getState().aiConfig, {
+              includeSecrets,
+            }),
+          }),
+        );
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        Alert.alert(
+          t("common.error", "错误"),
+          t("settings.backupFailed", "备份失败：{{error}}", { error: msg }),
+        );
+      } finally {
+        setBusy(null);
+      }
+    },
+    [shareBackup, t],
+  );
+
+  /**
+   * The keys are the whole question. A backup file gets shared, dropped in a
+   * cloud folder, mailed to yourself — and a key inside it travels in clear
+   * text wherever the file goes. So it is asked every time, rather than
+   * remembered as a preference someone set once and forgot.
+   */
+  const handleBackup = useCallback(() => {
+    if (busy) return;
+
+    const secretCount = countAiConfigSecrets(useSettingsStore.getState().aiConfig);
+    if (secretCount === 0) {
+      void writeBackup(false);
+      return;
     }
-  }, [busy, t]);
+
+    Alert.alert(
+      t("settings.backupKeysTitle", "包含 API 密钥？"),
+      t(
+        "settings.backupKeysBody",
+        "备份会带上你的 AI 设置。文件中的 {{count}} 个 API 密钥将以明文保存——只有在你能安全保管该文件时才包含它们。",
+        { count: secretCount },
+      ),
+      [
+        { text: t("common.cancel", "取消"), style: "cancel" },
+        {
+          text: t("settings.backupKeysExclude", "不包含密钥"),
+          onPress: () => void writeBackup(false),
+        },
+        {
+          text: t("settings.backupKeysInclude", "包含密钥"),
+          onPress: () => void writeBackup(true),
+        },
+      ],
+    );
+  }, [busy, t, writeBackup]);
 
   const confirmRestore = useCallback(
     (summary: BackupSummary, apply: () => Promise<void>) => {
@@ -94,6 +147,23 @@ export default function BackupSettingsScreen() {
           "备份中的条目会合并进当前书库：同一条目以备份为准，本机独有的条目会保留。书籍文件不在备份中，将在下次同步时下载。",
         ),
       ];
+
+      if (summary.settings) {
+        lines.push(
+          "",
+          summary.settings.includesSecrets
+            ? t(
+                "settings.restoreSettingsWithKeys",
+                "同时包含你的 AI 设置（{{count}} 个接入点，含 API 密钥）。",
+                { count: summary.settings.endpointCount },
+              )
+            : t(
+                "settings.restoreSettingsNoKeys",
+                "同时包含你的 AI 设置（{{count}} 个接入点，不含 API 密钥——本机已有的密钥会保留）。",
+                { count: summary.settings.endpointCount },
+              ),
+        );
+      }
 
       if (summary.unreadableTables.length > 0) {
         lines.push(
@@ -135,12 +205,28 @@ export default function BackupSettingsScreen() {
         setBusy("restore");
         try {
           const { applied, skipped } = await restoreLibraryBackup(backup);
+
+          // Settings are not database records, so the restore above cannot
+          // carry them. Applied after it, and only if the file had any: a
+          // keyless backup merges against what this device already holds
+          // rather than blanking working keys with the blanks it carries.
+          const restoredAiConfig = readBackupAiConfig(backup.settings);
+          let settingsRestored = false;
+          if (restoredAiConfig) {
+            const store = useSettingsStore.getState();
+            await store.importAIConfig(mergeRestoredAiConfig(restoredAiConfig, store.aiConfig));
+            settingsRestored = true;
+          }
+
           Alert.alert(
             t("settings.restoreDone", "恢复完成"),
-            t("settings.restoreResult", "已恢复 {{applied}} 条，跳过 {{skipped}} 条。", {
-              applied,
-              skipped,
-            }),
+            [
+              t("settings.restoreResult", "已恢复 {{applied}} 条，跳过 {{skipped}} 条。", {
+                applied,
+                skipped,
+              }),
+              ...(settingsRestored ? [t("settings.restoreSettingsDone", "AI 设置已恢复。")] : []),
+            ].join("\n"),
           );
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
