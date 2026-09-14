@@ -7,17 +7,21 @@ import { ImportDestinationSheet } from "@/components/library/ImportDestinationSh
 import type { ImportDestination } from "@/components/library/ImportDestinationSheet";
 import { LibraryListRow } from "@/components/library/LibraryListRow";
 import { LibraryMenuSheet } from "@/components/library/LibraryMenuSheet";
+import { ShelfScopeSheet } from "@/components/library/ShelfScopeSheet";
+import { ShelfTile } from "@/components/library/ShelfTile";
 import { type ExtractorRef, ExtractorWebView } from "@/components/rag/ExtractorWebView";
 import {
   ArrowDownAZIcon,
   ArrowUpAZIcon,
   CheckCheckIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ClockIcon,
   DatabaseIcon,
   FolderInputIcon,
   FolderMinusIcon,
   HashIcon,
+  LayersIcon,
   MoreVerticalIcon,
   PlusIcon,
   SearchIcon,
@@ -33,11 +37,13 @@ import type { RootStackParamList } from "@/navigation/RootNavigator";
 import { WebDavConnectSheet } from "@/screens/library/WebDavConnectSheet";
 import { WebDavImportSourceSheet } from "@/screens/library/WebDavImportSourceSheet";
 import { useLibraryStore } from "@/stores/library-store";
+import { expandFolderIds, useShelfStore } from "@/stores/shelf-store";
 import {
   type ThemeColors,
   fontSize,
   fontWeight,
   radius,
+  spacing,
   ui,
   useColors,
   useTheme,
@@ -156,7 +162,22 @@ export function LibraryScreen() {
   const nav = useNavigation<Nav>();
   const layout = useResponsiveLayout();
   const gridGap = layout.isTablet ? 16 : GRID_GAP;
+  const contentWidthForShelf = layout.centeredContentWidth;
   const columnCount = layout.isTabletLandscape ? 5 : layout.isTablet ? 4 : NUM_COLUMNS;
+  /**
+   * The shelf sizes itself by how big a cover needs to be to be recognised —
+   * about 84dp — rather than by a fixed number of columns, so a phone shows
+   * four and a 10" tablet shows ten without either being told to.
+   */
+  const SHELF_TARGET_TILE = 84;
+  const shelfGap = layout.isTablet ? 12 : 8;
+  const shelfColumnCount = Math.max(
+    3,
+    Math.floor((contentWidthForShelf + shelfGap) / (SHELF_TARGET_TILE + shelfGap)),
+  );
+  const shelfTileWidth = Math.floor(
+    (contentWidthForShelf - shelfGap * (shelfColumnCount - 1)) / shelfColumnCount,
+  );
   const contentWidth = layout.centeredContentWidth;
   const gridItemWidth = Math.floor((contentWidth - gridGap * (columnCount - 1)) / columnCount);
   const s = useMemo(
@@ -166,9 +187,18 @@ export function LibraryScreen() {
         contentWidth,
         gridGap,
         gridItemWidth,
+        shelfGap,
         isWideScreen: layout.isTablet,
       }),
-    [colors, contentWidth, gridGap, gridItemWidth, layout.horizontalPadding, layout.isTablet],
+    [
+      colors,
+      contentWidth,
+      gridGap,
+      gridItemWidth,
+      shelfGap,
+      layout.horizontalPadding,
+      layout.isTablet,
+    ],
   );
   const [showSearch, setShowSearch] = useState(false);
   const [showSort, setShowSort] = useState(false);
@@ -503,13 +533,33 @@ export function LibraryScreen() {
     [activeGroupId, filteredBooks, isGroupView, hasSearch],
   );
 
-  const gridItems = useMemo<LibraryGridItem[]>(
-    () =>
-      isGroupView && !hasSearch
-        ? [...groupedEntries, ...visibleBooks.map((book) => ({ type: "book" as const, book }))]
-        : visibleBooks.map((book) => ({ type: "book" as const, book })),
-    [groupedEntries, isGroupView, visibleBooks, hasSearch],
-  );
+  const shelfMode = useShelfStore((st) => st.mode);
+  const shelfGroupIds = useShelfStore((st) => st.groupIds);
+  const showEverything = useShelfStore((st) => st.showEverything);
+  const toggleShelfFolder = useShelfStore((st) => st.toggleFolder);
+  const [scopeSheetOpen, setScopeSheetOpen] = useState(false);
+
+  const isShelfView = viewMode === "shelf" && !activeGroupId;
+
+  /**
+   * On the shelf a folder is a filter, not a place: the books come from the
+   * whole library and are narrowed to the chosen folders, including everything
+   * nested inside them.
+   */
+  const shelfBooks = useMemo(() => {
+    if (!isShelfView) return [];
+    if (shelfMode === "all" || shelfGroupIds.length === 0) return filteredBooks;
+    const wanted = expandFolderIds(shelfGroupIds, groups);
+    return filteredBooks.filter((book) => book.groupId && wanted.has(book.groupId));
+  }, [isShelfView, shelfMode, shelfGroupIds, filteredBooks, groups]);
+
+  const gridItems = useMemo<LibraryGridItem[]>(() => {
+    // The shelf is a flat wall of covers; folders filter it rather than appear in it.
+    if (isShelfView) return shelfBooks.map((book) => ({ type: "book" as const, book }));
+    return isGroupView && !hasSearch
+      ? [...groupedEntries, ...visibleBooks.map((book) => ({ type: "book" as const, book }))]
+      : visibleBooks.map((book) => ({ type: "book" as const, book }));
+  }, [groupedEntries, isGroupView, visibleBooks, hasSearch, isShelfView, shelfBooks]);
 
   /**
    * Import the staged files and file them where the sheet said. The folder is
@@ -893,6 +943,27 @@ export function LibraryScreen() {
    * A folder may prefer a different layout from the library — a shelf of
    * reference books reads better as a list than as a wall of covers.
    */
+  /** Books under a folder, its subfolders included — what picking it would show. */
+  const shelfFolderCount = useCallback(
+    (groupId: string) => {
+      const wanted = expandFolderIds([groupId], groups);
+      return filteredBooks.filter((book) => book.groupId && wanted.has(book.groupId)).length;
+    },
+    [filteredBooks, groups],
+  );
+
+  const shelfScopeLabel = useMemo(() => {
+    if (shelfMode === "all" || shelfGroupIds.length === 0) {
+      return t("library.shelfEverything", "全部书籍");
+    }
+    const names = shelfGroupIds
+      .map((id) => groups.find((g) => g.id === id)?.name)
+      .filter((name): name is string => !!name);
+    if (names.length === 0) return t("library.shelfEverything", "全部书籍");
+    if (names.length === 1) return names[0];
+    return t("library.shelfFolderCount", { count: names.length });
+  }, [shelfMode, shelfGroupIds, groups, t]);
+
   const isListView = useMemo(() => {
     if (activeGroupId) {
       const prefs = groups.find((g) => g.id === activeGroupId)?.viewPrefs;
@@ -902,10 +973,15 @@ export function LibraryScreen() {
   }, [activeGroupId, groups, viewMode]);
 
   const toggleListView = useCallback(() => {
-    const next = isListView ? "grid" : "list";
-    if (activeGroupId) setGroupViewPrefs(activeGroupId, { viewMode: next });
-    else setViewMode(next);
-  }, [activeGroupId, isListView, setGroupViewPrefs, setViewMode]);
+    // Inside a folder there is no shelf — the shelf IS the way to see across
+    // folders, so offering it here would just be a grid with extra steps.
+    if (activeGroupId) {
+      setGroupViewPrefs(activeGroupId, { viewMode: isListView ? "grid" : "list" });
+      return;
+    }
+    const next = viewMode === "grid" ? "list" : viewMode === "list" ? "shelf" : "grid";
+    setViewMode(next);
+  }, [activeGroupId, isListView, viewMode, setGroupViewPrefs, setViewMode]);
 
   const isEmpty = gridItems.length === 0;
   const hasBooks = books.length > 0;
@@ -1130,6 +1206,19 @@ export function LibraryScreen() {
       setActiveGroupId,
       toggleBookSelection,
     ],
+  );
+
+  const renderShelfItem = useCallback(
+    ({ item }: { item: LibraryGridItem }) =>
+      item.type === "book" ? (
+        <ShelfTile
+          book={item.book}
+          width={shelfTileWidth}
+          onOpen={handleOpen}
+          onLongPress={handleShowDetails}
+        />
+      ) : null,
+    [shelfTileWidth, handleOpen, handleShowDetails],
   );
 
   const renderGridItem = useCallback(
@@ -1482,20 +1571,40 @@ export function LibraryScreen() {
               {t("library.resultsCount", { count: gridItems.length })}
             </Text>
           )}
+          {isShelfView && isLoaded && hasBooks ? (
+            <View style={s.shelfScopeBar}>
+              <TouchableOpacity
+                style={s.shelfScopeChip}
+                onPress={() => setScopeSheetOpen(true)}
+                activeOpacity={0.75}
+              >
+                <LayersIcon size={14} color={colors.mutedForeground} />
+                <Text style={s.shelfScopeLabel} numberOfLines={1}>
+                  {shelfScopeLabel}
+                </Text>
+                <ChevronDownIcon size={14} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              <Text style={s.shelfScopeCount}>
+                {t("library.shelfCount", { count: shelfBooks.length })}
+              </Text>
+            </View>
+          ) : null}
           {isLoaded && !isEmpty && (
             <FlatList
               data={gridItems}
               ListHeaderComponent={shelfHeader}
-              renderItem={isListView ? renderListItem : renderGridItem}
+              renderItem={
+                isShelfView ? renderShelfItem : isListView ? renderListItem : renderGridItem
+              }
               extraData={{ vectorProgress, vectorizingBookId }}
               keyExtractor={(item) =>
                 item.type === "group" ? `group-${item.group.id}` : item.book.id
               }
               // FlatList will not change numColumns in place, so the key must
               // change with it or the list keeps its old layout.
-              key={`library-${isListView ? "list" : `grid-${columnCount}`}`}
-              numColumns={isListView ? 1 : columnCount}
-              columnWrapperStyle={isListView ? undefined : s.gridRow}
+              key={`library-${isShelfView ? `shelf-${shelfColumnCount}` : isListView ? "list" : `grid-${columnCount}`}`}
+              numColumns={isShelfView ? shelfColumnCount : isListView ? 1 : columnCount}
+              columnWrapperStyle={isShelfView ? s.shelfRow : isListView ? undefined : s.gridRow}
               contentContainerStyle={s.gridContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
@@ -1504,6 +1613,18 @@ export function LibraryScreen() {
           )}
         </View>
       </View>
+
+      <ShelfScopeSheet
+        visible={scopeSheetOpen}
+        groups={groups}
+        mode={shelfMode}
+        selectedIds={shelfGroupIds}
+        bookCountFor={shelfFolderCount}
+        totalBooks={filteredBooks.length}
+        onShowEverything={showEverything}
+        onToggleFolder={toggleShelfFolder}
+        onClose={() => setScopeSheetOpen(false)}
+      />
 
       <Modal
         visible={!!groupNameModal}
@@ -1586,7 +1707,7 @@ export function LibraryScreen() {
       <LibraryMenuSheet
         visible={showLibraryMenu}
         isGroupView={isGroupView}
-        isListView={isListView}
+        viewMode={activeGroupId ? (isListView ? "list" : "grid") : viewMode}
         canCreateFolder={isGroupView}
         onClose={() => setShowLibraryMenu(false)}
         onSearch={() => (showSearch ? closeSearch() : openSearch())}
@@ -1631,6 +1752,7 @@ const makeStyles = (
     contentWidth: number;
     gridGap: number;
     gridItemWidth: number;
+    shelfGap: number;
     isWideScreen: boolean;
   },
 ) =>
@@ -1849,6 +1971,26 @@ const makeStyles = (
     noResultsText: { fontSize: fontSize.sm, color: colors.mutedForeground, marginTop: 12 },
     resultsCount: { fontSize: fontSize.xs, color: colors.mutedForeground, marginBottom: 8 },
     gridRow: { gap: layout.gridGap, justifyContent: "flex-start" },
+    shelfRow: { gap: layout.shelfGap, justifyContent: "flex-start", marginBottom: layout.shelfGap },
+    shelfScopeBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      paddingBottom: spacing.md,
+    },
+    shelfScopeChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+      paddingHorizontal: spacing.md,
+      paddingVertical: ui(7),
+      borderRadius: radius.full,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    shelfScopeLabel: { fontSize: fontSize.sm, color: colors.foreground },
+    shelfScopeCount: { fontSize: fontSize.xs, color: colors.mutedForeground },
     gridContent: { paddingBottom: 24, paddingTop: 4, width: "100%" },
     heroArt: {
       width: "88%",

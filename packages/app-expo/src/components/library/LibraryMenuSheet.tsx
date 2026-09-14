@@ -2,6 +2,7 @@ import {
   FolderPlusIcon,
   LayersIcon,
   LayoutGridIcon,
+  LibraryIcon,
   ListIcon,
   SearchIcon,
   SortAscIcon,
@@ -20,7 +21,8 @@ import { Modal, Pressable, Text, TouchableOpacity, View } from "react-native";
 interface Props {
   visible: boolean;
   isGroupView: boolean;
-  isListView: boolean;
+  /** Current layout, so the row can name it and show its icon. */
+  viewMode: "grid" | "list" | "shelf";
   canCreateFolder: boolean;
   onClose: () => void;
   onSearch: () => void;
@@ -33,7 +35,7 @@ interface Props {
 export function LibraryMenuSheet({
   visible,
   isGroupView,
-  isListView,
+  viewMode,
   canCreateFolder,
   onClose,
   onSearch,
@@ -50,6 +52,15 @@ export function LibraryMenuSheet({
     onClose();
     action();
   };
+
+  const layoutLabel =
+    viewMode === "list"
+      ? t("library.listView", "List view")
+      : viewMode === "shelf"
+        ? t("library.shelfView", "Shelf view")
+        : t("library.gridView", "Grid view");
+  const layoutIcon =
+    viewMode === "list" ? ListIcon : viewMode === "shelf" ? LibraryIcon : LayoutGridIcon;
 
   const items: {
     key: string;
@@ -80,8 +91,8 @@ export function LibraryMenuSheet({
     {
       key: "layout",
       label: t("library.layout", "Layout"),
-      value: isListView ? t("library.listView", "List view") : t("library.gridView", "Grid view"),
-      Icon: isListView ? ListIcon : LayoutGridIcon,
+      value: layoutLabel,
+      Icon: layoutIcon,
       onPress: run(onToggleListView),
     },
   ];
