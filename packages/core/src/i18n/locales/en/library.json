@@ -178,7 +178,10 @@
     "shelfScopeTitle": "What to show on the shelf",
     "shelfEverything": "All books",
     "shelfFolderCount": "{{count}} folders",
-    "shelfCount": "{{count}} books"
+    "shelfCount": "{{count}} books",
+    "generateCovers": "Generate PDF covers",
+    "generateCoversDone": "{{count}} covers made, {{failed}} could not be read.",
+    "generateCoversProgress": "Making covers… {{done}}/{{total}}"
   },
   "home": {
     "library": "Library",
