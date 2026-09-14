@@ -63,6 +63,12 @@ const SYNC_TABLES: SyncTableConfig[] = [
   { name: "reading_sessions", pk: "id", timestampCol: "updated_at" },
 ];
 
+/**
+ * The tables sync knows how to carry. Exported so a backup can report tables it
+ * is holding but this build cannot restore, instead of dropping them in silence.
+ */
+export const SYNC_TABLE_NAMES: readonly string[] = SYNC_TABLES.map((table) => table.name);
+
 /** Remote directory for per-device sync files */
 const SYNC_DIR = "/readany/sync";
 const SYNC_INDEX_PATH = `${SYNC_DIR}/index.json`;
