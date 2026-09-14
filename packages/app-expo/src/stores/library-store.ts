@@ -3,6 +3,7 @@ import {
   extractBookMetadata,
   extractBookMetadataFromFile,
 } from "@/lib/book/metadata-extractor";
+import { hashBookFile } from "@/lib/library/file-hash";
 import { queueBook as queueAutoVectorize } from "@/lib/rag/auto-vectorize-service";
 import {
   type ImportBooksResult,
@@ -167,13 +168,20 @@ function bytesToBase64(bytes: Uint8Array): string {
 
 const MOBILE_IMPORT_METADATA_MAX_BYTES = 32 * 1024 * 1024;
 
-async function getMobileFileStat(path: string): Promise<{ size: number; md5?: string }> {
+/**
+ * Size and content hash of a file about to be imported.
+ *
+ * ⚠️ The hash is SHA-256 over the raw bytes, because that is what the desktop
+ * writes (`sync_hash_file`) and the `books` table syncs between them. Expo's
+ * own `md5` would be cheaper and native, but it would give the same file two
+ * identities on two devices and let synced books re-import as duplicates.
+ */
+async function getMobileFileStat(path: string): Promise<{ size: number; fileHash?: string }> {
   const LegacyFileSystem = await import("expo-file-system/legacy");
   const info = await LegacyFileSystem.getInfoAsync(path);
-  return {
-    size: info.exists && !info.isDirectory ? (info.size ?? 0) : 0,
-    md5: undefined,
-  };
+  const size = info.exists && !info.isDirectory ? (info.size ?? 0) : 0;
+
+  return { size, fileHash: await hashBookFile(path, size) };
 }
 
 async function extractMobileImportMetadata(params: {
@@ -367,7 +375,7 @@ async function restoreDeletedMobileBook(
   const format: Book["format"] = formatMap[ext || ""] || "epub";
   const fileName = originalName;
   const platform = getPlatformService();
-  const { size: fileSize, md5: fileHash } = await getMobileFileStat(filePath);
+  const { size: fileSize, fileHash } = await getMobileFileStat(filePath);
 
   if (ext === "txt") {
     const sourceBytes = await platform.readFile(filePath);
@@ -563,7 +571,7 @@ async function inspectDeletedMobileBookCandidate(
   };
   const format: Book["format"] = formatMap[ext || ""] || "epub";
   const fileName = originalName;
-  const { size: fileSize, md5: fileHash } = await getMobileFileStat(filePath);
+  const { size: fileSize, fileHash } = await getMobileFileStat(filePath);
 
   if (ext === "txt") {
     try {
@@ -874,7 +882,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
           const format: Book["format"] = formatMap[ext || ""] || "epub";
           const fileName = originalName;
           const platform = getPlatformService();
-          const { size: fileSize, md5: fileHash } = await getMobileFileStat(filePath);
+          const { size: fileSize, fileHash } = await getMobileFileStat(filePath);
 
           const existingDuplicate = findDuplicateBookByHash(duplicateIndex, fileHash);
           if (existingDuplicate) {
