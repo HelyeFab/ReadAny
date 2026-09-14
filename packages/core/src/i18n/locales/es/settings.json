@@ -598,6 +598,14 @@
     "sage": "Salvia",
     "jade": "Jade",
     "teal": "Verde azulado",
-    "indigo": "Azul profundo"
+    "indigo": "Azul profundo",
+    "backupIntro": "Una copia de seguridad registra tu biblioteca: entradas de libros, grupos, subrayados, notas, marcadores, etiquetas, conversaciones y progreso de lectura, además de tu configuración de IA. Los archivos de los libros no se incluyen: un dispositivo restaurado los descarga de tu servidor de sincronización.",
+    "backupKeysTitle": "¿Incluir las claves de API?",
+    "backupKeysBody": "La copia lleva tu configuración de IA. Incluir las {{count}} clave(s) de API las escribe en el archivo en texto plano: hazlo solo si puedes guardar el archivo de forma segura.",
+    "backupKeysExclude": "Sin claves",
+    "backupKeysInclude": "Incluir claves",
+    "restoreSettingsWithKeys": "También contiene tu configuración de IA ({{count}} punto(s) de acceso, con claves de API).",
+    "restoreSettingsNoKeys": "También contiene tu configuración de IA ({{count}} punto(s) de acceso, sin claves de API: se conservan las que ya están en este dispositivo).",
+    "restoreSettingsDone": "Configuración de IA restaurada."
   }
 }
