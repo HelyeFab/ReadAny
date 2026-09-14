@@ -1,3 +1,9 @@
+import { FolderIcon } from "@/components/ui/Icon";
+import { COVER_PLACEHOLDER } from "@/lib/library/cover-placeholder";
+import { folderColor } from "@/lib/library/folder-colors";
+import { radius, spacing, ui, useColors } from "@/styles/theme";
+import { getPlatformService } from "@readany/core/services";
+import type { Book, BookGroup } from "@readany/core/types";
 /**
  * One row of the library list.
  *
@@ -6,14 +12,8 @@
  * author and progress the grid truncates.
  */
 import { memo, useEffect, useState } from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { COVER_PLACEHOLDER } from "@/lib/library/cover-placeholder";
-import { FolderIcon } from "@/components/ui/Icon";
-import { folderColor } from "@/lib/library/folder-colors";
-import { radius, spacing, useColors } from "@/styles/theme";
-import { getPlatformService } from "@readany/core/services";
-import type { Book, BookGroup } from "@readany/core/types";
+import { Image, Text, TouchableOpacity, View } from "react-native";
 
 const ROW_COVER_WIDTH = 44;
 const ROW_COVER_HEIGHT = 62;
@@ -117,18 +117,18 @@ export const LibraryListRow = memo(function LibraryListRow({
       </View>
 
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text numberOfLines={1} style={{ fontSize: 15, color: colors.foreground }}>
+        <Text numberOfLines={1} style={{ fontSize: ui(15), color: colors.foreground }}>
           {title}
         </Text>
         {subtitle ? (
-          <Text numberOfLines={1} style={{ fontSize: 12, color: colors.mutedForeground }}>
+          <Text numberOfLines={1} style={{ fontSize: ui(12), color: colors.mutedForeground }}>
             {subtitle}
           </Text>
         ) : null}
       </View>
 
       {book && book.progress > 0 ? (
-        <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+        <Text style={{ fontSize: ui(12), color: colors.mutedForeground }}>
           {Math.round(book.progress * 100)}%
         </Text>
       ) : null}

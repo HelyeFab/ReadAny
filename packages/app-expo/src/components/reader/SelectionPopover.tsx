@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/Icon";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import type { SelectionEvent } from "@/hooks/use-reader-bridge";
-import { radius, spacing, useColors, withOpacity } from "@/styles/theme";
+import { radius, spacing, ui, useColors, withOpacity } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_COLOR_HEX } from "@readany/core/types";
 import type { HighlightColor } from "@readany/core/types";
@@ -102,11 +102,7 @@ export function SelectionPopover({
   }, [selection.cfi, hasExistingHighlight]);
 
   const buttonCount =
-    4 +
-    (onNote ? 1 : 0) +
-    (onTranslate ? 1 : 0) +
-    (onDefine ? 1 : 0) +
-    (onSpeak ? 1 : 0);
+    4 + (onNote ? 1 : 0) + (onTranslate ? 1 : 0) + (onDefine ? 1 : 0) + (onSpeak ? 1 : 0);
   const colorRowItemCount = HIGHLIGHT_COLORS.length + (canRemoveHighlight ? 2 : 0);
   const colorRowWidth = showColors
     ? HIGHLIGHT_COLORS.length * COLOR_DOT_SIZE +
@@ -283,7 +279,6 @@ export function SelectionPopover({
               <Volume2Icon size={18} color={colors.foreground} />
             </TouchableOpacity>
           )}
-
         </View>
       </View>
 
@@ -439,7 +434,7 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.mutedForeground,
       marginBottom: spacing.md,
       fontStyle: "italic",
-      lineHeight: 20,
+      lineHeight: ui(20),
       paddingHorizontal: spacing.sm,
       borderLeftWidth: 2,
       borderLeftColor: colors.primary,

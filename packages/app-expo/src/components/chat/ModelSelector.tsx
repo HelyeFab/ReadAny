@@ -1,6 +1,13 @@
 import { CheckIcon, ChevronDownIcon } from "@/components/ui/Icon";
 import { useSettingsStore } from "@/stores/settings-store";
-import { fontSize as fs, fontWeight as fw, radius, useColors, withOpacity } from "@/styles/theme";
+import {
+  fontSize as fs,
+  fontWeight as fw,
+  radius,
+  ui,
+  useColors,
+  withOpacity,
+} from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 /**
  * ModelSelector — compact pill trigger with popover dropdown.
@@ -157,7 +164,7 @@ const makeStyles = (colors: ThemeColors) =>
       maxHeight: 288,
     },
     epName: {
-      fontSize: 9,
+      fontSize: ui(9),
       fontWeight: fw.medium,
       color: colors.mutedForeground,
       textTransform: "uppercase",

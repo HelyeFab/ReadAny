@@ -1,11 +1,11 @@
+import type { RootStackParamList } from "@/navigation/RootNavigator";
 /**
  * FeedbackDetailScreen — Shows issue detail + comments within the app.
  */
-import { useColors } from "@/styles/theme";
-import type { RootStackParamList } from "@/navigation/RootNavigator";
+import { ui, useColors } from "@/styles/theme";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { getFeedbackDetail, markFeedbackReplySeen } from "@readany/core/feedback";
 import type { FeedbackComment, FeedbackDetail } from "@readany/core/feedback";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ChevronLeft, ExternalLink, MessageCircle } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -41,7 +41,10 @@ export default function FeedbackDetailScreen({ navigation, route }: Props) {
   }, [issueNumber]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["top"]}
+    >
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -100,7 +103,9 @@ export default function FeedbackDetailScreen({ navigation, route }: Props) {
           </View>
 
           {/* Issue body */}
-          <View style={[styles.bodyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View
+            style={[styles.bodyCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
             <Text style={[styles.bodyText, { color: colors.foreground }]}>
               {stripMarkdown(detail.body)}
             </Text>
@@ -139,7 +144,9 @@ function CommentItem({
   colors,
 }: { comment: FeedbackComment; colors: ReturnType<typeof useColors> }) {
   return (
-    <View style={[styles.commentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View
+      style={[styles.commentCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+    >
       <View style={styles.commentMeta}>
         <Text style={[styles.commentAuthor, { color: colors.foreground }]}>{comment.author}</Text>
         <Text style={[styles.commentDate, { color: colors.mutedForeground }]}>
@@ -176,34 +183,39 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
   },
   backBtn: { padding: 4, marginRight: 4 },
-  headerTitle: { flex: 1, fontSize: 15, fontWeight: "600" },
+  headerTitle: { flex: 1, fontSize: ui(15), fontWeight: "600" },
   externalBtn: { padding: 6 },
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
-  errorText: { fontSize: 14 },
+  errorText: { fontSize: ui(14) },
   scrollView: { flex: 1 },
   content: { padding: 16, gap: 16 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
-  statusText: { fontSize: 12, fontWeight: "500" },
-  dateText: { fontSize: 12 },
+  statusText: { fontSize: ui(12), fontWeight: "500" },
+  dateText: { fontSize: ui(12) },
   bodyCard: {
     borderWidth: 0.5,
     borderRadius: 8,
     padding: 14,
   },
-  bodyText: { fontSize: 13, lineHeight: 20 },
+  bodyText: { fontSize: ui(13), lineHeight: ui(20) },
   commentsSection: { gap: 10 },
   commentHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  commentHeaderText: { fontSize: 12, fontWeight: "500" },
+  commentHeaderText: { fontSize: ui(12), fontWeight: "500" },
   commentCard: {
     borderWidth: 0.5,
     borderRadius: 8,
     padding: 12,
   },
-  commentMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
-  commentAuthor: { fontSize: 12, fontWeight: "600" },
-  commentDate: { fontSize: 11 },
-  commentBody: { fontSize: 13, lineHeight: 19 },
+  commentMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  commentAuthor: { fontSize: ui(12), fontWeight: "600" },
+  commentDate: { fontSize: ui(11) },
+  commentBody: { fontSize: ui(13), lineHeight: ui(19) },
   noComments: { alignItems: "center", paddingVertical: 20 },
-  noCommentsText: { fontSize: 13 },
+  noCommentsText: { fontSize: ui(13) },
 });

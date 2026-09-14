@@ -8,11 +8,12 @@ import {
   SquareIcon,
 } from "@/components/ui/Icon";
 import { pushRoute } from "@/lib/navigationRef";
-import { useReaderStore } from "@/stores/reader-store";
 import { useTTSStore } from "@/stores";
-import { fontSize, radius, useColors, withOpacity } from "@/styles/theme";
+import { useReaderStore } from "@/stores/reader-store";
+import { fontSize, radius, ui, useColors, withOpacity } from "@/styles/theme";
 import { eventBus } from "@readany/core/utils/event-bus";
 import { useCallback, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Animated,
@@ -27,7 +28,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState } from "react";
 import { TTSSleepTimerSheet } from "./TTSSleepTimerSheet";
 
 const BUBBLE_SIZE = 56;
@@ -73,7 +73,9 @@ export function TTSMiniPlayer({ visible, onClose, anchorLayout }: TTSMiniPlayerP
       eventBus.emit("tts:jump-to-current", {
         bookId: currentBookId,
         cfi: currentLocationCfi,
-        respond: () => { handled = true; },
+        respond: () => {
+          handled = true;
+        },
       });
     }
     if (!handled && currentLocationCfi && goToCfiFn) {
@@ -92,7 +94,9 @@ export function TTSMiniPlayer({ visible, onClose, anchorLayout }: TTSMiniPlayerP
     let handled = false;
     eventBus.emit("tts:open-lyrics-page", {
       bookId: currentBookId,
-      respond: () => { handled = true; },
+      respond: () => {
+        handled = true;
+      },
     });
     if (!handled) {
       pushRoute("Reader", { bookId: currentBookId, openTTS: true });
@@ -119,8 +123,18 @@ export function TTSMiniPlayer({ visible, onClose, anchorLayout }: TTSMiniPlayerP
     if (playState === "playing") {
       const anim = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(pulseAnim, {
+            toValue: 1.15,
+            duration: 600,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 600,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
         ]),
       );
       anim.start();
@@ -130,10 +144,13 @@ export function TTSMiniPlayer({ visible, onClose, anchorLayout }: TTSMiniPlayerP
   }, [playState, pulseAnim]);
 
   const statusText =
-    playState === "loading" ? t("tts.loading")
-    : playState === "playing" ? t("tts.playing")
-    : playState === "paused" ? t("tts.paused")
-    : t("tts.stopped");
+    playState === "loading"
+      ? t("tts.loading")
+      : playState === "playing"
+        ? t("tts.playing")
+        : playState === "paused"
+          ? t("tts.paused")
+          : t("tts.stopped");
 
   const panelWidth = Math.min(388, Math.max(320, (anchorLayout?.screenWidth || 360) - 16));
   const [panelHeight, setPanelHeight] = useState(152);
@@ -141,26 +158,39 @@ export function TTSMiniPlayer({ visible, onClose, anchorLayout }: TTSMiniPlayerP
   const [timerSheetVisible, setTimerSheetVisible] = useState(false);
   const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
   const anchor = anchorLayout ?? {
-    left: 16, top: 120, size: BUBBLE_SIZE,
+    left: 16,
+    top: 120,
+    size: BUBBLE_SIZE,
     screenWidth: Dimensions.get("window").width,
     screenHeight: Dimensions.get("window").height,
   };
-  const left = clamp(anchor.left + anchor.size / 2 - panelWidth / 2, 10, anchor.screenWidth - panelWidth - 10);
+  const left = clamp(
+    anchor.left + anchor.size / 2 - panelWidth / 2,
+    10,
+    anchor.screenWidth - panelWidth - 10,
+  );
   const safeTop = (insets.top || 12) + 8;
   const safeBottom = anchor.screenHeight - panelHeight - Math.max(insets.bottom, 16) - 8;
   const aboveTop = anchor.top - panelHeight - 10;
   const belowTop = anchor.top + anchor.size + 10;
   const canPlaceAbove = aboveTop >= safeTop;
   const canPlaceBelow = belowTop <= safeBottom;
-  const top = canPlaceAbove ? aboveTop : canPlaceBelow ? belowTop : clamp(belowTop, safeTop, safeBottom);
+  const top = canPlaceAbove
+    ? aboveTop
+    : canPlaceBelow
+      ? belowTop
+      : clamp(belowTop, safeTop, safeBottom);
 
-  const handlePanelLayout = useCallback((event: LayoutChangeEvent) => {
-    const nextHeight = Math.ceil(event.nativeEvent.layout.height || 0);
-    if (nextHeight > 0) {
-      if (nextHeight !== panelHeight) setPanelHeight(nextHeight);
-      if (!panelMeasured) setPanelMeasured(true);
-    }
-  }, [panelHeight, panelMeasured]);
+  const handlePanelLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const nextHeight = Math.ceil(event.nativeEvent.layout.height || 0);
+      if (nextHeight > 0) {
+        if (nextHeight !== panelHeight) setPanelHeight(nextHeight);
+        if (!panelMeasured) setPanelMeasured(true);
+      }
+    },
+    [panelHeight, panelMeasured],
+  );
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -190,7 +220,10 @@ export function TTSMiniPlayer({ visible, onClose, anchorLayout }: TTSMiniPlayerP
               {currentBookTitle || t("tts.listeningToBook")}
             </Text>
             {!!currentChapterTitle && (
-              <Text style={[styles.chapterText, { color: colors.mutedForeground }]} numberOfLines={1}>
+              <Text
+                style={[styles.chapterText, { color: colors.mutedForeground }]}
+                numberOfLines={1}
+              >
                 {currentChapterTitle}
               </Text>
             )}
@@ -252,7 +285,11 @@ export function TTSMiniPlayer({ visible, onClose, anchorLayout }: TTSMiniPlayerP
           <TouchableOpacity
             style={[
               styles.iconBtn,
-              { backgroundColor: sleepTimerEndsAt ? withOpacity(colors.primary, 0.14) : colors.muted },
+              {
+                backgroundColor: sleepTimerEndsAt
+                  ? withOpacity(colors.primary, 0.14)
+                  : colors.muted,
+              },
             ]}
             onPress={() => setTimerSheetVisible(true)}
             accessibilityRole="button"
@@ -261,7 +298,9 @@ export function TTSMiniPlayer({ visible, onClose, anchorLayout }: TTSMiniPlayerP
             <ClockIcon size={16} color={sleepTimerEndsAt ? colors.primary : colors.foreground} />
           </TouchableOpacity>
 
-          {!!currentBookId && <View style={[styles.dividerV, { backgroundColor: colors.border }]} />}
+          {!!currentBookId && (
+            <View style={[styles.dividerV, { backgroundColor: colors.border }]} />
+          )}
 
           {!!currentBookId && (
             <TouchableOpacity
@@ -329,7 +368,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  rateBtnText: { fontSize: 18, fontWeight: "500", lineHeight: 20 },
+  rateBtnText: { fontSize: ui(18), fontWeight: "500", lineHeight: ui(20) },
   rateValue: { fontSize: fontSize.xs, width: 40, textAlign: "center" },
   dividerV: { width: StyleSheet.hairlineWidth, height: 24, marginHorizontal: 2 },
   playBtn: {

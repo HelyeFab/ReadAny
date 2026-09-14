@@ -1,5 +1,5 @@
 import { CheckIcon, ChevronDownIcon, CopyIcon } from "@/components/ui/Icon";
-import { fontSize as fs, radius, useColors, withOpacity } from "@/styles/theme";
+import { fontSize as fs, radius, ui, useColors, withOpacity } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 import type { CitationPart, MessageV2, QuotePart, TextPart } from "@readany/core/types/message";
 import * as Clipboard from "expo-clipboard";
@@ -235,7 +235,7 @@ const quoteStyles = (colors: ThemeColors) =>
     },
     quoteText: {
       fontSize: fs.xs,
-      lineHeight: 16,
+      lineHeight: ui(16),
       color: colors.foreground,
       opacity: 0.8,
     },
@@ -491,7 +491,7 @@ function SelectableTextModal({
             style={{
               color: colors.foreground,
               fontSize: fs.sm,
-              lineHeight: 22,
+              lineHeight: ui(22),
               padding: 12,
               backgroundColor: colors.muted,
               borderRadius: 8,
@@ -523,7 +523,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     userText: {
       fontSize: fs.sm,
-      lineHeight: 20,
+      lineHeight: ui(20),
       color: colors.foreground,
     },
     assistantRow: {

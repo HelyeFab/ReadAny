@@ -1,6 +1,6 @@
 import { DarkModeSvg } from "@/components/DarkModeSvg";
-import { useTheme } from "@/styles/theme";
 import { useSettingsStore } from "@/stores";
+import { ui, useTheme } from "@/styles/theme";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, SlideInRight } from "react-native-reanimated";
@@ -94,17 +94,17 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
   },
   title: {
-    fontSize: 36,
+    fontSize: ui(36),
     fontWeight: "800",
     color: "#0f172a",
     textAlign: "center",
     marginBottom: 16,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: ui(18),
     color: "#64748b",
     textAlign: "center",
-    lineHeight: 28,
+    lineHeight: ui(28),
     paddingHorizontal: 12,
   },
   footer: { padding: 24, paddingBottom: 0, alignItems: "center" },
@@ -120,5 +120,5 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
-  startText: { color: "#ffffff", fontSize: 18, fontWeight: "700", letterSpacing: 0.5 },
+  startText: { color: "#ffffff", fontSize: ui(18), fontWeight: "700", letterSpacing: 0.5 },
 });

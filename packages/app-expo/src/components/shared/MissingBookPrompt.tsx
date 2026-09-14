@@ -5,10 +5,19 @@ import {
   fontWeight,
   radius,
   spacing,
+  ui,
   useColors,
 } from "@/styles/theme";
 import { useEffect, useMemo, useRef } from "react";
-import { Animated, BackHandler, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Animated,
+  BackHandler,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export function MissingBookPrompt() {
   const colors = useColors();
@@ -45,10 +54,18 @@ export function MissingBookPrompt() {
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.description}>{description}</Text>
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => resolvePrompt(false)} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => resolvePrompt(false)}
+            activeOpacity={0.8}
+          >
             <Text style={styles.secondaryText}>{cancelLabel}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => resolvePrompt(true)} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => resolvePrompt(true)}
+            activeOpacity={0.85}
+          >
             <Text style={styles.primaryText}>{confirmLabel}</Text>
           </TouchableOpacity>
         </View>
@@ -84,12 +101,12 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.base,
       fontWeight: fontWeight.semibold,
       color: colors.foreground,
-      lineHeight: 24,
+      lineHeight: ui(24),
     },
     description: {
       fontSize: fontSize.xs,
       color: colors.mutedForeground,
-      lineHeight: 18,
+      lineHeight: ui(18),
     },
     actions: {
       flexDirection: "row",

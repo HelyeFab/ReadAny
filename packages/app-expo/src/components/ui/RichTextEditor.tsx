@@ -15,7 +15,7 @@ import {
   StrikethroughIcon,
   XIcon,
 } from "@/components/ui/Icon";
-import { radius, useColors } from "@/styles/theme";
+import { radius, ui, useColors } from "@/styles/theme";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -398,8 +398,8 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
     },
     editor: {
       flex: 1,
-      fontSize: 15,
-      lineHeight: 24,
+      fontSize: ui(15),
+      lineHeight: ui(24),
       padding: 12,
       textAlignVertical: "top",
     },
@@ -413,8 +413,8 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       padding: 12,
     },
     previewPlaceholder: {
-      fontSize: 15,
-      lineHeight: 24,
+      fontSize: ui(15),
+      lineHeight: ui(24),
     },
     modalKeyboardRoot: { flex: 1 },
     modalOverlay: {
@@ -437,7 +437,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: 12,
     },
     linkModalTitle: {
-      fontSize: 16,
+      fontSize: ui(16),
       fontWeight: "600",
       color: colors.foreground,
     },
@@ -446,7 +446,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: radius.sm,
       paddingHorizontal: 12,
       paddingVertical: 10,
-      fontSize: 15,
+      fontSize: ui(15),
       color: colors.foreground,
       marginBottom: 12,
     },
@@ -463,7 +463,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
     },
     linkCancelText: {
       color: colors.mutedForeground,
-      fontSize: 15,
+      fontSize: ui(15),
     },
     linkConfirmBtn: {
       backgroundColor: colors.primary,
@@ -473,7 +473,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
     },
     linkConfirmText: {
       color: colors.primaryForeground,
-      fontSize: 15,
+      fontSize: ui(15),
       fontWeight: "500",
     },
   });

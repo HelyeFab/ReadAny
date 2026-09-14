@@ -1,12 +1,12 @@
+import { FOLDER_COLORS } from "@/lib/library/folder-colors";
+import { radius, spacing, ui, useColors } from "@/styles/theme";
+import type { BookGroup } from "@readany/core/types";
+import { useTranslation } from "react-i18next";
 /**
  * Pick a folder's colour. Swatches only — a name beside each is noise when the
  * thing being chosen is the colour itself.
  */
 import { Modal, Pressable, Text, TouchableOpacity, View } from "react-native";
-import { useTranslation } from "react-i18next";
-import type { BookGroup } from "@readany/core/types";
-import { FOLDER_COLORS } from "@/lib/library/folder-colors";
-import { radius, spacing, useColors } from "@/styles/theme";
 
 interface Props {
   group: BookGroup | null;
@@ -31,7 +31,7 @@ export function FolderColorSheet({ group, onPick, onClose }: Props) {
           gap: spacing.md,
         }}
       >
-        <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>
+        <Text style={{ fontSize: ui(16), fontWeight: "600", color: colors.foreground }}>
           {group.name}
         </Text>
 

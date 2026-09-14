@@ -1,6 +1,13 @@
 import { BookOpenIcon, CheckIcon } from "@/components/ui/Icon";
 import { useLibraryStore } from "@/stores/library-store";
-import { fontSize as fs, fontWeight as fw, radius, useColors, withOpacity } from "@/styles/theme";
+import {
+  fontSize as fs,
+  fontWeight as fw,
+  radius,
+  ui,
+  useColors,
+  withOpacity,
+} from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 import { useChatReaderStore } from "@readany/core/stores";
 import { useMemo, useState } from "react";
@@ -115,7 +122,7 @@ const makeStyles = (colors: ThemeColors) =>
       paddingHorizontal: 3,
     },
     badgeText: {
-      fontSize: 9,
+      fontSize: ui(9),
       fontWeight: fw.bold,
       color: colors.primaryForeground,
     },

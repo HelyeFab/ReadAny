@@ -18,6 +18,7 @@ import {
   fontSize,
   fontWeight,
   radius,
+  ui,
   useColors,
   withOpacity,
 } from "@/styles/theme";
@@ -227,7 +228,7 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.md,
       fontWeight: fontWeight.semibold,
       color: colors.foreground,
-      lineHeight: 23,
+      lineHeight: ui(23),
     },
     rule: {
       height: StyleSheet.hairlineWidth,

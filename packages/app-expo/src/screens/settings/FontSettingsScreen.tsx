@@ -1,6 +1,6 @@
 import { GlobeIcon, LinkIcon, PlusIcon, Trash2Icon, TypeIcon } from "@/components/ui/Icon";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
-import { fontSize, fontWeight, radius, spacing, useColors } from "@/styles/theme";
+import { fontSize, fontWeight, radius, spacing, ui, useColors } from "@/styles/theme";
 /**
  * FontSettingsScreen — custom font management for mobile
  */
@@ -278,7 +278,9 @@ export default function FontSettingsScreen() {
             <Text style={[s.hint, { color: colors.mutedForeground }]}>
               {t("fonts.desc", "导入自定义字体，在阅读器中使用。支持 TTF、OTF、WOFF、WOFF2 格式。")}
             </Text>
-            <Text style={[s.hint, { color: colors.mutedForeground, marginTop: 6, fontSize: 12 }]}>
+            <Text
+              style={[s.hint, { color: colors.mutedForeground, marginTop: 6, fontSize: ui(12) }]}
+            >
               {t(
                 "fonts.importHint",
                 "支持 TTF / OTF / WOFF / WOFF2，推荐 WOFF2（同款字体体积约为 TTF 的 1/3）",
@@ -667,7 +669,7 @@ function makeStyles(_colors: ReturnType<typeof useColors>) {
     section: { gap: 10 },
     hint: {
       fontSize: fontSize.sm,
-      lineHeight: 22,
+      lineHeight: ui(22),
     },
     loadingState: {
       flexDirection: "row",

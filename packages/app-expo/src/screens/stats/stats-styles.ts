@@ -1,11 +1,5 @@
+import { type ThemeColors, fontSize, fontWeight, radius, ui, withOpacity } from "@/styles/theme";
 import { StyleSheet } from "react-native";
-import {
-  type ThemeColors,
-  fontSize,
-  fontWeight,
-  radius,
-  withOpacity,
-} from "@/styles/theme";
 
 export const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
@@ -70,7 +64,7 @@ export const makeStyles = (colors: ThemeColors) =>
       elevation: 1,
     },
     dimTabText: {
-      fontSize: 13,
+      fontSize: ui(13),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.mutedForeground, 0.6),
     },
@@ -96,21 +90,21 @@ export const makeStyles = (colors: ThemeColors) =>
       marginBottom: 14,
     },
     heroDimLabel: {
-      fontSize: 10,
+      fontSize: ui(10),
       fontWeight: fontWeight.semibold,
       color: withOpacity(colors.primary, 0.5),
       textTransform: "uppercase",
       letterSpacing: 1.5,
     },
     heroLifetimeTitle: {
-      fontSize: 24,
-      lineHeight: 32,
+      fontSize: ui(24),
+      lineHeight: ui(32),
       fontWeight: fontWeight.bold,
       color: withOpacity(colors.foreground, 0.88),
       letterSpacing: -0.8,
     },
     heroPeriodLabel: {
-      fontSize: 15,
+      fontSize: ui(15),
       fontWeight: fontWeight.semibold,
       color: withOpacity(colors.foreground, 0.85),
       marginTop: 2,
@@ -131,11 +125,11 @@ export const makeStyles = (colors: ThemeColors) =>
       backgroundColor: withOpacity(colors.background, 0.5),
     },
     heroValue: {
-      fontSize: 48,
+      fontSize: ui(48),
       fontWeight: fontWeight.bold,
       color: colors.foreground,
       letterSpacing: -2,
-      lineHeight: 52,
+      lineHeight: ui(52),
     },
     heroSubRow: {
       flexDirection: "row",
@@ -144,13 +138,13 @@ export const makeStyles = (colors: ThemeColors) =>
       marginTop: 6,
     },
     heroSubText: {
-      fontSize: 13,
+      fontSize: ui(13),
       color: withOpacity(colors.mutedForeground, 0.55),
     },
     heroNarrative: {
-      fontSize: 13,
+      fontSize: ui(13),
       color: withOpacity(colors.mutedForeground, 0.62),
-      lineHeight: 20,
+      lineHeight: ui(20),
       marginTop: 8,
     },
 
@@ -171,20 +165,20 @@ export const makeStyles = (colors: ThemeColors) =>
       width: "48.8%",
     },
     metricLabel: {
-      fontSize: 9,
+      fontSize: ui(9),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.mutedForeground, 0.6),
       textTransform: "uppercase",
       letterSpacing: 1,
     },
     metricValue: {
-      fontSize: 18,
+      fontSize: ui(18),
       fontWeight: fontWeight.bold,
       color: withOpacity(colors.foreground, 0.85),
       marginTop: 4,
     },
     metricSub: {
-      fontSize: 10,
+      fontSize: ui(10),
       color: withOpacity(colors.mutedForeground, 0.55),
       marginTop: 1,
     },
@@ -206,7 +200,7 @@ export const makeStyles = (colors: ThemeColors) =>
       gap: 8,
     },
     statCardTitle: {
-      fontSize: 11,
+      fontSize: ui(11),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.mutedForeground, 0.66),
     },
@@ -216,13 +210,13 @@ export const makeStyles = (colors: ThemeColors) =>
       gap: 4,
     },
     statCardValue: {
-      fontSize: 28,
+      fontSize: ui(28),
       fontWeight: fontWeight.bold,
       color: withOpacity(colors.foreground, 0.9),
       letterSpacing: -0.8,
     },
     statCardUnit: {
-      fontSize: 13,
+      fontSize: ui(13),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.mutedForeground, 0.64),
     },
@@ -240,14 +234,14 @@ export const makeStyles = (colors: ThemeColors) =>
       borderColor: withOpacity(colors.primary, 0.1),
     },
     sectionTitle: {
-      fontSize: 15,
+      fontSize: ui(15),
       fontWeight: fontWeight.semibold,
       color: withOpacity(colors.foreground, 0.9),
     },
     sectionDesc: {
-      fontSize: 13,
+      fontSize: ui(13),
       color: withOpacity(colors.mutedForeground, 0.5),
-      lineHeight: 18,
+      lineHeight: ui(18),
       marginTop: 2,
     },
     sectionHeader: { marginBottom: 14 },
@@ -269,14 +263,18 @@ export const makeStyles = (colors: ThemeColors) =>
     },
     toggleBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.sm },
     toggleBtnActive: { backgroundColor: colors.background },
-    toggleBtnText: { fontSize: 12, fontWeight: fontWeight.medium, color: colors.mutedForeground },
+    toggleBtnText: {
+      fontSize: ui(12),
+      fontWeight: fontWeight.medium,
+      color: colors.mutedForeground,
+    },
     toggleBtnTextActive: { color: colors.foreground },
 
     /* ── Period nav ── */
     periodNav: { flexDirection: "row", alignItems: "center", gap: 2 },
     periodNavBtn: { padding: 4, borderRadius: radius.sm },
     periodLabel: {
-      fontSize: 12,
+      fontSize: ui(12),
       fontWeight: fontWeight.medium,
       color: colors.mutedForeground,
       minWidth: 80,
@@ -296,16 +294,22 @@ export const makeStyles = (colors: ThemeColors) =>
       gap: 4,
       marginTop: 0,
     },
-    legendText: { fontSize: 9, color: colors.mutedForeground },
+    legendText: { fontSize: ui(9), color: colors.mutedForeground },
     legendCell: { width: 10, height: 10, borderRadius: 2 },
 
     /* ── Bar chart ── */
     barChartWrap: { height: 180 },
-    barChartContent: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 6, paddingBottom: 4 },
+    barChartContent: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      justifyContent: "space-between",
+      gap: 6,
+      paddingBottom: 4,
+    },
     barCol: { alignItems: "center", justifyContent: "flex-end", width: 28 },
     barTrack: { justifyContent: "flex-end", alignItems: "center" },
     barFill: { borderRadius: 4 },
-    barLabel: { fontSize: 8, color: colors.mutedForeground, marginTop: 4 },
+    barLabel: { fontSize: ui(8), color: colors.mutedForeground, marginTop: 4 },
     barChartEmpty: { height: 120, alignItems: "center", justifyContent: "center" },
     barChartEmptyText: { fontSize: fontSize.xs, color: colors.mutedForeground },
     singlePointCard: {
@@ -320,27 +324,27 @@ export const makeStyles = (colors: ThemeColors) =>
       justifyContent: "center",
     },
     singlePointEyebrow: {
-      fontSize: 10,
+      fontSize: ui(10),
       fontWeight: fontWeight.semibold,
       color: withOpacity(colors.primary, 0.52),
       textTransform: "uppercase",
       letterSpacing: 1.2,
     },
     singlePointValue: {
-      fontSize: 40,
-      lineHeight: 44,
+      fontSize: ui(40),
+      lineHeight: ui(44),
       fontWeight: fontWeight.bold,
       color: withOpacity(colors.foreground, 0.92),
       letterSpacing: -1.2,
     },
     singlePointLabel: {
-      fontSize: 13,
+      fontSize: ui(13),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.foreground, 0.72),
     },
     singlePointDesc: {
-      fontSize: 12,
-      lineHeight: 18,
+      fontSize: ui(12),
+      lineHeight: ui(18),
       color: withOpacity(colors.mutedForeground, 0.58),
       marginTop: 2,
     },
@@ -353,7 +357,7 @@ export const makeStyles = (colors: ThemeColors) =>
       borderWidth: 0.5,
       borderColor: colors.border,
     },
-    tooltipText: { fontSize: 9, color: colors.cardForeground, fontWeight: "500" },
+    tooltipText: { fontSize: ui(9), color: colors.cardForeground, fontWeight: "500" },
 
     /* ── Top books ── */
     bookItem: {
@@ -377,11 +381,11 @@ export const makeStyles = (colors: ThemeColors) =>
     },
     bookRankFirst: { backgroundColor: withOpacity(colors.primary, 0.08) },
     bookRankDefault: { backgroundColor: withOpacity(colors.muted, 0.25) },
-    bookRankText: { fontSize: 11, fontWeight: fontWeight.bold },
+    bookRankText: { fontSize: ui(11), fontWeight: fontWeight.bold },
     bookRankTextFirst: { color: withOpacity(colors.primary, 0.6) },
     bookRankTextDefault: { color: withOpacity(colors.mutedForeground, 0.5) },
     periodBooksEmpty: {
-      fontSize: 13,
+      fontSize: ui(13),
       color: withOpacity(colors.mutedForeground, 0.58),
       textAlign: "center",
       paddingVertical: 12,
@@ -414,7 +418,7 @@ export const makeStyles = (colors: ThemeColors) =>
       borderColor: withOpacity(colors.border, 0.28),
     },
     bookCoverLetter: {
-      fontSize: 14,
+      fontSize: ui(14),
       fontWeight: fontWeight.bold,
       color: withOpacity(colors.foreground, 0.62),
     },
@@ -426,21 +430,29 @@ export const makeStyles = (colors: ThemeColors) =>
       gap: 8,
     },
     bookLeadBadge: {
-      fontSize: 9,
+      fontSize: ui(9),
       fontWeight: fontWeight.semibold,
       color: withOpacity(colors.primary, 0.4),
       textTransform: "uppercase",
       letterSpacing: 1,
       marginBottom: 2,
     },
-    bookTitle: { fontSize: 13, fontWeight: fontWeight.semibold, color: withOpacity(colors.foreground, 0.8) },
-    bookTitleFirst: { fontSize: 14 },
-    bookAuthor: { fontSize: 11, color: withOpacity(colors.mutedForeground, 0.58), marginTop: 2 },
+    bookTitle: {
+      fontSize: ui(13),
+      fontWeight: fontWeight.semibold,
+      color: withOpacity(colors.foreground, 0.8),
+    },
+    bookTitleFirst: { fontSize: ui(14) },
+    bookAuthor: {
+      fontSize: ui(11),
+      color: withOpacity(colors.mutedForeground, 0.58),
+      marginTop: 2,
+    },
     bookStatsRow: { flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 6 },
     bookTime: { fontWeight: fontWeight.bold, color: withOpacity(colors.foreground, 0.75) },
-    bookTimeFirst: { fontSize: 18 },
-    bookTimeDefault: { fontSize: 14 },
-    bookMeta: { fontSize: 10, color: withOpacity(colors.mutedForeground, 0.52) },
+    bookTimeFirst: { fontSize: ui(18) },
+    bookTimeDefault: { fontSize: ui(14) },
+    bookMeta: { fontSize: ui(10), color: withOpacity(colors.mutedForeground, 0.52) },
     progressRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -461,7 +473,7 @@ export const makeStyles = (colors: ThemeColors) =>
     },
     progressPercent: {
       minWidth: 34,
-      fontSize: 10,
+      fontSize: ui(10),
       fontWeight: fontWeight.semibold,
       color: withOpacity(colors.mutedForeground, 0.64),
       textAlign: "right",
@@ -475,7 +487,11 @@ export const makeStyles = (colors: ThemeColors) =>
       borderRadius: radius.md,
       marginTop: 4,
     },
-    expandBtnText: { fontSize: 12, fontWeight: fontWeight.medium, color: withOpacity(colors.mutedForeground, 0.64) },
+    expandBtnText: {
+      fontSize: ui(12),
+      fontWeight: fontWeight.medium,
+      color: withOpacity(colors.mutedForeground, 0.64),
+    },
 
     /* ── Insights ── */
     insightItem: {
@@ -494,8 +510,17 @@ export const makeStyles = (colors: ThemeColors) =>
     insightDotWarning: { backgroundColor: withOpacity(colors.destructive, 0.45) },
     insightDotPositive: { backgroundColor: withOpacity(colors.primary, 0.45) },
     insightDotDefault: { backgroundColor: withOpacity(colors.border, 0.6) },
-    insightTitle: { fontSize: 13, fontWeight: fontWeight.semibold, color: withOpacity(colors.foreground, 0.75) },
-    insightBody: { fontSize: 13, color: withOpacity(colors.mutedForeground, 0.62), lineHeight: 18, marginTop: 2 },
+    insightTitle: {
+      fontSize: ui(13),
+      fontWeight: fontWeight.semibold,
+      color: withOpacity(colors.foreground, 0.75),
+    },
+    insightBody: {
+      fontSize: ui(13),
+      color: withOpacity(colors.mutedForeground, 0.62),
+      lineHeight: ui(18),
+      marginTop: 2,
+    },
 
     /* ── Streak ── */
     streakCard: {
@@ -518,8 +543,12 @@ export const makeStyles = (colors: ThemeColors) =>
       justifyContent: "center",
     },
     streakInfo: { gap: 2, flex: 1 },
-    streakLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.foreground },
-    streakDesc: { fontSize: 12, color: colors.mutedForeground },
+    streakLabel: {
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.semibold,
+      color: colors.foreground,
+    },
+    streakDesc: { fontSize: ui(12), color: colors.mutedForeground },
 
     /* ── Empty state ── */
     emptyWrap: { alignItems: "center", justifyContent: "center", paddingVertical: 40 },
@@ -534,8 +563,19 @@ export const makeStyles = (colors: ThemeColors) =>
       justifyContent: "center",
       marginBottom: 12,
     },
-    emptyTitle: { fontSize: 16, fontWeight: fontWeight.semibold, color: withOpacity(colors.foreground, 0.75) },
-    emptyDesc: { fontSize: 13, color: withOpacity(colors.mutedForeground, 0.5), textAlign: "center", marginTop: 4, maxWidth: 240, lineHeight: 18 },
+    emptyTitle: {
+      fontSize: ui(16),
+      fontWeight: fontWeight.semibold,
+      color: withOpacity(colors.foreground, 0.75),
+    },
+    emptyDesc: {
+      fontSize: ui(13),
+      color: withOpacity(colors.mutedForeground, 0.5),
+      textAlign: "center",
+      marginTop: 4,
+      maxWidth: 240,
+      lineHeight: ui(18),
+    },
 
     /* ── Day summary ── */
     daySummaryPanel: {
@@ -558,14 +598,14 @@ export const makeStyles = (colors: ThemeColors) =>
       marginRight: 10,
     },
     daySummaryHeroLabel: {
-      fontSize: 11,
+      fontSize: ui(11),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.mutedForeground, 0.55),
       marginBottom: 8,
     },
     daySummaryHeroValue: {
-      fontSize: 30,
-      lineHeight: 32,
+      fontSize: ui(30),
+      lineHeight: ui(32),
       fontWeight: fontWeight.bold,
       color: withOpacity(colors.foreground, 0.9),
       letterSpacing: -0.8,
@@ -579,14 +619,14 @@ export const makeStyles = (colors: ThemeColors) =>
       paddingVertical: 2,
     },
     daySummaryMetaLabel: {
-      fontSize: 11,
+      fontSize: ui(11),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.mutedForeground, 0.55),
       marginBottom: 6,
     },
     daySummaryMetaValue: {
-      fontSize: 30,
-      lineHeight: 32,
+      fontSize: ui(30),
+      lineHeight: ui(32),
       fontWeight: fontWeight.bold,
       color: withOpacity(colors.foreground, 0.9),
       letterSpacing: -0.8,
@@ -605,19 +645,19 @@ export const makeStyles = (colors: ThemeColors) =>
       gap: 4,
     },
     daySummaryBookLabel: {
-      fontSize: 11,
+      fontSize: ui(11),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.mutedForeground, 0.52),
     },
     daySummaryBookTitle: {
-      fontSize: 17,
+      fontSize: ui(17),
       fontWeight: fontWeight.semibold,
       color: withOpacity(colors.foreground, 0.88),
       letterSpacing: -0.2,
-      lineHeight: 23,
+      lineHeight: ui(23),
     },
     daySummaryBookValue: {
-      fontSize: 16,
+      fontSize: ui(16),
       fontWeight: fontWeight.semibold,
       color: withOpacity(colors.primary, 0.72),
       paddingTop: 18,
@@ -635,7 +675,7 @@ export const makeStyles = (colors: ThemeColors) =>
       paddingVertical: 2,
     },
     calendarHeaderText: {
-      fontSize: 10,
+      fontSize: ui(10),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.mutedForeground, 0.52),
     },
@@ -702,11 +742,11 @@ export const makeStyles = (colors: ThemeColors) =>
       paddingHorizontal: 4,
     },
     calCoverFallbackText: {
-      fontSize: 8,
+      fontSize: ui(8),
       fontWeight: fontWeight.medium,
       color: colors.stone400,
       textAlign: "center",
-      lineHeight: 11,
+      lineHeight: ui(11),
       fontFamily: "serif",
     },
     calSpineOverlay: {
@@ -770,7 +810,7 @@ export const makeStyles = (colors: ThemeColors) =>
       alignItems: "flex-start",
     },
     calCoverDay: {
-      fontSize: 10,
+      fontSize: ui(10),
       fontWeight: fontWeight.bold,
       color: "#fff",
       textShadowColor: "rgba(0,0,0,0.6)",
@@ -778,7 +818,7 @@ export const makeStyles = (colors: ThemeColors) =>
       textShadowRadius: 2,
     },
     calCoverTime: {
-      fontSize: 7,
+      fontSize: ui(7),
       fontWeight: fontWeight.bold,
       color: "rgba(255,255,255,0.85)",
       textShadowColor: "rgba(0,0,0,0.6)",
@@ -800,7 +840,7 @@ export const makeStyles = (colors: ThemeColors) =>
       elevation: 2,
     },
     calCoverPageText: {
-      fontSize: 7,
+      fontSize: ui(7),
       fontWeight: fontWeight.bold,
       color: "#fff",
       textShadowColor: "rgba(0,0,0,0.6)",
@@ -824,34 +864,34 @@ export const makeStyles = (colors: ThemeColors) =>
       borderColor: withOpacity(colors.primary, 0.25),
     },
     calPlainDay: {
-      fontSize: 11,
+      fontSize: ui(11),
       fontWeight: fontWeight.semibold,
       color: withOpacity(colors.foreground, 0.75),
       marginTop: 2,
     },
     calPlainTime: {
-      fontSize: 8,
+      fontSize: ui(8),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.foreground, 0.62),
     },
     /* ── Rhythm profile ── */
     rhythmSubTitle: {
-      fontSize: 14,
+      fontSize: ui(14),
       fontWeight: fontWeight.semibold,
       color: withOpacity(colors.foreground, 0.85),
     },
     rhythmSubDesc: {
-      fontSize: 12,
+      fontSize: ui(12),
       color: withOpacity(colors.mutedForeground, 0.62),
-      lineHeight: 17,
+      lineHeight: ui(17),
     },
     categoryLabel: {
-      fontSize: 13,
+      fontSize: ui(13),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.foreground, 0.75),
     },
     categoryValue: {
-      fontSize: 13,
+      fontSize: ui(13),
       color: withOpacity(colors.mutedForeground, 0.5),
     },
     categoryTrack: {
@@ -879,44 +919,44 @@ export const makeStyles = (colors: ThemeColors) =>
     },
     snapshotYear: {
       width: 40,
-      fontSize: 13,
+      fontSize: ui(13),
       fontWeight: fontWeight.bold,
       color: withOpacity(colors.foreground, 0.7),
     },
     snapshotTime: {
-      fontSize: 15,
+      fontSize: ui(15),
       fontWeight: fontWeight.bold,
       color: withOpacity(colors.foreground, 0.85),
     },
     snapshotMeta: {
-      fontSize: 11,
+      fontSize: ui(11),
       color: withOpacity(colors.mutedForeground, 0.6),
     },
     snapshotTopBookTitle: {
-      fontSize: 11,
+      fontSize: ui(11),
       color: withOpacity(colors.foreground, 0.66),
     },
 
     /* ── Journey summary ── */
     journeyBigNumber: {
-      fontSize: 42,
+      fontSize: ui(42),
       fontWeight: fontWeight.bold,
       color: withOpacity(colors.foreground, 0.85),
       letterSpacing: -2,
-      lineHeight: 44,
+      lineHeight: ui(44),
     },
     journeyBigSuffix: {
-      fontSize: 20,
+      fontSize: ui(20),
       fontWeight: fontWeight.semibold,
       color: withOpacity(colors.mutedForeground, 0.64),
     },
     journeyNarrative: {
-      fontSize: 13,
+      fontSize: ui(13),
       color: withOpacity(colors.mutedForeground, 0.62),
-      lineHeight: 18,
+      lineHeight: ui(18),
     },
     journeyStartDate: {
-      fontSize: 12,
+      fontSize: ui(12),
       color: withOpacity(colors.mutedForeground, 0.56),
     },
     journeyMetricsRow: {
@@ -927,16 +967,15 @@ export const makeStyles = (colors: ThemeColors) =>
       paddingTop: 12,
     },
     journeyMetricLabel: {
-      fontSize: 9,
+      fontSize: ui(9),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.mutedForeground, 0.52),
       textTransform: "uppercase",
       letterSpacing: 1,
     },
     journeyMetricValue: {
-      fontSize: 16,
+      fontSize: ui(16),
       fontWeight: fontWeight.bold,
       color: withOpacity(colors.foreground, 0.8),
     },
-
   });

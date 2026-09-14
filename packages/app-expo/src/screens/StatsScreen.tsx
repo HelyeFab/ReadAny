@@ -18,7 +18,7 @@
 import { ChevronLeftIcon, ChevronRightIcon, ClockIcon, SearchIcon } from "@/components/ui/Icon";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { useReadingSessionStore } from "@/stores";
-import { useColors, withOpacity } from "@/styles/theme";
+import { ui, useColors, withOpacity } from "@/styles/theme";
 import {
   type NavigationProp,
   type ParamListBase,
@@ -920,7 +920,7 @@ export default function StatsScreen() {
                       >
                         <Text
                           style={{
-                            fontSize: 12,
+                            fontSize: ui(12),
                             fontWeight: "500",
                             color: withOpacity(colors.primary, 0.6),
                           }}

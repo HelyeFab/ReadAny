@@ -1,14 +1,10 @@
 import { useWindowDimensions } from "react-native";
+import { classifyViewport } from "../styles/viewport";
 
 export function useResponsiveLayout() {
   const { width, height } = useWindowDimensions();
-  const shortestSide = Math.min(width, height);
-  const longestSide = Math.max(width, height);
-
-  const isLandscape = width > height;
-  const isTablet = shortestSide >= 768 || (shortestSide >= 600 && longestSide >= 960);
-  const isTabletLandscape = isTablet && isLandscape;
-  const isLargeTablet = isTablet && longestSide >= 1280;
+  const viewport = classifyViewport(width, height);
+  const { isTablet, isTabletLandscape } = viewport;
 
   const horizontalPadding = isTabletLandscape ? 28 : isTablet ? 24 : 16;
   const contentMaxWidth = isTabletLandscape ? 1260 : isTablet ? 980 : width;
@@ -17,12 +13,7 @@ export function useResponsiveLayout() {
   return {
     width,
     height,
-    shortestSide,
-    longestSide,
-    isLandscape,
-    isTablet,
-    isTabletLandscape,
-    isLargeTablet,
+    ...viewport,
     horizontalPadding,
     contentMaxWidth,
     centeredContentWidth,

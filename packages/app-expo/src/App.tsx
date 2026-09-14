@@ -59,6 +59,7 @@ import { MobileSyncAdapter } from "@/lib/sync/sync-adapter-mobile";
 import { RootNavigator } from "@/navigation/RootNavigator";
 import { useLibraryStore } from "@/stores/library-store";
 import { ThemeProvider, useTheme } from "@/styles/ThemeContext";
+import { ui } from "@/styles/theme";
 import { useAutoSync } from "@readany/core/hooks/use-auto-sync";
 
 installFeedbackLogCapture();
@@ -223,7 +224,7 @@ export default function App() {
         <Text
           style={{
             color: "#ffffff",
-            fontSize: 18,
+            fontSize: ui(18),
             fontWeight: "600",
             marginBottom: 12,
             textAlign: "center",
@@ -231,7 +232,7 @@ export default function App() {
         >
           App failed to start
         </Text>
-        <Text style={{ color: "#fca5a5", fontSize: 14, textAlign: "center" }}>{bootError}</Text>
+        <Text style={{ color: "#fca5a5", fontSize: ui(14), textAlign: "center" }}>{bootError}</Text>
       </View>
     );
   }

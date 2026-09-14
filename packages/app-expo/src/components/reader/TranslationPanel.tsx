@@ -1,6 +1,6 @@
 import { CheckIcon, ChevronDownIcon, XIcon } from "@/components/ui/Icon";
 import { useSettingsStore } from "@/stores";
-import { type ThemeColors, fontSize, fontWeight, radius, useColors } from "@/styles/theme";
+import { type ThemeColors, fontSize, fontWeight, radius, ui, useColors } from "@/styles/theme";
 import {
   aiTranslate,
   deeplTranslate,
@@ -403,7 +403,7 @@ const makeStyles = (colors: ThemeColors) =>
     originalText: {
       fontSize: fontSize.base,
       color: colors.foreground,
-      lineHeight: 22,
+      lineHeight: ui(22),
     },
     divider: {
       height: 1,
@@ -447,6 +447,6 @@ const makeStyles = (colors: ThemeColors) =>
     translationText: {
       fontSize: fontSize.base,
       color: colors.foreground,
-      lineHeight: 22,
+      lineHeight: ui(22),
     },
   });

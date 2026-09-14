@@ -5,6 +5,7 @@ import {
   fontWeight,
   radius,
   spacing,
+  ui,
   withOpacity,
 } from "../../../styles/theme";
 
@@ -33,7 +34,7 @@ export const makeStyles = (colors: ThemeColors) =>
     layoutNotice: {
       fontSize: fontSize.xs,
       color: colors.mutedForeground,
-      lineHeight: 18,
+      lineHeight: ui(18),
       marginBottom: 4,
     },
     card: {
@@ -60,7 +61,7 @@ export const makeStyles = (colors: ThemeColors) =>
     conflictDesc: {
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     uploadBtn: {
       flex: 1,
@@ -183,7 +184,7 @@ export const makeStyles = (colors: ThemeColors) =>
     resultText: {
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     autoSyncRow: {
       flexDirection: "row",
@@ -212,7 +213,7 @@ export const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
       marginTop: 2,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     toggle: {
       width: 44,
@@ -256,7 +257,7 @@ export const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "space-between",
     },
-    chevron: { fontSize: 12, color: colors.mutedForeground },
+    chevron: { fontSize: ui(12), color: colors.mutedForeground },
     resetBtn: {
       borderRadius: radius.lg,
       borderWidth: 1,
@@ -273,7 +274,7 @@ export const makeStyles = (colors: ThemeColors) =>
       color: colors.mutedForeground,
       marginTop: 8,
       textAlign: "center",
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     progressContainer: {
       marginTop: 8,
@@ -293,7 +294,7 @@ export const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
       marginTop: 4,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     backendSelector: {
       flexDirection: "row",
@@ -322,7 +323,7 @@ export const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
       marginBottom: 12,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     lanModeSelector: {
       flexDirection: "row",
@@ -382,7 +383,7 @@ export const makeStyles = (colors: ThemeColors) =>
     lanQrText: {
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     lanPairCodeLabel: {
       fontSize: fontSize.xs,
@@ -390,7 +391,7 @@ export const makeStyles = (colors: ThemeColors) =>
       color: colors.foreground,
     },
     lanPairCode: {
-      fontSize: 24,
+      fontSize: ui(24),
       fontWeight: fontWeight.bold,
       letterSpacing: 4,
       color: colors.foreground,
@@ -399,7 +400,7 @@ export const makeStyles = (colors: ThemeColors) =>
     lanAddress: {
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     lanBtn: {
       flex: 1,
@@ -421,7 +422,7 @@ export const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
       marginBottom: 8,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     manualIPRow: {
       flexDirection: "row",
@@ -464,7 +465,7 @@ export const makeStyles = (colors: ThemeColors) =>
     },
     scannerText: {
       color: "#fff",
-      fontSize: 16,
+      fontSize: ui(16),
       marginTop: 24,
       textAlign: "center",
       paddingHorizontal: 32,
@@ -479,7 +480,7 @@ export const makeStyles = (colors: ThemeColors) =>
     },
     scannerCloseText: {
       color: "#fff",
-      fontSize: 16,
+      fontSize: ui(16),
       fontWeight: "600",
     },
   });

@@ -7,7 +7,7 @@ import {
   XIcon,
 } from "@/components/ui/Icon";
 import { useKeyboardInsets } from "@/hooks/use-keyboard-insets";
-import { fontSize as fs, radius, useColors, withOpacity } from "@/styles/theme";
+import { fontSize as fs, radius, ui, useColors, withOpacity } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 import type { AttachedQuote } from "@readany/core/types";
 /**
@@ -269,7 +269,7 @@ const makeStyles = (colors: ThemeColors) =>
       paddingBottom: 6,
       minHeight: SINGLE_LINE_INPUT_HEIGHT,
       maxHeight: MAX_INPUT_HEIGHT,
-      lineHeight: 20,
+      lineHeight: ui(20),
       textAlignVertical: "top",
     },
     actionBar: {

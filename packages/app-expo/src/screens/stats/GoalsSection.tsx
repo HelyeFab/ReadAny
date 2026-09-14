@@ -1,4 +1,4 @@
-import { useColors, withOpacity } from "@/styles/theme";
+import { ui, useColors, withOpacity } from "@/styles/theme";
 /**
  * GoalsSection.tsx — Mobile goal progress rings + inline add form.
  * Feature-parity with desktop GoalsSection (packages/app/src/components/stats/GoalsSection.tsx).
@@ -58,9 +58,7 @@ export function GoalsSection({
   const [formOpen, setFormOpen] = useState(false);
   const isZh = i18n.language.startsWith("zh");
   const supportsGoalPeriod =
-    currentDimension === undefined ||
-    currentDimension === "month" ||
-    currentDimension === "year";
+    currentDimension === undefined || currentDimension === "month" || currentDimension === "year";
 
   const defaultPeriod: GoalPeriod = currentDimension === "year" ? "yearly" : "monthly";
 
@@ -71,7 +69,7 @@ export function GoalsSection({
         ? t("stats.desktop.goalTimeUnit")
         : type === "characters"
           ? t("stats.desktop.goalCharactersUnit")
-        : t("stats.desktop.goalPagesUnit");
+          : t("stats.desktop.goalPagesUnit");
 
   return (
     <View style={{ gap: 12 }}>
@@ -98,7 +96,7 @@ export function GoalsSection({
         <Text
           style={{
             textAlign: "center",
-            fontSize: 13,
+            fontSize: ui(13),
             paddingVertical: 16,
             color: withOpacity(colors.mutedForeground, 0.62),
           }}
@@ -122,7 +120,7 @@ export function GoalsSection({
         >
           <Text
             style={{
-              fontSize: 13,
+              fontSize: ui(13),
               fontWeight: "500",
               color: withOpacity(colors.mutedForeground, 0.7),
             }}
@@ -230,11 +228,7 @@ function GoalRow({
           justifyContent: "center",
         }}
       >
-        <Svg
-          width={size}
-          height={size}
-          style={{ transform: [{ rotate: "-90deg" }] }}
-        >
+        <Svg width={size} height={size} style={{ transform: [{ rotate: "-90deg" }] }}>
           <Circle
             cx={size / 2}
             cy={size / 2}
@@ -258,7 +252,7 @@ function GoalRow({
         <Text
           style={{
             position: "absolute",
-            fontSize: 15,
+            fontSize: ui(15),
             fontWeight: "700",
             color: withOpacity(colors.foreground, 0.88),
           }}
@@ -272,7 +266,7 @@ function GoalRow({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <Text
             style={{
-              fontSize: 12,
+              fontSize: ui(12),
               fontWeight: "600",
               color: withOpacity(colors.foreground, 0.82),
             }}
@@ -287,14 +281,14 @@ function GoalRow({
               backgroundColor: statusBg,
             }}
           >
-            <Text style={{ fontSize: 10, fontWeight: "600", color: statusFg }}>
+            <Text style={{ fontSize: ui(10), fontWeight: "600", color: statusFg }}>
               {statusText}
             </Text>
           </View>
         </View>
         <Text
           style={{
-            fontSize: 14,
+            fontSize: ui(14),
             fontWeight: "700",
             color: withOpacity(colors.foreground, 0.88),
             fontVariant: ["tabular-nums"],
@@ -305,7 +299,7 @@ function GoalRow({
         {percentage < 100 && (
           <Text
             style={{
-              fontSize: 11,
+              fontSize: ui(11),
               color: withOpacity(colors.mutedForeground, 0.65),
             }}
           >
@@ -325,7 +319,7 @@ function GoalRow({
         >
           <Text
             style={{
-              fontSize: 11,
+              fontSize: ui(11),
               color: withOpacity(colors.mutedForeground, 0.55),
             }}
           >
@@ -374,12 +368,10 @@ function GoalAddFormModal({
         ? t("stats.desktop.goalTimeUnit")
         : type === "characters"
           ? t("stats.desktop.goalCharactersInputUnit")
-        : t("stats.desktop.goalPagesUnit");
+          : t("stats.desktop.goalPagesUnit");
 
   const periodLabel =
-    defaultPeriod === "monthly"
-      ? t("stats.desktop.goalMonthly")
-      : t("stats.desktop.goalYearly");
+    defaultPeriod === "monthly" ? t("stats.desktop.goalMonthly") : t("stats.desktop.goalYearly");
 
   const handleTypeChange = (next: GoalType) => {
     setType(next);
@@ -421,139 +413,139 @@ function GoalAddFormModal({
               gap: 16,
             }}
           >
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "700",
-              color: colors.foreground,
-              textAlign: "center",
-            }}
-          >
-            {t("stats.desktop.setGoal")}
-          </Text>
-
-          <View style={{ gap: 6 }}>
             <Text
               style={{
-                fontSize: 11,
-                fontWeight: "500",
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                color: withOpacity(colors.mutedForeground, 0.55),
+                fontSize: ui(16),
+                fontWeight: "700",
+                color: colors.foreground,
+                textAlign: "center",
               }}
             >
-              {periodLabel} · {t("stats.desktop.goalTarget")}
+              {t("stats.desktop.setGoal")}
             </Text>
-          </View>
 
-          {/* Type picker */}
-          <View style={{ flexDirection: "row", gap: 6 }}>
-            {typeOptions.map((opt) => (
+            <View style={{ gap: 6 }}>
+              <Text
+                style={{
+                  fontSize: ui(11),
+                  fontWeight: "500",
+                  letterSpacing: 1.2,
+                  textTransform: "uppercase",
+                  color: withOpacity(colors.mutedForeground, 0.55),
+                }}
+              >
+                {periodLabel} · {t("stats.desktop.goalTarget")}
+              </Text>
+            </View>
+
+            {/* Type picker */}
+            <View style={{ flexDirection: "row", gap: 6 }}>
+              {typeOptions.map((opt) => (
+                <TouchableOpacity
+                  key={opt.key}
+                  onPress={() => handleTypeChange(opt.key)}
+                  activeOpacity={0.7}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 8,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    backgroundColor:
+                      type === opt.key
+                        ? withOpacity(colors.primary, 0.1)
+                        : withOpacity(colors.muted, 0.3),
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: ui(12),
+                      fontWeight: "500",
+                      color:
+                        type === opt.key
+                          ? colors.primary
+                          : withOpacity(colors.mutedForeground, 0.7),
+                    }}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Target input */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <TextInput
+                value={target}
+                onChangeText={setTarget}
+                keyboardType="decimal-pad"
+                selectTextOnFocus
+                style={{
+                  width: 96,
+                  height: 38,
+                  borderRadius: 8,
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: withOpacity(colors.border, 0.5),
+                  backgroundColor: withOpacity(colors.muted, 0.2),
+                  paddingHorizontal: 10,
+                  textAlign: "center",
+                  fontSize: ui(15),
+                  fontWeight: "700",
+                  color: colors.foreground,
+                }}
+              />
+              <Text
+                style={{
+                  fontSize: ui(13),
+                  color: withOpacity(colors.mutedForeground, 0.7),
+                }}
+              >
+                {unitLabel} / {periodLabel}
+              </Text>
+            </View>
+
+            {/* Actions */}
+            <View style={{ flexDirection: "row", gap: 8 }}>
               <TouchableOpacity
-                key={opt.key}
-                onPress={() => handleTypeChange(opt.key)}
+                onPress={onClose}
                 activeOpacity={0.7}
                 style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  borderRadius: 8,
-                  alignItems: "center",
-                  backgroundColor:
-                    type === opt.key
-                      ? withOpacity(colors.primary, 0.1)
-                      : withOpacity(colors.muted, 0.3),
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 10,
                 }}
               >
                 <Text
                   style={{
-                    fontSize: 12,
+                    fontSize: ui(13),
                     fontWeight: "500",
-                    color:
-                      type === opt.key
-                        ? colors.primary
-                        : withOpacity(colors.mutedForeground, 0.7),
+                    color: withOpacity(colors.mutedForeground, 0.72),
                   }}
                 >
-                  {opt.label}
+                  {t("stats.desktop.goalCancel")}
                 </Text>
               </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Target input */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <TextInput
-              value={target}
-              onChangeText={setTarget}
-              keyboardType="decimal-pad"
-              selectTextOnFocus
-              style={{
-                width: 96,
-                height: 38,
-                borderRadius: 8,
-                borderWidth: StyleSheet.hairlineWidth,
-                borderColor: withOpacity(colors.border, 0.5),
-                backgroundColor: withOpacity(colors.muted, 0.2),
-                paddingHorizontal: 10,
-                textAlign: "center",
-                fontSize: 15,
-                fontWeight: "700",
-                color: colors.foreground,
-              }}
-            />
-            <Text
-              style={{
-                fontSize: 13,
-                color: withOpacity(colors.mutedForeground, 0.7),
-              }}
-            >
-              {unitLabel} / {periodLabel}
-            </Text>
-          </View>
-
-          {/* Actions */}
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <TouchableOpacity
-              onPress={onClose}
-              activeOpacity={0.7}
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 10,
-              }}
-            >
-              <Text
+              <TouchableOpacity
+                onPress={handleSubmit}
+                activeOpacity={0.85}
                 style={{
-                  fontSize: 13,
-                  fontWeight: "500",
-                  color: withOpacity(colors.mutedForeground, 0.72),
+                  flex: 1,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  alignItems: "center",
+                  backgroundColor: colors.primary,
                 }}
               >
-                {t("stats.desktop.goalCancel")}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleSubmit}
-              activeOpacity={0.85}
-              style={{
-                flex: 1,
-                paddingVertical: 10,
-                borderRadius: 10,
-                alignItems: "center",
-                backgroundColor: colors.primary,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "600",
-                  color: colors.primaryForeground,
-                }}
-              >
-                {t("stats.desktop.setGoal")}
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <Text
+                  style={{
+                    fontSize: ui(13),
+                    fontWeight: "600",
+                    color: colors.primaryForeground,
+                  }}
+                >
+                  {t("stats.desktop.setGoal")}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>

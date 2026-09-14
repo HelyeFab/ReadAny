@@ -12,6 +12,7 @@ import { NotesScreen } from "@/screens/NotesScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
 import { WebReaderScreen } from "@/screens/WebReaderScreen";
 import { useTheme } from "@/styles/ThemeContext";
+import { ui } from "@/styles/theme";
 /**
  * TabNavigator — bottom tab bar matching the Tauri mobile app's 4 tabs.
  * Icons: BookOpen, MessageSquare, NotebookPen, User (matching BottomTabBar.tsx)
@@ -58,7 +59,7 @@ export function TabNavigator() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarLabelStyle: {
-          fontSize: layout.isTablet ? 13 : 12,
+          fontSize: ui(12),
           fontWeight: "500",
           marginBottom: layout.isTabletLandscape ? 2 : 0,
         },

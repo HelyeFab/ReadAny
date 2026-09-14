@@ -18,6 +18,7 @@ import {
   fontWeight,
   radius,
   spacing,
+  ui,
   useColors,
   withOpacity,
 } from "@/styles/theme";
@@ -1772,7 +1773,7 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       fontWeight: fontWeight.semibold,
       textAlign: "center",
-      lineHeight: 18,
+      lineHeight: ui(18),
     },
     coverFallbackAuthor: {
       color: colors.mutedForeground,
@@ -1803,7 +1804,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     coverActionText: {
       color: colors.foreground,
-      fontSize: 10,
+      fontSize: ui(10),
       fontWeight: fontWeight.medium,
     },
     heroCopy: {
@@ -1815,28 +1816,28 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.foreground,
       fontSize: fontSize.lg,
       fontWeight: fontWeight.bold,
-      lineHeight: 25,
+      lineHeight: ui(25),
       minHeight: 52,
     },
     heroTitlePlaceholder: {
       color: withOpacity(colors.mutedForeground, 0.72),
       fontSize: fontSize.lg,
       fontWeight: fontWeight.bold,
-      lineHeight: 25,
+      lineHeight: ui(25),
       minHeight: 52,
     },
     heroAuthorText: {
       marginTop: 7,
       color: colors.mutedForeground,
       fontSize: fontSize.sm,
-      lineHeight: 19,
+      lineHeight: ui(19),
       minHeight: 24,
     },
     heroAuthorPlaceholder: {
       marginTop: 7,
       color: withOpacity(colors.mutedForeground, 0.72),
       fontSize: fontSize.sm,
-      lineHeight: 19,
+      lineHeight: ui(19),
       minHeight: 24,
     },
     heroInlineInput: {
@@ -1916,7 +1917,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     metaItemLabel: {
       color: colors.mutedForeground,
-      fontSize: 10,
+      fontSize: ui(10),
       fontWeight: fontWeight.medium,
       marginBottom: 3,
     },
@@ -1972,7 +1973,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     tabCount: {
       color: colors.mutedForeground,
-      fontSize: 10,
+      fontSize: ui(10),
       fontWeight: fontWeight.semibold,
       textAlign: "center",
       fontVariant: ["tabular-nums"],
@@ -2000,7 +2001,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     fieldLabel: {
       color: colors.mutedForeground,
-      fontSize: 11,
+      fontSize: ui(11),
       fontWeight: fontWeight.medium,
     },
     fieldHeader: {
@@ -2033,7 +2034,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     infoRowLabel: {
       color: colors.mutedForeground,
-      fontSize: 11,
+      fontSize: ui(11),
       fontWeight: fontWeight.medium,
       letterSpacing: 0,
     },
@@ -2097,7 +2098,7 @@ const makeStyles = (colors: ThemeColors) =>
     reviewsEmptyText: {
       color: colors.mutedForeground,
       fontSize: fontSize.sm,
-      lineHeight: 20,
+      lineHeight: ui(20),
       textAlign: "center",
     },
     inlineTextButton: {
@@ -2149,7 +2150,7 @@ const makeStyles = (colors: ThemeColors) =>
       paddingRight: 104,
       marginBottom: spacing.sm,
       color: colors.mutedForeground,
-      fontSize: 10,
+      fontSize: ui(10),
       fontVariant: ["tabular-nums"],
     },
     longTextIconButton: {
@@ -2185,12 +2186,12 @@ const makeStyles = (colors: ThemeColors) =>
     longTextDisplay: {
       color: colors.foreground,
       fontSize: fontSize.sm,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     longTextPlaceholder: {
       color: withOpacity(colors.mutedForeground, 0.72),
       fontSize: fontSize.sm,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     sheetRoot: {
       flex: 1,
@@ -2294,7 +2295,7 @@ const makeStyles = (colors: ThemeColors) =>
       backgroundColor: withOpacity(colors.background, 0.72),
       color: colors.foreground,
       fontSize: fontSize.base,
-      lineHeight: 22,
+      lineHeight: ui(22),
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
     },

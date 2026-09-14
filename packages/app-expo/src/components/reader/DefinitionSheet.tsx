@@ -1,3 +1,5 @@
+import type { Definition, PhraseHit } from "@/lib/dictionary/lookup";
+import { radius, spacing, ui, useColors } from "@/styles/theme";
 /**
  * Definitions for the selected word, from the imported Yomitan dictionaries.
  *
@@ -6,10 +8,17 @@
  * take the page away.
  */
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import type { Definition, PhraseHit } from "@/lib/dictionary/lookup";
-import { radius, spacing, useColors } from "@/styles/theme";
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 interface Props {
   visible: boolean;
@@ -103,7 +112,7 @@ export function DefinitionSheet({ visible, word, baseForms, onClose }: Props) {
           {word}
         </Text>
         {baseForms.length > 0 && baseForms[0] !== word && (
-          <Text style={{ fontSize: 13, color: colors.mutedForeground }}>
+          <Text style={{ fontSize: ui(13), color: colors.mutedForeground }}>
             {baseForms.join(" · ")}
           </Text>
         )}
@@ -136,7 +145,9 @@ export function DefinitionSheet({ visible, word, baseForms, onClose }: Props) {
           </Text>
         ) : entries.length === 0 && phrase.length > 0 ? (
           <ScrollView>
-            <Text style={{ color: colors.mutedForeground, fontSize: 12, marginBottom: spacing.sm }}>
+            <Text
+              style={{ color: colors.mutedForeground, fontSize: ui(12), marginBottom: spacing.sm }}
+            >
               {t("dictionary.phraseGloss", "Words in this selection")}
             </Text>
             {phrase.map((hit, i) => (
@@ -149,17 +160,17 @@ export function DefinitionSheet({ visible, word, baseForms, onClose }: Props) {
                 }}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                  <Text style={{ fontSize: 17, fontWeight: "600", color: colors.foreground }}>
+                  <Text style={{ fontSize: ui(17), fontWeight: "600", color: colors.foreground }}>
                     {hit.surface}
                   </Text>
                   {hit.entries[0]?.reading && hit.entries[0].reading !== hit.surface ? (
-                    <Text style={{ fontSize: 13, color: colors.mutedForeground }}>
+                    <Text style={{ fontSize: ui(13), color: colors.mutedForeground }}>
                       {hit.entries[0].reading}
                     </Text>
                   ) : null}
                   <View style={{ flex: 1 }} />
                   <TouchableOpacity onPress={() => void addToAnki(hit.surface, hit.entries)}>
-                    <Text style={{ fontSize: 12, color: colors.primary }}>
+                    <Text style={{ fontSize: ui(12), color: colors.primary }}>
                       {t("anki.add", "Add to Anki")}
                     </Text>
                   </TouchableOpacity>
@@ -167,7 +178,7 @@ export function DefinitionSheet({ visible, word, baseForms, onClose }: Props) {
                 {hit.entries.map((entry, j) => (
                   <Text
                     key={`${entry.dictionary}-${j}`}
-                    style={{ fontSize: 14, color: colors.foreground, marginTop: 3 }}
+                    style={{ fontSize: ui(14), color: colors.foreground, marginTop: 3 }}
                   >
                     {entry.glossary}
                   </Text>
@@ -190,16 +201,16 @@ export function DefinitionSheet({ visible, word, baseForms, onClose }: Props) {
                   borderTopColor: colors.border,
                 }}
               >
-                <Text style={{ fontSize: 16, color: colors.foreground }}>
+                <Text style={{ fontSize: ui(16), color: colors.foreground }}>
                   {entry.expression}
                   {entry.reading && entry.reading !== entry.expression
                     ? `（${entry.reading}）`
                     : ""}
                 </Text>
-                <Text style={{ fontSize: 14, color: colors.foreground, marginTop: 2 }}>
+                <Text style={{ fontSize: ui(14), color: colors.foreground, marginTop: 2 }}>
                   {entry.glossary}
                 </Text>
-                <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 4 }}>
+                <Text style={{ fontSize: ui(11), color: colors.mutedForeground, marginTop: 4 }}>
                   {entry.dictionary}
                 </Text>
               </View>

@@ -1,4 +1,4 @@
-import { useColors, withOpacity } from "@/styles/theme";
+import { ui, useColors, withOpacity } from "@/styles/theme";
 import type { DailyStats } from "@readany/core/stats";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -121,9 +121,12 @@ export function FullHeatmap({ dailyStats }: { dailyStats: DailyStats[] }) {
             const nextCol = i + 1 < monthLabels.length ? monthLabels[i + 1].col : weeks.length;
             const span = nextCol - m.col;
             return (
-              <View key={`${m.label}-${m.col}`} style={{ width: span * UNIT, minWidth: span * UNIT }}>
+              <View
+                key={`${m.label}-${m.col}`}
+                style={{ width: span * UNIT, minWidth: span * UNIT }}
+              >
                 {span >= 2 && (
-                  <Text style={{ fontSize: 9, color: colors.mutedForeground }}>{m.label}</Text>
+                  <Text style={{ fontSize: ui(9), color: colors.mutedForeground }}>{m.label}</Text>
                 )}
               </View>
             );
@@ -143,7 +146,12 @@ export function FullHeatmap({ dailyStats }: { dailyStats: DailyStats[] }) {
               {week.map((day, di) => (
                 <TouchableOpacity
                   key={day.date}
-                  style={{ width: CELL, height: CELL, borderRadius: 2, backgroundColor: getColor(day.time) }}
+                  style={{
+                    width: CELL,
+                    height: CELL,
+                    borderRadius: 2,
+                    backgroundColor: getColor(day.time),
+                  }}
                   onPress={() => handleCellPress(day, wi, di)}
                   activeOpacity={0.7}
                 />
@@ -173,7 +181,14 @@ export function FullHeatmap({ dailyStats }: { dailyStats: DailyStats[] }) {
             elevation: 3,
           }}
         >
-          <Text style={{ fontSize: 12, color: colors.cardForeground, fontWeight: "500", textAlign: "center" }}>
+          <Text
+            style={{
+              fontSize: ui(12),
+              color: colors.cardForeground,
+              fontWeight: "500",
+              textAlign: "center",
+            }}
+          >
             {formatDisplayDate(selectedDay.date)}{" "}
             {selectedDay.time > 0 ? formatTime(selectedDay.time) : t("stats.noReading")}
           </Text>

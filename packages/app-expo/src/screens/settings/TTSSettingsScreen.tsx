@@ -8,8 +8,8 @@ import {
   groupSystemVoiceOptions,
   resolveSystemVoiceValue,
 } from "@/lib/platform/system-voices";
-import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
 import { clearTTSCache, ttsCacheLastError, ttsCacheSize } from "@/lib/platform/tts-cache";
+import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
 import { useTTSStore } from "@/stores";
 import {
   DASHSCOPE_VOICES,
@@ -42,6 +42,7 @@ import {
   fontWeight,
   radius,
   spacing,
+  ui,
   useColors,
 } from "../../styles/theme";
 import { SettingsHeader } from "./SettingsHeader";
@@ -92,10 +93,7 @@ export default function TTSSettingsScreen() {
   const displayLocale = i18n.resolvedLanguage || i18n.language;
   const edgeVoiceGroups = useMemo(() => groupEdgeTTSVoices(EDGE_TTS_VOICES), []);
 
-  const systemVoiceGroups = useMemo(
-    () => groupSystemVoiceOptions(systemVoices),
-    [systemVoices],
-  );
+  const systemVoiceGroups = useMemo(() => groupSystemVoiceOptions(systemVoices), [systemVoices]);
   const selectedSystemVoiceValue = useMemo(
     () => resolveSystemVoiceValue(config.voiceName, systemVoices),
     [config.voiceName, systemVoices],
@@ -193,9 +191,7 @@ export default function TTSSettingsScreen() {
     >
       <Text style={[styles.previewBtnText, isPreviewing && styles.previewBtnTextActive]}>
         {isPreviewing ? "■" : "▶"}{" "}
-        {isPreviewing
-          ? t("common.previewing", "试听中")
-          : t("common.preview", "试听")}
+        {isPreviewing ? t("common.previewing", "试听中") : t("common.preview", "试听")}
       </Text>
     </TouchableOpacity>
   );
@@ -215,34 +211,36 @@ export default function TTSSettingsScreen() {
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { alignItems: "center" }]}
       >
-          <View style={[styles.contentColumn, { width: "100%", maxWidth: layout.centeredContentWidth }]}>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t("tts.voiceProfile", "朗读方案")}</Text>
-              <View style={styles.profileList}>
-                {profiles.map((profile) => {
-                  const active = activeProfile.id === profile.id;
-                  return (
-                    <TouchableOpacity
-                      key={profile.id}
-                      style={[styles.profileItem, active && styles.profileItemActive]}
-                      onPress={() => selectProfile(profile.id)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.profileName, active && styles.profileNameActive]}>
-                          {profileName(profile, t)}
-                        </Text>
-                      </View>
-                      {active && <Text style={styles.profileStatus}>✓</Text>}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+        <View
+          style={[styles.contentColumn, { width: "100%", maxWidth: layout.centeredContentWidth }]}
+        >
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t("tts.voiceProfile", "朗读方案")}</Text>
+            <View style={styles.profileList}>
+              {profiles.map((profile) => {
+                const active = activeProfile.id === profile.id;
+                return (
+                  <TouchableOpacity
+                    key={profile.id}
+                    style={[styles.profileItem, active && styles.profileItemActive]}
+                    onPress={() => selectProfile(profile.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.profileName, active && styles.profileNameActive]}>
+                        {profileName(profile, t)}
+                      </Text>
+                    </View>
+                    {active && <Text style={styles.profileStatus}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
+          </View>
 
-            {/* Voice Selection */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t("tts.voiceSelect", "声音选择")}</Text>
+          {/* Voice Selection */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t("tts.voiceSelect", "声音选择")}</Text>
 
             {config.engine === "edge" && (
               <ScrollView style={styles.voiceList} nestedScrollEnabled>
@@ -495,10 +493,7 @@ export default function TTSSettingsScreen() {
                           activeOpacity={0.7}
                         >
                           <Text
-                            style={[
-                              styles.optionChipText,
-                              active && styles.optionChipTextActive,
-                            ]}
+                            style={[styles.optionChipText, active && styles.optionChipTextActive]}
                           >
                             {endpoint === "audio-speech" ? "/audio/speech" : "/chat/completions"}
                           </Text>
@@ -523,10 +518,7 @@ export default function TTSSettingsScreen() {
                           activeOpacity={0.7}
                         >
                           <Text
-                            style={[
-                              styles.optionChipText,
-                              active && styles.optionChipTextActive,
-                            ]}
+                            style={[styles.optionChipText, active && styles.optionChipTextActive]}
                           >
                             {format}
                           </Text>
@@ -577,9 +569,7 @@ export default function TTSSettingsScreen() {
                   />
                 </View>
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>
-                    {t("tts.apiKeyHeader", "API key header")}
-                  </Text>
+                  <Text style={styles.fieldLabel}>{t("tts.apiKeyHeader", "API key header")}</Text>
                   <TextInput
                     style={styles.input}
                     value={config.openaiTtsApiKeyHeader || ""}
@@ -611,101 +601,100 @@ export default function TTSSettingsScreen() {
                 </View>
               </>
             )}
-            </View>
+          </View>
 
-            {/* Rate & Pitch */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t("tts.params", "语音参数")}</Text>
-              <View style={styles.paramsCard}>
-                {/* Rate */}
+          {/* Rate & Pitch */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t("tts.params", "语音参数")}</Text>
+            <View style={styles.paramsCard}>
+              {/* Rate */}
+              <View style={styles.paramRow}>
+                <View style={styles.paramHeader}>
+                  <Text style={styles.paramLabel}>{t("tts.rate", "语速")}</Text>
+                  <Text style={styles.paramValue}>{config.rate.toFixed(1)}x</Text>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="decimal-pad"
+                  value={String(config.rate)}
+                  onChangeText={(v) => {
+                    const n = Number.parseFloat(v);
+                    if (!Number.isNaN(n) && n >= 0.5 && n <= 2) updateConfig({ rate: n });
+                  }}
+                  placeholder="0.5 - 2.0"
+                  placeholderTextColor={colors.mutedForeground}
+                />
+              </View>
+
+              {/* Pitch (system only) */}
+              {config.engine === "system" && (
                 <View style={styles.paramRow}>
                   <View style={styles.paramHeader}>
-                    <Text style={styles.paramLabel}>{t("tts.rate", "语速")}</Text>
-                    <Text style={styles.paramValue}>{config.rate.toFixed(1)}x</Text>
+                    <Text style={styles.paramLabel}>{t("tts.pitch", "音调")}</Text>
+                    <Text style={styles.paramValue}>{config.pitch.toFixed(1)}</Text>
                   </View>
                   <TextInput
                     style={styles.input}
                     keyboardType="decimal-pad"
-                    value={String(config.rate)}
+                    value={String(config.pitch)}
                     onChangeText={(v) => {
                       const n = Number.parseFloat(v);
-                      if (!Number.isNaN(n) && n >= 0.5 && n <= 2) updateConfig({ rate: n });
+                      if (!Number.isNaN(n) && n >= 0.5 && n <= 2) updateConfig({ pitch: n });
                     }}
                     placeholder="0.5 - 2.0"
                     placeholderTextColor={colors.mutedForeground}
                   />
                 </View>
-
-                {/* Pitch (system only) */}
-                {config.engine === "system" && (
-                  <View style={styles.paramRow}>
-                    <View style={styles.paramHeader}>
-                      <Text style={styles.paramLabel}>{t("tts.pitch", "音调")}</Text>
-                      <Text style={styles.paramValue}>{config.pitch.toFixed(1)}</Text>
-                    </View>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="decimal-pad"
-                      value={String(config.pitch)}
-                      onChangeText={(v) => {
-                        const n = Number.parseFloat(v);
-                        if (!Number.isNaN(n) && n >= 0.5 && n <= 2) updateConfig({ pitch: n });
-                      }}
-                      placeholder="0.5 - 2.0"
-                      placeholderTextColor={colors.mutedForeground}
-                    />
-                  </View>
-                )}
-              </View>
+              )}
             </View>
+          </View>
 
-            {/* Saved speech */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t("tts.cacheTitle", "Saved speech")}</Text>
-              <View style={styles.paramsCard}>
-                <View style={styles.paramRow}>
-                  <View style={styles.paramHeader}>
-                    <Text style={styles.paramLabel}>
-                      {cache.files === 0
-                        ? t("tts.cacheEmpty", "Nothing saved yet")
-                        : `${cache.files} ${t("tts.cacheClips", "clips")} · ${
-                            cache.bytes < 1024 * 1024
-                              ? `${Math.round(cache.bytes / 1024)} KB`
-                              : `${(cache.bytes / 1024 / 1024).toFixed(1)} MB`
-                          }`}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        clearTTSCache();
-                        setCache(ttsCacheSize());
-                      }}
-                      disabled={cache.files === 0}
-                    >
-                      <Text
-                        style={{
-                          color: cache.files === 0 ? colors.mutedForeground : colors.destructive,
-                        }}
-                      >
-                        {t("common.clear", "Clear")}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                    {t(
-                      "tts.cacheHint",
-                      "A line already spoken is played from here instead of being synthesised again.",
-                    )}
+          {/* Saved speech */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t("tts.cacheTitle", "Saved speech")}</Text>
+            <View style={styles.paramsCard}>
+              <View style={styles.paramRow}>
+                <View style={styles.paramHeader}>
+                  <Text style={styles.paramLabel}>
+                    {cache.files === 0
+                      ? t("tts.cacheEmpty", "Nothing saved yet")
+                      : `${cache.files} ${t("tts.cacheClips", "clips")} · ${
+                          cache.bytes < 1024 * 1024
+                            ? `${Math.round(cache.bytes / 1024)} KB`
+                            : `${(cache.bytes / 1024 / 1024).toFixed(1)} MB`
+                        }`}
                   </Text>
-                  {ttsCacheLastError() ? (
-                    <Text style={{ color: colors.destructive, fontSize: 11 }}>
-                      {ttsCacheLastError()}
+                  <TouchableOpacity
+                    onPress={() => {
+                      clearTTSCache();
+                      setCache(ttsCacheSize());
+                    }}
+                    disabled={cache.files === 0}
+                  >
+                    <Text
+                      style={{
+                        color: cache.files === 0 ? colors.mutedForeground : colors.destructive,
+                      }}
+                    >
+                      {t("common.clear", "Clear")}
                     </Text>
-                  ) : null}
-
+                  </TouchableOpacity>
                 </View>
+                <Text style={{ color: colors.mutedForeground, fontSize: ui(12) }}>
+                  {t(
+                    "tts.cacheHint",
+                    "A line already spoken is played from here instead of being synthesised again.",
+                  )}
+                </Text>
+                {ttsCacheLastError() ? (
+                  <Text style={{ color: colors.destructive, fontSize: ui(11) }}>
+                    {ttsCacheLastError()}
+                  </Text>
+                ) : null}
               </View>
             </View>
           </View>
+        </View>
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );
@@ -845,10 +834,10 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
       marginTop: 2,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     micIcon: {
-      fontSize: 14,
+      fontSize: ui(14),
       color: colors.primary,
     },
     emptyVoice: {
@@ -859,7 +848,7 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
       textAlign: "center",
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     fieldGroup: { gap: 6, marginTop: 12 },
     fieldLabel: {
@@ -885,7 +874,7 @@ const makeStyles = (colors: ThemeColors) =>
     multilineInput: {
       minHeight: 84,
       textAlignVertical: "top",
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     paramsCard: {
       borderRadius: radius.xl,

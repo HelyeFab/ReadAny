@@ -28,10 +28,10 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useStreamingChat } from "@/hooks";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
-import { readingContextService } from "@readany/core/ai/reading-context-service";
 import { useLibraryStore } from "@/stores";
 import { useChatStore } from "@/stores/chat-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { readingContextService } from "@readany/core/ai/reading-context-service";
 import { getPlatformService } from "@readany/core/services";
 import type { AttachedQuote } from "@readany/core/types";
 import type { CitationPart, MessageV2 } from "@readany/core/types/message";
@@ -66,6 +66,7 @@ import {
   fontSize as fs,
   fontWeight as fw,
   radius,
+  ui,
   useColors,
   useTheme,
   withOpacity,
@@ -715,7 +716,7 @@ const makeStyles = (
     },
     selectionContextText: {
       fontSize: fs.sm,
-      lineHeight: 19,
+      lineHeight: ui(19),
       color: colors.foreground,
     },
     emptyContainer: {
@@ -821,7 +822,7 @@ const makeStyles = (
       color: colors.mutedForeground,
     },
     sectionLabel: {
-      fontSize: 12,
+      fontSize: ui(12),
       fontWeight: fw.medium,
       color: colors.mutedForeground,
       paddingHorizontal: 10,
@@ -857,12 +858,12 @@ const makeStyles = (
       color: colors.primary,
     },
     threadTime: {
-      fontSize: 11,
+      fontSize: ui(11),
       color: colors.mutedForeground,
       opacity: 0.5,
     },
     threadPreview: {
-      fontSize: 13,
+      fontSize: ui(13),
       color: colors.mutedForeground,
     },
     threadDeleteBtn: {

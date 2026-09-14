@@ -17,7 +17,6 @@ import * as Clipboard from "expo-clipboard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Keyboard,
@@ -34,40 +33,39 @@ import { captureRef } from "react-native-view-shot";
 import { WebView } from "react-native-webview";
 import type { WebViewNavigation } from "react-native-webview";
 
-import ReadingSvg from "../../assets/illustrations/reading.svg";
 import { DefinitionSheet } from "@/components/reader/DefinitionSheet";
 import {
+  BookOpenIcon,
   BookmarkFilledIcon,
   BookmarkIcon,
-  ChevronLeftIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
   ChevronRightIcon,
   ChevronUpIcon,
   GlobeIcon,
   LibraryIcon,
-  ScrollTextIcon,
-  SearchIcon,
-  BookOpenIcon,
   RefreshCwIcon,
   ScanTextIcon,
-  Trash2Icon,
+  ScrollTextIcon,
+  SearchIcon,
   XIcon,
 } from "@/components/ui/Icon";
 import { RegionCaptureOverlay } from "@/components/web/RegionCaptureOverlay";
 import type { CaptureRegion } from "@/components/web/RegionCaptureOverlay";
 import { WebSelectionBar } from "@/components/web/WebSelectionBar";
-import { isOcrAvailable, recognizeRegion } from "../../modules/mlkit-ocr";
 import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
-import { readRegionWithVision, supportsVisionOcr } from "@/lib/web/vision-ocr";
-import { useSettingsStore } from "@/stores";
 import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
+import { colorForUrl, hostOf, initialOf, relativeTime } from "@/lib/web/page-identity";
 import { SELECTION_BRIDGE_JS, parseWebBridgeMessage } from "@/lib/web/selection-bridge";
 import { STARTER_SITES, resolveInputToUrl } from "@/lib/web/starter-sites";
-import { colorForUrl, hostOf, initialOf, relativeTime } from "@/lib/web/page-identity";
+import { readRegionWithVision, supportsVisionOcr } from "@/lib/web/vision-ocr";
 import type { TabParamList } from "@/navigation/TabNavigator";
+import { useSettingsStore } from "@/stores";
 import { isSavedUrl, useTTSStore, useWebStore } from "@/stores";
-import { fontSize as fs, fontWeight as fw, radius, spacing, useColors } from "@/styles/theme";
+import { fontSize as fs, fontWeight as fw, radius, spacing, ui, useColors } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
+import ReadingSvg from "../../assets/illustrations/reading.svg";
+import { isOcrAvailable, recognizeRegion } from "../../modules/mlkit-ocr";
 
 export function WebReaderScreen() {
   const { t } = useTranslation();
@@ -378,37 +376,37 @@ export function WebReaderScreen() {
         // captureRef needs — without it the node is optimised away.
         <View ref={pageRef} collapsable={false} style={s.web}>
           <WebView
-          ref={webRef}
-          source={{ uri: url }}
-          style={s.web}
-          injectedJavaScript={SELECTION_BRIDGE_JS}
-          onMessage={(event) => handleMessage(event.nativeEvent.data)}
-          onNavigationStateChange={handleNavigationStateChange}
-          onLoadStart={() => {
-            setLoading(true);
-            setSelection(null);
-          }}
-          onLoadEnd={() => setLoading(false)}
-          onError={({ nativeEvent }) => {
-            setLoading(false);
-            Alert.alert(
-              t("web.loadFailed", "Could not load the page"),
-              nativeEvent.description || String(nativeEvent.code),
-            );
-          }}
-          allowsBackForwardNavigationGestures
-          setSupportMultipleWindows={false}
-          // Long-press select is the whole interaction, so it must survive the
-          // WebView's own defaults on Android.
-          textInteractionEnabled
-          javaScriptEnabled
-          domStorageEnabled
-          mediaPlaybackRequiresUserAction
-          userAgent={
-            Platform.OS === "android"
-              ? "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
-              : undefined
-          }
+            ref={webRef}
+            source={{ uri: url }}
+            style={s.web}
+            injectedJavaScript={SELECTION_BRIDGE_JS}
+            onMessage={(event) => handleMessage(event.nativeEvent.data)}
+            onNavigationStateChange={handleNavigationStateChange}
+            onLoadStart={() => {
+              setLoading(true);
+              setSelection(null);
+            }}
+            onLoadEnd={() => setLoading(false)}
+            onError={({ nativeEvent }) => {
+              setLoading(false);
+              Alert.alert(
+                t("web.loadFailed", "Could not load the page"),
+                nativeEvent.description || String(nativeEvent.code),
+              );
+            }}
+            allowsBackForwardNavigationGestures
+            setSupportMultipleWindows={false}
+            // Long-press select is the whole interaction, so it must survive the
+            // WebView's own defaults on Android.
+            textInteractionEnabled
+            javaScriptEnabled
+            domStorageEnabled
+            mediaPlaybackRequiresUserAction
+            userAgent={
+              Platform.OS === "android"
+                ? "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+                : undefined
+            }
           />
         </View>
       ) : (
@@ -464,36 +462,36 @@ export function WebReaderScreen() {
               </TouchableOpacity>
               {savedCollapsed ? null : (
                 <View style={s.grid}>
-                {saved.map((page) => {
-                  const tone = colorForUrl(page.url);
-                  return (
-                    <TouchableOpacity
-                      key={page.url}
-                      style={[s.tile, { backgroundColor: tone.tint, borderColor: tone.accent }]}
-                      onPress={() => open(page.url)}
-                      activeOpacity={0.8}
-                    >
-                      <View style={s.tileTop}>
-                        <View style={[s.tileBadge, { backgroundColor: tone.accent }]}>
-                          <Text style={s.tileBadgeText}>{initialOf(page.url, page.title)}</Text>
+                  {saved.map((page) => {
+                    const tone = colorForUrl(page.url);
+                    return (
+                      <TouchableOpacity
+                        key={page.url}
+                        style={[s.tile, { backgroundColor: tone.tint, borderColor: tone.accent }]}
+                        onPress={() => open(page.url)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={s.tileTop}>
+                          <View style={[s.tileBadge, { backgroundColor: tone.accent }]}>
+                            <Text style={s.tileBadgeText}>{initialOf(page.url, page.title)}</Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => removeSaved(page.url)}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            accessibilityLabel={t("web.unsave", "Remove saved page")}
+                          >
+                            <XIcon size={15} color={tone.accent} />
+                          </TouchableOpacity>
                         </View>
-                        <TouchableOpacity
-                          onPress={() => removeSaved(page.url)}
-                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                          accessibilityLabel={t("web.unsave", "Remove saved page")}
-                        >
-                          <XIcon size={15} color={tone.accent} />
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={s.tileTitle} numberOfLines={2}>
-                        {page.title || hostOf(page.url)}
-                      </Text>
-                      <Text style={[s.tileHost, { color: tone.accent }]} numberOfLines={1}>
-                        {hostOf(page.url)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                        <Text style={s.tileTitle} numberOfLines={2}>
+                          {page.title || hostOf(page.url)}
+                        </Text>
+                        <Text style={[s.tileHost, { color: tone.accent }]} numberOfLines={1}>
+                          {hostOf(page.url)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               )}
             </View>
@@ -709,7 +707,7 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.mutedForeground,
       fontSize: fs.sm,
       textAlign: "center",
-      lineHeight: 20,
+      lineHeight: ui(20),
       paddingHorizontal: spacing.md,
     },
     startCard: {
@@ -730,7 +728,7 @@ const makeStyles = (colors: ThemeColors) =>
     startNote: {
       color: colors.mutedForeground,
       fontSize: fs.xs,
-      lineHeight: 16,
+      lineHeight: ui(16),
     },
     // The count keeps the section informative while it is folded away.
     sectionCount: {
@@ -761,7 +759,7 @@ const makeStyles = (colors: ThemeColors) =>
     homeLead: {
       color: colors.mutedForeground,
       fontSize: fs.sm,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     section: {
       gap: spacing.xs,
