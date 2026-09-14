@@ -79,6 +79,44 @@ async function buildReader() {
     });
     const justifiedText = justifyResult.outputFiles[0].text;
 
+    // Same trick for bionic reading: the word-splitting rule and the DOM walk
+    // live in core, where they are unit-tested, rather than being restated in
+    // ES5 inside this template where nothing could check them.
+    const bionicResult = await esbuild.build({
+      stdin: {
+        contents: `
+          import { installReadAnyBionicReading } from "${CORE_READER.replace(/\\/g, "/")}/bionic-reading";
+          installReadAnyBionicReading(globalThis);
+        `,
+        resolveDir: path.resolve(__dirname, "../../core/src/reader"),
+        sourcefile: "bionic-reading-entry.ts",
+      },
+      bundle: true,
+      format: "iife",
+      target: "es2020",
+      write: false,
+    });
+    const bionicReading = bionicResult.outputFiles[0].text;
+
+    // And the paginated-mode selection gesture, for the same reason: the rule
+    // for when a press becomes a selection is unit-tested in core rather than
+    // restated in ES5 here.
+    const penSelectionResult = await esbuild.build({
+      stdin: {
+        contents: `
+          import { installReadAnyPenSelection } from "${CORE_READER.replace(/\\/g, "/")}/pen-selection";
+          installReadAnyPenSelection(globalThis);
+        `,
+        resolveDir: path.resolve(__dirname, "../../core/src/reader"),
+        sourcefile: "pen-selection-entry.ts",
+      },
+      bundle: true,
+      format: "iife",
+      target: "es2020",
+      write: false,
+    });
+    const penSelection = penSelectionResult.outputFiles[0].text;
+
     // Read the template HTML and reader-side helper sources (never modified)
     const template = fs.readFileSync(TEMPLATE, "utf-8");
 
@@ -89,11 +127,25 @@ async function buildReader() {
     }
     const templateWithJustifiedText = `${justifiedTextParts[0]}<script>\n${justifiedText}\n</script>${justifiedTextParts[1]}`;
 
+    const BIONIC_MARKER = "<!-- __READANY_BIONIC_INSERT_POINT_4a91c7e5__ -->";
+    const bionicParts = templateWithJustifiedText.split(BIONIC_MARKER);
+    if (bionicParts.length !== 2) {
+      throw new Error("Reader template must contain exactly one bionic marker");
+    }
+    const templateWithBionic = `${bionicParts[0]}<script>\n${bionicReading}\n</script>${bionicParts[1]}`;
+
+    const PEN_SELECTION_MARKER = "<!-- __READANY_PEN_SELECTION_INSERT_POINT_8b3e6d14__ -->";
+    const penParts = templateWithBionic.split(PEN_SELECTION_MARKER);
+    if (penParts.length !== 2) {
+      throw new Error("Reader template must contain exactly one pen-selection marker");
+    }
+    const templateWithPenSelection = `${penParts[0]}<script>\n${penSelection}\n</script>${penParts[1]}`;
+
     // Inline the kuromoji browser build (~300KB). Its 18MB dictionary is NOT
     // inlined — RN downloads that and serves it over the local file server.
     const KUROMOJI_MARKER = "<!-- __READANY_KUROMOJI_INSERT_POINT_5d71c0a4__ -->";
     const kuromojiPath = require.resolve("kuromoji/build/kuromoji.js");
-    const kuromojiParts = templateWithJustifiedText.split(KUROMOJI_MARKER);
+    const kuromojiParts = templateWithPenSelection.split(KUROMOJI_MARKER);
     if (kuromojiParts.length !== 2) {
       throw new Error("Reader template must contain exactly one kuromoji marker");
     }

@@ -6,6 +6,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
   <title>ReadAny Reader</title>
   <style>
+    /*
+     * Highlights are drawn by foliate's Overlayer, which sets
+     *   opacity: var(--overlayer-highlight-opacity, .3)
+     * on top of whatever fill colour it is handed. Our colours already carry
+     * their own alpha — rgba(250, 204, 21, 0.4) for yellow — so leaving that
+     * variable unset multiplied the two: 0.4 x 0.3 = 0.12. Every colour came
+     * out as the same barely-there wash, which on a colour e-ink panel reads
+     * as light grey rather than as any colour at all.
+     *
+     * Setting it to 1 makes the rgba alpha in the colour map the single place
+     * highlight strength is decided. drawTTSHighlight already defaulted this
+     * to 1, which is why the TTS highlight looked right while the user's own
+     * highlights did not.
+     */
+    :root {
+      --overlayer-highlight-opacity: 1;
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -334,6 +352,197 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
 
   // ../core/src/reader/justified-text-entry.ts
   installReadAnyJustifiedText(globalThis);
+})();
+
+</script>
+  <script>
+(() => {
+  // ../core/src/reader/bionic-reading.ts
+  var BIONIC_PROCESSED_ATTR = "data-readany-bionic";
+  var BIONIC_STYLE_ID = "readany-bionic-style";
+  var WORD_RE = /[\p{Script=Latin}\p{Mn}ʼ'’]+/gu;
+  var HAS_LETTER_RE = /\p{Script=Latin}/u;
+  function bionicBoldLength(word) {
+    const length = word.length;
+    if (length <= 1) return length;
+    if (length <= 3) return 1;
+    if (length <= 5) return 2;
+    if (length <= 7) return 3;
+    if (length <= 9) return 4;
+    return Math.ceil(length * 0.4);
+  }
+  function splitBionicText(text) {
+    if (!text) return [];
+    const tokens = [];
+    let cursor = 0;
+    WORD_RE.lastIndex = 0;
+    let match = WORD_RE.exec(text);
+    while (match !== null) {
+      const word = match[0];
+      const start = match.index;
+      if (start > cursor) {
+        tokens.push({ bold: "", rest: text.slice(cursor, start) });
+      }
+      if (HAS_LETTER_RE.test(word)) {
+        const boldLength = bionicBoldLength(word);
+        tokens.push({ bold: word.slice(0, boldLength), rest: word.slice(boldLength) });
+      } else {
+        tokens.push({ bold: "", rest: word });
+      }
+      cursor = start + word.length;
+      match = WORD_RE.exec(text);
+    }
+    if (cursor < text.length) {
+      tokens.push({ bold: "", rest: text.slice(cursor) });
+    }
+    return tokens;
+  }
+  function hasBionicCandidates(text) {
+    return HAS_LETTER_RE.test(text);
+  }
+  var BIONIC_CSS = `
+[${BIONIC_PROCESSED_ATTR}] b {
+  font-weight: 700;
+}
+`;
+  var SKIP_SELECTOR = `.readany-translation, ruby, rt, rp, script, style, code, pre, kbd, samp, b, strong, [${BIONIC_PROCESSED_ATTR}]`;
+  var BLOCK_SELECTOR = "p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, figcaption, td, th, div";
+  function shouldSkip(el) {
+    return typeof el.closest === "function" && el.closest(SKIP_SELECTOR) !== null;
+  }
+  function injectStyles(doc) {
+    if (doc.getElementById(BIONIC_STYLE_ID)) return;
+    const style = doc.createElement("style");
+    style.id = BIONIC_STYLE_ID;
+    style.textContent = BIONIC_CSS;
+    (doc.head || doc.documentElement)?.appendChild(style);
+  }
+  function applyBionicReading(doc) {
+    if (!doc) return 0;
+    injectStyles(doc);
+    let count = 0;
+    const blocks = doc.querySelectorAll(BLOCK_SELECTOR);
+    for (const block of Array.from(blocks)) {
+      const blockText = block.textContent;
+      if (!blockText || !blockText.trim()) continue;
+      if (shouldSkip(block)) continue;
+      if (!hasBionicCandidates(blockText)) continue;
+      const walker = doc.createTreeWalker(block, NodeFilter.SHOW_TEXT, {
+        acceptNode(node2) {
+          const value = node2.nodeValue;
+          if (!value || !value.trim()) return NodeFilter.FILTER_SKIP;
+          if (!hasBionicCandidates(value)) return NodeFilter.FILTER_SKIP;
+          const parent = node2.parentElement;
+          if (!parent) return NodeFilter.FILTER_ACCEPT;
+          return shouldSkip(parent) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      const textNodes = [];
+      let node = walker.nextNode();
+      while (node) {
+        textNodes.push(node);
+        node = walker.nextNode();
+      }
+      for (const textNode of textNodes) {
+        const text = textNode.nodeValue || "";
+        const tokens = splitBionicText(text);
+        if (tokens.every((token) => !token.bold)) continue;
+        const span = doc.createElement("span");
+        span.setAttribute(BIONIC_PROCESSED_ATTR, "true");
+        for (const token of tokens) {
+          if (token.bold) {
+            const bold = doc.createElement("b");
+            bold.textContent = token.bold;
+            span.appendChild(bold);
+          }
+          if (token.rest) span.appendChild(doc.createTextNode(token.rest));
+        }
+        textNode.parentNode?.replaceChild(span, textNode);
+        count++;
+      }
+    }
+    return count;
+  }
+  function removeBionicReading(doc) {
+    if (!doc) return;
+    doc.getElementById(BIONIC_STYLE_ID)?.remove();
+    const processed = doc.querySelectorAll(`[${BIONIC_PROCESSED_ATTR}]`);
+    for (const el of Array.from(processed)) {
+      el.parentNode?.replaceChild(doc.createTextNode(el.textContent || ""), el);
+    }
+  }
+  function installReadAnyBionicReading(root) {
+    const target = root ?? {};
+    target.ReadAnyBionicReading = {
+      apply: (doc) => applyBionicReading(doc),
+      remove: (doc) => removeBionicReading(doc),
+      splitBionicText,
+      BIONIC_PROCESSED_ATTR
+    };
+  }
+
+  // ../core/src/reader/bionic-reading-entry.ts
+  installReadAnyBionicReading(globalThis);
+})();
+
+</script>
+  <script>
+(() => {
+  // ../core/src/reader/pen-selection.ts
+  var SELECTION_HOLD_MS = 350;
+  var SELECTION_HOLD_SLOP_PX = 10;
+  function idleGesture() {
+    return { phase: "idle", origin: null, focus: null, startedAt: 0, movedEarly: false };
+  }
+  function distance(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+  function onPointerDown(point, now) {
+    return { phase: "pressing", origin: point, focus: point, startedAt: now, movedEarly: false };
+  }
+  function onPointerMove(state, point) {
+    if (state.phase === "idle" || !state.origin) return state;
+    if (state.phase === "pressing") {
+      const movedEarly = state.movedEarly || distance(state.origin, point) > SELECTION_HOLD_SLOP_PX;
+      return { ...state, focus: point, movedEarly };
+    }
+    return { ...state, focus: point };
+  }
+  function onHoldElapsed(state) {
+    if (state.phase !== "pressing" || state.movedEarly) return state;
+    return { ...state, phase: "selecting" };
+  }
+  function onPointerUp() {
+    return idleGesture();
+  }
+  function isSelecting(state) {
+    return state.phase === "selecting";
+  }
+  function selectionEndpoints(state) {
+    if (state.phase !== "selecting" || !state.origin || !state.focus) return null;
+    return [state.origin, state.focus];
+  }
+  function wasTap(state, now) {
+    return state.phase === "pressing" && !state.movedEarly && now - state.startedAt < SELECTION_HOLD_MS;
+  }
+  function installReadAnyPenSelection(root) {
+    const target = root ?? {};
+    target.ReadAnyPenSelection = {
+      SELECTION_HOLD_MS,
+      SELECTION_HOLD_SLOP_PX,
+      idleGesture,
+      onPointerDown,
+      onPointerMove,
+      onHoldElapsed,
+      onPointerUp,
+      isSelecting,
+      selectionEndpoints,
+      wasTap
+    };
+  }
+
+  // ../core/src/reader/pen-selection-entry.ts
+  installReadAnyPenSelection(globalThis);
 })();
 
 </script>
@@ -1740,6 +1949,8 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
             pdfDocIndexMap.set(doc, index);
             applyPdfPageThemeFilter(doc, index);
           }
+          syncOwnSelectionMode(doc);
+          attachPenSelection(doc);
           attachTapListener(doc);
           attachPullBookmarkListener(doc);
           attachSelectionListener(doc);
@@ -1748,6 +1959,12 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
           // Auto-inject ruby annotations if enabled
           if (_rubyMode && rubyDictReady(_rubyMode)) {
             try { doInjectRubyAnnotations(doc, _rubyMode); } catch(e) {}
+          }
+          // After ruby, never before: the ruby pass claims the Japanese, and
+          // bionic skips what it produced, so a mixed book gets emboldened
+          // English beside untouched furigana.
+          if (currentBionicReading) {
+            try { globalThis.ReadAnyBionicReading?.apply(doc); } catch(e) {}
           }
         });
 
@@ -2015,6 +2232,18 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
       const renderer = view.renderer;
       if (settings.justifyBodyText !== undefined) {
         currentJustifyBodyText = settings.justifyBodyText !== false;
+      }
+      if (settings.viewMode !== undefined) {
+        // Ownership of selection follows the mode: paginated takes it from the
+        // WebView, scrolled leaves it alone because there it works.
+        syncOwnSelectionModeForAllDocs();
+      }
+      if (settings.bionicReading !== undefined) {
+        var nextBionic = settings.bionicReading === true;
+        if (nextBionic !== currentBionicReading) {
+          currentBionicReading = nextBionic;
+          syncBionicReadingForAllDocs();
+        }
       }
       if (settings.smoothReading !== undefined) {
         currentSmoothReading = settings.smoothReading === true;
@@ -2337,6 +2566,28 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
       for (const content of getRendererContents()) {
         if (!content || !content.doc) continue;
         syncReaderOverrideStylesForDoc(content.doc, css);
+      }
+    }
+
+    var currentBionicReading = false;
+
+    /**
+     * Bionic reading across every rendered document.
+     *
+     * Applying is idempotent — a rewritten node sits inside a marked span the
+     * walker refuses to enter — so this can be called on every render and on
+     * every settings change without checking what state a document is in.
+     */
+    function syncBionicReadingForAllDocs() {
+      for (const content of getRendererContents()) {
+        if (!content?.doc) continue;
+        try {
+          if (currentBionicReading) {
+            globalThis.ReadAnyBionicReading?.apply(content.doc);
+          } else {
+            globalThis.ReadAnyBionicReading?.remove(content.doc);
+          }
+        } catch (e) {}
       }
     }
 
@@ -2702,6 +2953,17 @@ html, body {
       const { bg, fg, primary } = currentThemeColors;
       style.textContent = `
         * { -webkit-touch-callout: none !important; -webkit-user-select: text !important; user-select: text !important; }
+        /*
+         * Paginated mode takes text selection away from the WebView. Its own
+         * hit-testing resolves a touch against the whole column strip rather
+         * than the page on screen, which is how a selection reached two pages
+         * away. Attribute rather than a rebuilt stylesheet so switching view
+         * mode takes effect without reloading the document.
+         */
+        html[data-readany-own-selection="1"] * {
+          -webkit-user-select: none !important;
+          user-select: none !important;
+        }
         html, body { background-color: ${bg} !important; color: ${fg} !important; }
         img, picture, svg, image, canvas {
           -webkit-user-drag: none !important;
@@ -3201,6 +3463,174 @@ html, body {
       } catch (e) {
         resnapToPage();
       }
+    }
+
+    /**
+     * Selection in paginated mode, driven by us instead of by the WebView.
+     *
+     * ⭐ THE PROPERTY THAT MATTERS: both ends of every range built here come
+     * from a coordinate the pen actually touched, and a touched coordinate is
+     * on the visible page by definition. A selection therefore cannot reach
+     * another page — not because it is checked and rejected, but because there
+     * is no step at which an untouched coordinate could enter. The WebView's
+     * own selection had no such property: its trace showed a range growing to
+     * 835 characters with nothing on the screen, one end at a column two pages
+     * over that no one had touched.
+     *
+     * Refusing its answers afterwards did not work; it rebuilt the selection
+     * faster than it could be declined. So in paginated mode it is not asked.
+     */
+    function syncOwnSelectionMode(doc) {
+      if (!doc || !doc.documentElement) return;
+      try {
+        if (currentViewMode !== 'scroll') {
+          doc.documentElement.setAttribute('data-readany-own-selection', '1');
+        } else {
+          doc.documentElement.removeAttribute('data-readany-own-selection');
+        }
+      } catch (e) {}
+    }
+
+    function syncOwnSelectionModeForAllDocs() {
+      for (const content of getRendererContents()) {
+        if (content && content.doc) syncOwnSelectionMode(content.doc);
+      }
+    }
+
+    const PEN_PREVIEW_KEY = 'readany-pen-selection-preview';
+
+    function attachPenSelection(doc) {
+      if (doc.__readany_pen_selection) return;
+      doc.__readany_pen_selection = true;
+
+      const PS = globalThis.ReadAnyPenSelection;
+      if (!PS) return;
+
+      let gesture = PS.idleGesture();
+      let holdTimer = null;
+      let previewRange = null;
+
+      function contentEntry() {
+        try {
+          return getRendererContents().find((c) => c.doc === doc) || null;
+        } catch (e) { return null; }
+      }
+
+      function clearPreview() {
+        const entry = contentEntry();
+        if (entry && entry.overlayer) {
+          try { entry.overlayer.remove(PEN_PREVIEW_KEY); } catch (e) {}
+        }
+        previewRange = null;
+      }
+
+      function paintPreview(range) {
+        const entry = contentEntry();
+        if (!entry || !entry.overlayer) return;
+        try { entry.overlayer.remove(PEN_PREVIEW_KEY); } catch (e) {}
+        try {
+          entry.overlayer.add(PEN_PREVIEW_KEY, range, Overlayer.highlight, {
+            color: 'rgba(96, 165, 250, 0.45)',
+          });
+        } catch (e) {}
+      }
+
+      /** Grow a range out to whole words, so a sweep never cuts one in half. */
+      function snapToWords(range) {
+        try {
+          const sc = range.startContainer;
+          if (sc.nodeType === 3) {
+            const t = sc.nodeValue || '';
+            let so = range.startOffset;
+            while (so > 0 && /\S/.test(t.charAt(so - 1))) so--;
+            range.setStart(sc, so);
+          }
+          const ec = range.endContainer;
+          if (ec.nodeType === 3) {
+            const t = ec.nodeValue || '';
+            let eo = range.endOffset;
+            while (eo < t.length && /\S/.test(t.charAt(eo))) eo++;
+            range.setEnd(ec, eo);
+          }
+        } catch (e) {}
+      }
+
+      function rangeBetween(a, b) {
+        if (typeof doc.caretRangeFromPoint !== 'function') return null;
+        const ca = doc.caretRangeFromPoint(a.x, a.y);
+        const cb = doc.caretRangeFromPoint(b.x, b.y);
+        if (!ca || !cb) return null;
+        const range = doc.createRange();
+        try {
+          const forward = ca.compareBoundaryPoints(Range.START_TO_START, cb) <= 0;
+          const first = forward ? ca : cb;
+          const second = forward ? cb : ca;
+          range.setStart(first.startContainer, first.startOffset);
+          range.setEnd(second.startContainer, second.startOffset);
+        } catch (e) { return null; }
+        if (range.collapsed) return null;
+        snapToWords(range);
+        return range.collapsed ? null : range;
+      }
+
+      function endGesture() {
+        if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+        gesture = PS.onPointerUp();
+        doc.__readany_selection_interaction = false;
+      }
+
+      doc.addEventListener('pointerdown', (e) => {
+        if (currentViewMode === 'scroll') return;
+        clearPreview();
+        gesture = PS.onPointerDown({ x: e.clientX, y: e.clientY }, Date.now());
+        if (holdTimer) clearTimeout(holdTimer);
+        holdTimer = setTimeout(() => {
+          holdTimer = null;
+          gesture = PS.onHoldElapsed(gesture);
+          if (PS.isSelecting(gesture)) {
+            // Own the gesture: the tap handler and the bookmark pull both
+            // stand off while this flag is set.
+            doc.__readany_selection_interaction = true;
+            const ends = PS.selectionEndpoints(gesture);
+            const range = ends ? rangeBetween(ends[0], ends[1]) : null;
+            if (range) { previewRange = range; paintPreview(range); }
+          }
+        }, PS.SELECTION_HOLD_MS);
+      }, { passive: true, capture: true });
+
+      doc.addEventListener('pointermove', (e) => {
+        if (currentViewMode === 'scroll') return;
+        gesture = PS.onPointerMove(gesture, { x: e.clientX, y: e.clientY });
+        if (!PS.isSelecting(gesture)) return;
+        const ends = PS.selectionEndpoints(gesture);
+        const range = ends ? rangeBetween(ends[0], ends[1]) : null;
+        if (!range) return;
+        // Repaint only when the range actually changed — every repaint is a
+        // refresh on e-ink.
+        if (previewRange && range.toString() === previewRange.toString()) return;
+        previewRange = range;
+        paintPreview(range);
+      }, { passive: true, capture: true });
+
+      const finish = () => {
+        if (currentViewMode === 'scroll') { endGesture(); return; }
+        const wasSelecting = PS.isSelecting(gesture);
+        endGesture();
+        if (!wasSelecting) return;
+        if (!previewRange) { postToRN('selectionCleared', {}); return; }
+        // The popover and everything downstream is unchanged: it is handed the
+        // same shape the WebView's selection used to produce.
+        doc.__readany_selection_interaction = true;
+        emitSelection(doc, { toString: () => previewRange.toString() }, previewRange);
+      };
+
+      doc.addEventListener('pointerup', finish, { passive: true, capture: true });
+      doc.addEventListener('pointercancel', () => {
+        // ⚠️ The WebView cancels the pointer freely on this device — that was
+        // the trigger for the old runaway. Here it simply ends the gesture with
+        // whatever was legitimately swept so far.
+        finish();
+      }, { passive: true, capture: true });
     }
 
     function emitSelection(doc, sel, range) {
