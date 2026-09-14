@@ -75,6 +75,7 @@ type ProfileMenuRoute = Extract<
   | "AppearanceSettings"
   | "FontSettings"
   | "SyncSettings"
+  | "BackupSettings"
   | "AISettings"
   | "TTSSettings"
   | "TranslationSettings"
@@ -436,6 +437,11 @@ export function ProfileScreen() {
             route: "FontSettings" as const,
           },
           { icon: CloudIcon, label: t("settings.sync", "同步"), route: "SyncSettings" as const },
+          {
+            icon: DatabaseIcon,
+            label: t("settings.backupTitle", "备份与恢复"),
+            route: "BackupSettings" as const,
+          },
         ],
       },
       {

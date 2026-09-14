@@ -600,6 +600,27 @@
     "sage": "鼠尾草",
     "jade": "翡翠",
     "teal": "青碧",
-    "indigo": "深蓝"
+    "indigo": "深蓝",
+    "backupTitle": "备份与恢复",
+    "backupIntro": "备份文件记录你的书库：书籍条目、分组、标注、笔记、书签、标签、对话与阅读进度。书籍文件本身不包含在内——恢复后会从同步服务器下载。",
+    "backupCreate": "创建备份",
+    "backupCreateDesc": "生成一个备份文件，可保存到任意位置或发送到其他设备。",
+    "backupCreateAction": "创建备份文件",
+    "backupShareTitle": "保存备份文件",
+    "backupDone": "备份已创建",
+    "backupSavedAt": "已保存到：{{path}}",
+    "backupFailed": "备份失败：{{error}}",
+    "restoreTitle": "从备份恢复",
+    "restoreDesc": "选择一个备份文件，其中的条目会合并进当前书库。",
+    "restoreAction": "选择备份文件",
+    "restoreNotABackup": "这不是 ReadAny 备份文件。",
+    "restoreConfirmTitle": "恢复此备份？",
+    "restoreFrom": "来自 {{device}}，{{when}}",
+    "restoreRecordCount": "{{count}} 条记录",
+    "restoreMergeExplainer": "备份中的条目会合并进当前书库：同一条目以备份为准，本机独有的条目会保留。书籍文件不在备份中，将在下次同步时下载。",
+    "restoreUnreadable": "⚠️ 此备份包含本版本无法恢复的数据：{{tables}}",
+    "restoreDone": "恢复完成",
+    "restoreResult": "已恢复 {{applied}} 条，跳过 {{skipped}} 条。",
+    "restoreFailed": "恢复失败：{{error}}"
   }
 }
