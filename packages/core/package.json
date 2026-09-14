@@ -42,6 +42,8 @@
     "./knowledge/*": "./src/knowledge/*.ts",
     "./sync": "./src/sync/index.ts",
     "./sync/*": "./src/sync/*.ts",
+    "./backup": "./src/backup/index.ts",
+    "./backup/*": "./src/backup/*.ts",
     "./update": "./src/update/index.ts",
     "./update/*": "./src/update/*.ts",
     "./tts": "./src/tts/index.ts",
