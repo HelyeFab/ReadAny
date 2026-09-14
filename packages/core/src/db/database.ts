@@ -77,6 +77,19 @@ export {
 } from "./bookmark-queries";
 
 export {
+  getSavedPages,
+  getRecentPages,
+  upsertWebPage,
+  toggleSavedPage,
+  removeSavedPage,
+  deleteWebPage,
+  clearRecentPages,
+  isWebPagesEmpty,
+  normalizeUrl,
+} from "./web-page-queries";
+export type { WebPage } from "./web-page-queries";
+
+export {
   getThreads,
   getThread,
   insertThread,

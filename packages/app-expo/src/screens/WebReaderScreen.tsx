@@ -86,6 +86,7 @@ export function WebReaderScreen() {
     toggleSavedCollapsed,
     removeSaved,
     clearRecent,
+    refresh,
   } = useWebStore();
   const ttsConfig = useTTSStore((state) => state.config);
 
@@ -115,11 +116,14 @@ export function WebReaderScreen() {
   useEffect(() => {
     if (!_hasHydrated || restoredRef.current) return;
     restoredRef.current = true;
+    // Hand any device-local pages to the database, then read the shelf back
+    // out of it — this is also what picks up pages another device saved.
+    void refresh();
     if (lastUrl) {
       setUrl(lastUrl);
       setAddress(lastUrl);
     }
-  }, [_hasHydrated, lastUrl]);
+  }, [_hasHydrated, lastUrl, refresh]);
 
   useEffect(() => () => stopTTSPreview(), []);
 
