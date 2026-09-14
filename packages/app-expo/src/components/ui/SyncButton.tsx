@@ -24,6 +24,7 @@ export function SyncButton({ size = 20, color, task }: SyncButtonProps) {
   const spinRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const [taskBusy, setTaskBusy] = useState(false);
+  const taskInFlight = useRef(false);
   const isBusy = (status !== "idle" && status !== "error") || taskBusy;
 
   useEffect(() => {
@@ -52,14 +53,21 @@ export function SyncButton({ size = 20, color, task }: SyncButtonProps) {
   }, [isBusy, spinAnim]);
 
   const handlePress = useCallback(() => {
-    if (isBusy) return;
+    // ⚠️ The ref is the real guard; `isBusy` is state and so is a render
+    // behind. On e-ink a tap goes unacknowledged long enough to be repeated,
+    // and every one of those handlers would see the same stale `isBusy`.
+    if (isBusy || taskInFlight.current) return;
     void syncNow();
     if (!task) return;
+    taskInFlight.current = true;
     // Tracked separately from the sync store's status so the icon keeps
     // spinning while the highlights are still going out, after the database
     // sync has already reported itself idle.
     setTaskBusy(true);
-    void Promise.resolve(task()).finally(() => setTaskBusy(false));
+    void Promise.resolve(task()).finally(() => {
+      taskInFlight.current = false;
+      setTaskBusy(false);
+    });
   }, [isBusy, syncNow, task]);
 
   if (!backendType) return null;

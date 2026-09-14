@@ -15,7 +15,7 @@
  * tap, the new highlights are appended to the file that already exists, keep
  * reading.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 
@@ -49,6 +49,18 @@ export function useReaderAnnotationSync({ book, highlights, notes }: Params) {
   const [creds, setCreds] = useState<WebDavCredentials | null>(null);
   const [busy, setBusy] = useState(false);
 
+  /**
+   * ⚠️ A ref, not the `busy` state, because this has to hold WITHIN a render.
+   * On e-ink nothing acknowledges a tap for a few hundred milliseconds, so the
+   * button gets pressed again — and every one of those handlers reads the same
+   * render's `busy === false` and starts its own upload. Three of them raced to
+   * PUT the identical path on 2026-09-14: the first won with 201 and Nextcloud
+   * answered the rest with 423 Locked, so a sync that had actually worked
+   * reported itself as a failure. A state flag cannot fix that; only a value
+   * that changes synchronously can.
+   */
+  const inFlight = useRef(false);
+
   const webDavLabel = useMemo(() => {
     if (!creds?.url) return undefined;
     try {
@@ -63,7 +75,8 @@ export function useReaderAnnotationSync({ book, highlights, notes }: Params) {
   /** Send this book's new annotations to the server under `filing`. */
   const run = useCallback(
     async (credentials: WebDavCredentials, filing: HighlightExportPrefs) => {
-      if (!book) return;
+      if (!book || inFlight.current) return;
+      inFlight.current = true;
       setBusy(true);
       try {
         const result = await syncBookAnnotationsToWebDav(credentials, {
@@ -101,6 +114,7 @@ export function useReaderAnnotationSync({ book, highlights, notes }: Params) {
           error instanceof Error ? error.message : String(error),
         );
       } finally {
+        inFlight.current = false;
         setBusy(false);
       }
     },
