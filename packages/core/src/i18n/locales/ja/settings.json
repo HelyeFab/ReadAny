@@ -608,6 +608,10 @@
     "backupKeysInclude": "キーを含める",
     "restoreSettingsWithKeys": "AI 設定も含まれています（接続先 {{count}} 件、API キーあり）。",
     "restoreSettingsNoKeys": "AI 設定も含まれています（接続先 {{count}} 件、API キーなし——この端末にあるキーはそのまま残ります）。",
-    "restoreSettingsDone": "AI 設定を復元しました。"
+    "restoreSettingsDone": "AI 設定を復元しました。",
+    "backupIncludesKeys": "AI 設定を含めました（API キー {{count}} 件）。",
+    "backupExcludesKeys": "AI 設定を含めました（API キーなし）。",
+    "restoreSettingsFailed": "AI 設定を復元できませんでした：{{error}}",
+    "restoreSettingsUnreadable": "このバックアップの AI 設定を読み取れませんでした。"
   }
 }

@@ -606,6 +606,10 @@
     "backupKeysInclude": "Incluir claves",
     "restoreSettingsWithKeys": "También contiene tu configuración de IA ({{count}} punto(s) de acceso, con claves de API).",
     "restoreSettingsNoKeys": "También contiene tu configuración de IA ({{count}} punto(s) de acceso, sin claves de API: se conservan las que ya están en este dispositivo).",
-    "restoreSettingsDone": "Configuración de IA restaurada."
+    "restoreSettingsDone": "Configuración de IA restaurada.",
+    "backupIncludesKeys": "Se incluye tu configuración de IA, con {{count}} clave(s) de API.",
+    "backupExcludesKeys": "Se incluye tu configuración de IA, sin claves de API.",
+    "restoreSettingsFailed": "No se pudo restaurar la configuración de IA: {{error}}",
+    "restoreSettingsUnreadable": "No se pudo leer la configuración de IA de esta copia."
   }
 }

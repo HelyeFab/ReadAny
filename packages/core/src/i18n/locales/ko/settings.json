@@ -608,6 +608,10 @@
     "backupKeysInclude": "키 포함",
     "restoreSettingsWithKeys": "AI 설정도 들어 있습니다(엔드포인트 {{count}}개, API 키 포함).",
     "restoreSettingsNoKeys": "AI 설정도 들어 있습니다(엔드포인트 {{count}}개, API 키 없음 — 이 기기에 있는 키는 그대로 유지됩니다).",
-    "restoreSettingsDone": "AI 설정을 복원했습니다."
+    "restoreSettingsDone": "AI 설정을 복원했습니다.",
+    "backupIncludesKeys": "AI 설정이 포함되었습니다(API 키 {{count}}개).",
+    "backupExcludesKeys": "AI 설정이 포함되었습니다(API 키 없음).",
+    "restoreSettingsFailed": "AI 설정을 복원하지 못했습니다: {{error}}",
+    "restoreSettingsUnreadable": "이 백업의 AI 설정을 읽을 수 없습니다."
   }
 }
