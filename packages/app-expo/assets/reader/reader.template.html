@@ -3204,7 +3204,13 @@ html, body {
           range.setStart(first.startContainer, first.startOffset);
           range.setEnd(second.startContainer, second.startOffset);
         } catch (e) { return null; }
-        if (range.collapsed) return null;
+        // ⚠️ Snap BEFORE testing for collapsed, not after. When the hold
+        // arms, the origin and the focus are the same point, so the range is
+        // collapsed — and rejecting it there meant the reader got no sign at
+        // all that the highlighter had armed until they had already swept some
+        // distance. Snapped first, a caret resting inside a word becomes that
+        // word, which is the feedback: the word under the pen lights up the
+        // moment the gesture takes hold.
         snapToWords(range);
         return range.collapsed ? null : range;
       }
