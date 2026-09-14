@@ -626,6 +626,10 @@
     "restoreSettingsWithKeys": "同时包含你的 AI 设置（{{count}} 个接入点，含 API 密钥）。",
     "restoreSettingsNoKeys": "同时包含你的 AI 设置（{{count}} 个接入点，不含 API 密钥——本机已有的密钥会保留）。",
     "restoreSettingsDone": "AI 设置已恢复。",
+    "backupIncludesKeys": "已包含你的 AI 设置和 {{count}} 个 API 密钥。",
+    "backupExcludesKeys": "已包含你的 AI 设置，不含 API 密钥。",
+    "restoreSettingsFailed": "AI 设置恢复失败：{{error}}",
+    "restoreSettingsUnreadable": "无法读取此备份中的 AI 设置。",
     "restoreDone": "恢复完成",
     "restoreResult": "已恢复 {{applied}} 条，跳过 {{skipped}} 条。",
     "restoreFailed": "恢复失败：{{error}}"

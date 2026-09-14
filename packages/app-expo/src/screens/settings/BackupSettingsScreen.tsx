@@ -55,7 +55,26 @@ export default function BackupSettingsScreen() {
       file.create();
       file.write(serializeBackup(backup));
 
-      if (await Sharing.isAvailableAsync()) {
+      const summary = describeBackup(backup);
+      const lines = [
+        t("settings.restoreRecordCount", "{{count}} 条记录", { count: summary.totalRecords }),
+      ];
+
+      // Say whether the AI settings — and the keys — actually made it in. This
+      // is the only moment the choice made in the previous dialog can be seen
+      // to have taken effect.
+      if (summary.settings) {
+        lines.push(
+          summary.settings.includesSecrets
+            ? t("settings.backupIncludesKeys", "已包含你的 AI 设置和 {{count}} 个 API 密钥。", {
+                count: summary.settings.endpointsWithKeys,
+              })
+            : t("settings.backupExcludesKeys", "已包含你的 AI 设置，不含 API 密钥。"),
+        );
+      }
+
+      const shareable = await Sharing.isAvailableAsync();
+      if (shareable) {
         await Sharing.shareAsync(file.uri, {
           mimeType: "application/json",
           dialogTitle: t("settings.backupShareTitle", "保存备份文件"),
@@ -63,11 +82,14 @@ export default function BackupSettingsScreen() {
       } else {
         // No share sheet (some e-ink and kiosk builds): the file is still
         // written, so tell the user where it is rather than failing silently.
-        Alert.alert(
-          t("settings.backupDone", "备份已创建"),
-          t("settings.backupSavedAt", "已保存到：{{path}}", { path: file.uri }),
-        );
+        lines.push(t("settings.backupSavedAt", "已保存到：{{path}}", { path: file.uri }));
       }
+
+      // Shown either way. The share sheet closing is not by itself a signal
+      // that anything was written — Android reports no result from it — so
+      // without this a backup that worked looked exactly like one that did
+      // nothing at all.
+      Alert.alert(t("settings.backupDone", "备份已创建"), lines.join("\n"));
     },
     [t],
   );
@@ -210,12 +232,26 @@ export default function BackupSettingsScreen() {
           // carry them. Applied after it, and only if the file had any: a
           // keyless backup merges against what this device already holds
           // rather than blanking working keys with the blanks it carries.
+          // Reported separately from the records above. Failing here must not
+          // be announced as "restore failed" when every record did land, and
+          // must not be passed over in silence either.
           const restoredAiConfig = readBackupAiConfig(backup.settings);
-          let settingsRestored = false;
+          let settingsOutcome: string | null = null;
           if (restoredAiConfig) {
-            const store = useSettingsStore.getState();
-            await store.importAIConfig(mergeRestoredAiConfig(restoredAiConfig, store.aiConfig));
-            settingsRestored = true;
+            try {
+              const store = useSettingsStore.getState();
+              await store.importAIConfig(mergeRestoredAiConfig(restoredAiConfig, store.aiConfig));
+              settingsOutcome = t("settings.restoreSettingsDone", "AI 设置已恢复。");
+            } catch (settingsError) {
+              const msg =
+                settingsError instanceof Error ? settingsError.message : String(settingsError);
+              settingsOutcome = t("settings.restoreSettingsFailed", "AI 设置恢复失败：{{error}}", {
+                error: msg,
+              });
+            }
+          } else if (backup.settings) {
+            // The file carries a settings section this build could not read.
+            settingsOutcome = t("settings.restoreSettingsUnreadable", "备份中的 AI 设置无法读取。");
           }
 
           Alert.alert(
@@ -225,7 +261,7 @@ export default function BackupSettingsScreen() {
                 applied,
                 skipped,
               }),
-              ...(settingsRestored ? [t("settings.restoreSettingsDone", "AI 设置已恢复。")] : []),
+              ...(settingsOutcome ? [settingsOutcome] : []),
             ].join("\n"),
           );
         } catch (e) {

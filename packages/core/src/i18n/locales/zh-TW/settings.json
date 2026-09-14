@@ -608,6 +608,10 @@
     "backupKeysInclude": "包含金鑰",
     "restoreSettingsWithKeys": "同時包含你的 AI 設定（{{count}} 個接入點，含 API 金鑰）。",
     "restoreSettingsNoKeys": "同時包含你的 AI 設定（{{count}} 個接入點，不含 API 金鑰——本機已有的金鑰會保留）。",
-    "restoreSettingsDone": "AI 設定已還原。"
+    "restoreSettingsDone": "AI 設定已還原。",
+    "backupIncludesKeys": "已包含你的 AI 設定和 {{count}} 個 API 金鑰。",
+    "backupExcludesKeys": "已包含你的 AI 設定，不含 API 金鑰。",
+    "restoreSettingsFailed": "AI 設定還原失敗：{{error}}",
+    "restoreSettingsUnreadable": "無法讀取此備份中的 AI 設定。"
   }
 }

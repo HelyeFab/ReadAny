@@ -626,6 +626,10 @@
     "restoreSettingsWithKeys": "Also holds your AI settings ({{count}} endpoint(s), with API keys).",
     "restoreSettingsNoKeys": "Also holds your AI settings ({{count}} endpoint(s), without API keys — keys already on this device are kept).",
     "restoreSettingsDone": "AI settings restored.",
+    "backupIncludesKeys": "Your AI settings are included, with {{count}} API key(s).",
+    "backupExcludesKeys": "Your AI settings are included, without API keys.",
+    "restoreSettingsFailed": "AI settings could not be restored: {{error}}",
+    "restoreSettingsUnreadable": "This backup's AI settings could not be read.",
     "restoreDone": "Restore complete",
     "restoreResult": "Restored {{applied}}, skipped {{skipped}}.",
     "restoreFailed": "Restore failed: {{error}}"
