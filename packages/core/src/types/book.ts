@@ -132,16 +132,6 @@ export interface ReadSettings extends ViewSettings {
    * optional so existing persisted settings deserialize cleanly.
    */
   bionicReading?: boolean;
-  /**
-   * Selecting with a stylus highlights straight away, in the last colour used,
-   * with no second tap. A finger selection is untouched — that one still opens
-   * the popover, because selecting with a finger usually means looking a word
-   * up rather than marking a passage.
-   *
-   * Only has an effect where the reader can tell the two apart; a device that
-   * reports no pointer type behaves as though this were off. Default true.
-   */
-  penHighlights?: boolean;
 }
 
 export type SortField = "title" | "author" | "addedAt" | "lastOpenedAt" | "progress";

@@ -24,11 +24,6 @@ export interface SelectionEvent {
   cfi: string;
   /** Dictionary forms from the reader's tokenizer; empty when it is not loaded. */
   baseForms?: string[];
-  /**
-   * What made the selection: "pen", "touch", "mouse", or absent when the
-   * reader could not tell. Absent must never be read as a pen.
-   */
-  pointerType?: string;
   position: {
     x: number;
     y: number;

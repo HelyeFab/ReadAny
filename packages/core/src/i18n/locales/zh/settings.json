@@ -76,8 +76,6 @@
     "smoothReadingDesc": "开启翻页过渡动画与滚动惯性，关闭可提升低性能设备流畅度",
     "bionicReading": "仿生阅读",
     "bionicReadingDesc": "加粗每个单词的开头作为视觉落点。仅适用于拉丁字母，日文与中文保持原样。",
-    "penHighlights": "手写笔即高亮",
-    "penHighlightsDesc": "用手写笔划选文字即以上次的颜色高亮，无需再点一次；用手指划选仍照常弹出菜单，方便查词。",
     "followSystemFontScale": "跟随系统字号",
     "followSystemFontScaleDesc": "按系统辅助功能字号自动放大",
     "fixedLayoutNotice": "PDF 为固定布局格式，字体和排版设置不可用。",

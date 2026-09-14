@@ -1584,7 +1584,6 @@
             pdfDocIndexMap.set(doc, index);
             applyPdfPageThemeFilter(doc, index);
           }
-          trackPointerType(doc);
           attachTapListener(doc);
           attachPullBookmarkListener(doc);
           attachSelectionListener(doc);
@@ -3002,7 +3001,6 @@ html, body {
       postToRN('selection', {
         text,
         cfi,
-        pointerType: lastPointerType,
         baseForms: japaneseBaseForms(text),
         position: {
           x: iframeRect.left + rect.left + rect.width / 2,
@@ -3011,29 +3009,6 @@ html, body {
           selectionBottom: iframeRect.top + lastRect.bottom,
         },
       });
-    }
-
-    /**
-     * Which input device made the current selection.
-     *
-     * Android's Chromium reports a stylus as pointerType "pen" and a finger as
-     * "touch" — verified on the Note Air 4C, where they also differ in
-     * pressure and contact size. The reader uses this to tell "I am marking
-     * this passage" (pen) from "I am looking this word up" (finger), which are
-     * the same gesture with opposite intentions.
-     *
-     * Defaults to empty rather than to "touch": an unknown pointer must read
-     * as "not a pen", so anything that does not report pointer events at all
-     * keeps exactly today's behaviour.
-     */
-    var lastPointerType = '';
-
-    function trackPointerType(doc) {
-      if (doc.__readany_pointer_type) return;
-      doc.__readany_pointer_type = true;
-      doc.addEventListener('pointerdown', (e) => {
-        lastPointerType = e && e.pointerType ? String(e.pointerType) : '';
-      }, { passive: true, capture: true });
     }
 
     function armSelectionTapGuardForDocument(doc) {

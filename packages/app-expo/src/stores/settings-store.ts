@@ -58,7 +58,6 @@ const defaultReadSettings: ReadSettings = {
   volumeButtonsPageTurn: false,
   smoothReading: false,
   bionicReading: false,
-  penHighlights: true,
   defaultHighlightColor: "yellow",
 };
 
