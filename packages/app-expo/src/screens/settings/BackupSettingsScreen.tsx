@@ -48,6 +48,24 @@ export default function BackupSettingsScreen() {
   const { t } = useTranslation();
   const [busy, setBusy] = useState<"backup" | "restore" | null>(null);
 
+  /**
+   * The outcome, shown in the screen rather than in an alert.
+   *
+   * ⚠️ Both operations begin with a question in an Alert, so their result
+   * would have to be a second Alert raised from the first one's onPress —
+   * which Android can swallow while the first dialog is still tearing down.
+   * A backup that had written 479 records, and a restore that had just put
+   * the AI settings back, both finished in complete silence.
+   *
+   * In the screen it cannot be lost, and it stays put long enough to read,
+   * which a dialog you dismiss to get on with things does not.
+   */
+  const [result, setResult] = useState<{
+    tone: "ok" | "error";
+    title: string;
+    lines: string[];
+  } | null>(null);
+
   const shareBackup = useCallback(
     async (backup: LibraryBackup) => {
       const file = new File(Paths.cache, backupFileName());
@@ -89,13 +107,14 @@ export default function BackupSettingsScreen() {
       // that anything was written — Android reports no result from it — so
       // without this a backup that worked looked exactly like one that did
       // nothing at all.
-      Alert.alert(t("settings.backupDone", "备份已创建"), lines.join("\n"));
+      setResult({ tone: "ok", title: t("settings.backupDone", "备份已创建"), lines });
     },
     [t],
   );
 
   const writeBackup = useCallback(
     async (includeSecrets: boolean) => {
+      setResult(null);
       setBusy("backup");
       try {
         await shareBackup(
@@ -108,10 +127,11 @@ export default function BackupSettingsScreen() {
         );
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        Alert.alert(
-          t("common.error", "错误"),
-          t("settings.backupFailed", "备份失败：{{error}}", { error: msg }),
-        );
+        setResult({
+          tone: "error",
+          title: t("common.error", "错误"),
+          lines: [t("settings.backupFailed", "备份失败：{{error}}", { error: msg })],
+        });
       } finally {
         setBusy(null);
       }
@@ -206,6 +226,7 @@ export default function BackupSettingsScreen() {
 
   const handleRestore = useCallback(async () => {
     if (busy) return;
+    setResult(null);
     try {
       const picked = await DocumentPicker.getDocumentAsync({
         type: ["application/json", "*/*"],
@@ -216,14 +237,16 @@ export default function BackupSettingsScreen() {
       const raw = await new File(picked.assets[0].uri).text();
       const backup = parseBackup(raw);
       if (!backup) {
-        Alert.alert(
-          t("common.error", "错误"),
-          t("settings.restoreNotABackup", "这不是 ReadAny 备份文件。"),
-        );
+        setResult({
+          tone: "error",
+          title: t("common.error", "错误"),
+          lines: [t("settings.restoreNotABackup", "这不是 ReadAny 备份文件。")],
+        });
         return;
       }
 
       confirmRestore(describeBackup(backup), async () => {
+        setResult(null);
         setBusy("restore");
         try {
           const { applied, skipped } = await restoreLibraryBackup(backup);
@@ -254,32 +277,35 @@ export default function BackupSettingsScreen() {
             settingsOutcome = t("settings.restoreSettingsUnreadable", "备份中的 AI 设置无法读取。");
           }
 
-          Alert.alert(
-            t("settings.restoreDone", "恢复完成"),
-            [
+          setResult({
+            tone: "ok",
+            title: t("settings.restoreDone", "恢复完成"),
+            lines: [
               t("settings.restoreResult", "已恢复 {{applied}} 条，跳过 {{skipped}} 条。", {
                 applied,
                 skipped,
               }),
               ...(settingsOutcome ? [settingsOutcome] : []),
-            ].join("\n"),
-          );
+            ],
+          });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          Alert.alert(
-            t("common.error", "错误"),
-            t("settings.restoreFailed", "恢复失败：{{error}}", { error: msg }),
-          );
+          setResult({
+            tone: "error",
+            title: t("common.error", "错误"),
+            lines: [t("settings.restoreFailed", "恢复失败：{{error}}", { error: msg })],
+          });
         } finally {
           setBusy(null);
         }
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      Alert.alert(
-        t("common.error", "错误"),
-        t("settings.restoreFailed", "恢复失败：{{error}}", { error: msg }),
-      );
+      setResult({
+        tone: "error",
+        title: t("common.error", "错误"),
+        lines: [t("settings.restoreFailed", "恢复失败：{{error}}", { error: msg })],
+      });
       setBusy(null);
     }
   }, [busy, confirmRestore, t]);
@@ -295,6 +321,43 @@ export default function BackupSettingsScreen() {
               "备份文件记录你的书库：书籍条目、分组、标注、笔记、书签、标签、对话与阅读进度。书籍文件本身不包含在内——恢复后会从同步服务器下载。",
             )}
           </Text>
+
+          {result && (
+            <View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: result.tone === "error" ? colors.destructive : colors.primary,
+                },
+              ]}
+            >
+              <View style={styles.cardHeader}>
+                <Text
+                  style={[
+                    styles.cardTitle,
+                    { color: result.tone === "error" ? colors.destructive : colors.foreground },
+                  ]}
+                >
+                  {result.title}
+                </Text>
+              </View>
+              {result.lines.filter(Boolean).map((line) => (
+                <Text key={line} style={[styles.cardDesc, { color: colors.mutedForeground }]}>
+                  {line}
+                </Text>
+              ))}
+              <TouchableOpacity
+                onPress={() => setResult(null)}
+                accessibilityRole="button"
+                style={styles.resultDismiss}
+              >
+                <Text style={[styles.resultDismissLabel, { color: colors.mutedForeground }]}>
+                  {t("common.close", "关闭")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.cardHeader}>
@@ -379,6 +442,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   cardHeader: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  resultDismiss: { alignSelf: "flex-start", paddingVertical: spacing.xs },
+  resultDismissLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
   cardTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold },
   cardDesc: { fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.5 },
   button: {
