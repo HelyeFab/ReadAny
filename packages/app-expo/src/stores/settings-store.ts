@@ -3,6 +3,7 @@
  */
 import type { AIConfig, AIEndpoint, ReadSettings } from "@readany/core/types";
 import type { TranslationConfig, TranslationTargetLang } from "@readany/core/types/translation";
+import { stripAiConfigSecrets } from "@readany/core/ai/ai-config-secrets";
 import { logAIEndpointDebug, summarizeDebugText } from "@readany/core/ai/request-debug";
 import {
   buildProviderModelsUrl,
@@ -416,6 +417,32 @@ function normalizeImportedAIConfig(importedConfig: AIConfig, currentConfig: AICo
   };
 }
 
+/**
+ * What of the settings store is allowed onto disk.
+ *
+ * ⚠️ An allow-list, deliberately. The store holds every endpoint's API key in
+ * memory because the settings UI shows it and requests need it, but the key's
+ * home is the platform keystore (`saveSecure`) — persisting the whole store
+ * wrote a second, plaintext copy into readany-store/settings.json and undid
+ * that. Naming the fields means a new one carrying a secret cannot start being
+ * written by accident; it means a new ordinary setting must be added here to
+ * be remembered, which is the cheaper mistake.
+ *
+ * `_apiKeysLoaded` is left out for a reason of its own: persisted as true, it
+ * would tell the next launch that keys were already loaded and stop
+ * `loadApiKeys` from reading back the very keys this strips out.
+ */
+function persistedSettings(state: SettingsState) {
+  return {
+    readSettings: state.readSettings,
+    translationConfig: state.translationConfig,
+    aiConfig: stripAiConfigSecrets(state.aiConfig),
+    settingsUpdatedAt: state.settingsUpdatedAt,
+    hasCompletedOnboarding: state.hasCompletedOnboarding,
+    showOnboardingGuide: state.showOnboardingGuide,
+  };
+}
+
 export const useSettingsStore = create<SettingsState>()(
   withPersist("settings", (set, get, api) => {
     // Load API keys from secure storage and merge with current endpoints
@@ -429,8 +456,19 @@ export const useSettingsStore = create<SettingsState>()(
 
       const endpointsWithKeys = await Promise.all(
         state.aiConfig.endpoints.map(async (ep) => {
-          const apiKey = await loadSecure(getApiKeyStorageKey(ep.id));
-          return { ...ep, apiKey: apiKey || "" };
+          const stored = await loadSecure(getApiKeyStorageKey(ep.id));
+          if (stored) return { ...ep, apiKey: stored };
+
+          // A key the keystore does not have but the hydrated state does came
+          // from settings.json, written there by a build that persisted the
+          // whole store. Move it into the keystore now — the file is about to
+          // stop carrying it, and blanking it here would lose it for good.
+          if (ep.apiKey) {
+            await saveSecure(getApiKeyStorageKey(ep.id), ep.apiKey);
+            return ep;
+          }
+
+          return { ...ep, apiKey: "" };
         }),
       );
 
@@ -643,7 +681,7 @@ export const useSettingsStore = create<SettingsState>()(
         });
       },
     };
-  }, undefined, migrateSettingsState),
+  }, undefined, migrateSettingsState, persistedSettings),
 );
 
 // 在应用启动时加载 API keys
