@@ -2882,6 +2882,24 @@ html, body {
       const { bg, fg, primary } = currentThemeColors;
       style.textContent = `
         * { -webkit-touch-callout: none !important; -webkit-user-select: text !important; user-select: text !important; }
+        ${currentViewMode !== 'scroll' ? `
+        /*
+         * ⚠️ Paginated mode only. Without this the browser is free to treat a
+         * drag across the text as a pan of the column box — and when it decides
+         * to, it CANCELS the pointer mid-selection. A trace of the failure
+         * shows exactly that: pointercancel at 3 characters selected, then the
+         * selection growing to 835 on its own, against coordinates three
+         * columns off screen. The container ends up scrolled between two pages,
+         * which is why the page looked half-turned and the highlights no longer
+         * sat on their text.
+         *
+         * Nothing is lost by forbidding it here: in paginated mode the browser
+         * has nothing to legitimately scroll, and page turns are foliate's own
+         * touch handlers, which still receive events. Scrolled mode keeps the
+         * default, because there the browser scrolling IS the feature.
+         */
+        html, body { touch-action: none !important; }
+        ` : ''}
         html, body { background-color: ${bg} !important; color: ${fg} !important; }
         img, picture, svg, image, canvas {
           -webkit-user-drag: none !important;
