@@ -22,7 +22,7 @@ async function buildReader() {
     import * as CFI from "${FOLIATE_DIR.replace(/\\/g, "/")}/epubcfi.js";
     import { configure, ZipReader, BlobReader, TextWriter, BlobWriter } from "${FOLIATE_DIR.replace(/\\/g, "/")}/vendor/zip.js";
     import { EPUB } from "${FOLIATE_DIR.replace(/\\/g, "/")}/epub.js";
-    import { extractPDFChapters, makePDFFromURL } from "${FOLIATE_DIR.replace(/\\/g, "/")}/pdf.js";
+    import { extractPDFChapters, makePDFFromURL, renderPDFCoverDataURL } from "${FOLIATE_DIR.replace(/\\/g, "/")}/pdf.js";
 
     window.makeBook = makeBook;
     window.Overlayer = Overlayer;
@@ -33,6 +33,7 @@ async function buildReader() {
     window._EPUB = EPUB;
     window._makePDFFromURL = makePDFFromURL;
     window._extractPDFChapters = extractPDFChapters;
+    window._renderPDFCoverDataURL = renderPDFCoverDataURL;
 
     if (!customElements.get('foliate-view')) {
       customElements.define('foliate-view', View);

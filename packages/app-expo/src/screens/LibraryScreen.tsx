@@ -7,6 +7,8 @@ import { ImportDestinationSheet } from "@/components/library/ImportDestinationSh
 import type { ImportDestination } from "@/components/library/ImportDestinationSheet";
 import { LibraryListRow } from "@/components/library/LibraryListRow";
 import { LibraryMenuSheet } from "@/components/library/LibraryMenuSheet";
+import { PdfCoverWebView } from "@/components/library/PdfCoverWebView";
+import type { PdfCoverWebViewHandle } from "@/components/library/PdfCoverWebView";
 import { ShelfScopeSheet } from "@/components/library/ShelfScopeSheet";
 import { ShelfTile } from "@/components/library/ShelfTile";
 import { type ExtractorRef, ExtractorWebView } from "@/components/rag/ExtractorWebView";
@@ -32,7 +34,9 @@ import { SyncButton } from "@/components/ui/SyncButton";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { cafeIllustration } from "@/lib/library/cafe-illustration";
 import { openMobileBook } from "@/lib/library/open-mobile-book";
+import { backfillPdfCovers, coverlessPdfs } from "@/lib/library/pdf-cover-backfill";
 import { setCallback, setExtractorRef } from "@/lib/rag/auto-vectorize-service";
+import { startFileServer } from "@/lib/reader/local-file-server";
 import type { RootStackParamList } from "@/navigation/RootNavigator";
 import { WebDavConnectSheet } from "@/screens/library/WebDavConnectSheet";
 import { WebDavImportSourceSheet } from "@/screens/library/WebDavImportSourceSheet";
@@ -266,6 +270,7 @@ export function LibraryScreen() {
     activeGroupId,
     isGroupView,
     loadBooks,
+    updateBook,
     importBooks,
     removeBook,
     setFilter,
@@ -952,6 +957,63 @@ export function LibraryScreen() {
     [filteredBooks, groups],
   );
 
+  const pdfCoverRef = useRef<PdfCoverWebViewHandle>(null);
+  const [coverJob, setCoverJob] = useState<{ done: number; total: number } | null>(null);
+  const coverCancelRef = useRef<{ cancelled: boolean }>({ cancelled: false });
+
+  const pdfsNeedingCovers = useMemo(() => coverlessPdfs(books), [books]);
+
+  /**
+   * Photograph the first page of every coverless PDF.
+   *
+   * Started by hand rather than on a timer: it renders pages and reads whole
+   * files, which on a phone is the user's battery to spend, not ours.
+   */
+  const handleGenerateCovers = useCallback(async () => {
+    if (coverJob || pdfsNeedingCovers.length === 0) return;
+    const renderer = pdfCoverRef.current;
+    if (!renderer) return;
+
+    coverCancelRef.current = { cancelled: false };
+    setCoverJob({ done: 0, total: pdfsNeedingCovers.length });
+    try {
+      const platform = getPlatformService();
+      const appData = await platform.getAppDataDir();
+      const serverUrl = await startFileServer(appData);
+
+      const result = await backfillPdfCovers({
+        books: pdfsNeedingCovers,
+        fileServerUrl: serverUrl,
+        renderCover: (url) => renderer.renderCover(url),
+        saveCover: async (bookId, bytes, ext) => {
+          const relativePath = `covers/${bookId}.${ext}`;
+          const absPath = await platform.joinPath(appData, relativePath);
+          await platform.writeFile(absPath, bytes);
+          return relativePath;
+        },
+        updateCoverUrl: async (bookId, coverUrl) => {
+          await updateBook(bookId, { meta: { coverUrl } } as Partial<Book>);
+        },
+        onProgress: (progress) => setCoverJob({ done: progress.done, total: progress.total }),
+        signal: coverCancelRef.current,
+      });
+
+      await loadBooks();
+      Alert.alert(
+        t("library.generateCovers", "Generate PDF covers"),
+        t("library.generateCoversDone", {
+          count: result.done,
+          failed: result.failed,
+          defaultValue: "{{count}} covers made, {{failed}} could not be read.",
+        }),
+      );
+    } catch (e) {
+      Alert.alert(t("common.error", "错误"), e instanceof Error ? e.message : String(e));
+    } finally {
+      setCoverJob(null);
+    }
+  }, [coverJob, pdfsNeedingCovers, updateBook, loadBooks, t]);
+
   const shelfScopeLabel = useMemo(() => {
     if (shelfMode === "all" || shelfGroupIds.length === 0) {
       return t("library.shelfEverything", "全部书籍");
@@ -1571,6 +1633,15 @@ export function LibraryScreen() {
               {t("library.resultsCount", { count: gridItems.length })}
             </Text>
           )}
+          {coverJob ? (
+            <Text style={s.shelfScopeCount}>
+              {t("library.generateCoversProgress", {
+                done: coverJob.done,
+                total: coverJob.total,
+                defaultValue: "Making covers… {{done}}/{{total}}",
+              })}
+            </Text>
+          ) : null}
           {isShelfView && isLoaded && hasBooks ? (
             <View style={s.shelfScopeBar}>
               <TouchableOpacity
@@ -1613,6 +1684,8 @@ export function LibraryScreen() {
           )}
         </View>
       </View>
+
+      <PdfCoverWebView ref={pdfCoverRef} />
 
       <ShelfScopeSheet
         visible={scopeSheetOpen}
@@ -1708,6 +1781,8 @@ export function LibraryScreen() {
         visible={showLibraryMenu}
         isGroupView={isGroupView}
         viewMode={activeGroupId ? (isListView ? "list" : "grid") : viewMode}
+        coverlessPdfCount={pdfsNeedingCovers.length}
+        onGenerateCovers={handleGenerateCovers}
         canCreateFolder={isGroupView}
         onClose={() => setShowLibraryMenu(false)}
         onSearch={() => (showSearch ? closeSearch() : openSearch())}

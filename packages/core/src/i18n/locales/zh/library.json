@@ -178,7 +178,10 @@
     "shelfScopeTitle": "书架显示哪些书",
     "shelfEverything": "全部书籍",
     "shelfFolderCount": "{{count}} 个文件夹",
-    "shelfCount": "{{count}} 本"
+    "shelfCount": "{{count}} 本",
+    "generateCovers": "生成 PDF 封面",
+    "generateCoversDone": "已生成 {{count}} 个封面，{{failed}} 个无法读取。",
+    "generateCoversProgress": "正在生成封面… {{done}}/{{total}}"
   },
   "home": {
     "library": "书库",

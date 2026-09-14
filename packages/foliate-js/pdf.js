@@ -534,6 +534,40 @@ const renderPageAsBlob = async (page) => {
   return new Promise((resolve) => canvas.toBlob(resolve));
 };
 
+/**
+ * The first page of a PDF, as a JPEG data URL, for use as a cover.
+ *
+ * Most PDFs carry no cover image at all, so the first page is the only thing
+ * that looks like one. Rendered from a URL rather than from bytes so PDF.js can
+ * range-request the few pages it needs instead of pulling a 130 MB textbook
+ * through memory to photograph its front.
+ *
+ * Capped on the long edge: this is a thumbnail on a shelf, and a full-resolution
+ * page render of an A4 scan is several megabytes for no visible gain.
+ */
+export const renderPDFCoverDataURL = async (url, maxEdge = 900) => {
+  const pdf = await pdfjsLib.getDocument({ url, ...PDFJS_DOCUMENT_OPTIONS }).promise;
+  try {
+    const page = await pdf.getPage(1);
+    const base = page.getViewport({ scale: 1 });
+    const scale = Math.min(2, maxEdge / Math.max(base.width, base.height));
+    const viewport = page.getViewport({ scale: scale > 0 ? scale : 1 });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(viewport.width));
+    canvas.height = Math.max(1, Math.round(viewport.height));
+    const canvasContext = canvas.getContext("2d");
+    // Pages are transparent where they are blank, and a transparent JPEG turns
+    // black; paper is white.
+    canvasContext.fillStyle = "#ffffff";
+    canvasContext.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext, viewport }).promise;
+    return canvas.toDataURL("image/jpeg", 0.82);
+  } finally {
+    pdf.destroy();
+  }
+};
+
 const CJK_CHAR = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/u;
 const OPEN_PUNCTUATION = /[\s([{"'“‘（《「『【]$/u;
 const CLOSE_PUNCTUATION = /^[\s,.;:!?)\]}'"”’。，、！？；：）》」』】]/u;

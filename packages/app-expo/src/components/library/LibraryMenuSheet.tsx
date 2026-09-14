@@ -6,6 +6,7 @@ import {
   ListIcon,
   SearchIcon,
   SortAscIcon,
+  SparklesIcon,
 } from "@/components/ui/Icon";
 import { radius, spacing, ui, useColors } from "@/styles/theme";
 import { useTranslation } from "react-i18next";
@@ -25,6 +26,9 @@ interface Props {
   /** Current layout, so the row can name it and show its icon. */
   viewMode: "grid" | "list" | "shelf";
   canCreateFolder: boolean;
+  /** How many PDFs could be given a cover; the row hides when none can. */
+  coverlessPdfCount?: number;
+  onGenerateCovers?: () => void;
   onClose: () => void;
   onSearch: () => void;
   onSort: () => void;
@@ -38,6 +42,8 @@ export function LibraryMenuSheet({
   isGroupView,
   viewMode,
   canCreateFolder,
+  coverlessPdfCount = 0,
+  onGenerateCovers,
   onClose,
   onSearch,
   onSort,
@@ -54,6 +60,8 @@ export function LibraryMenuSheet({
     action();
   };
 
+  const insets = useSafeAreaInsets();
+
   const layoutLabel =
     viewMode === "list"
       ? t("library.listView", "List view")
@@ -62,8 +70,6 @@ export function LibraryMenuSheet({
         : t("library.gridView", "Grid view");
   const layoutIcon =
     viewMode === "list" ? ListIcon : viewMode === "shelf" ? LibraryIcon : LayoutGridIcon;
-
-  const insets = useSafeAreaInsets();
 
   const items: {
     key: string;
@@ -99,6 +105,16 @@ export function LibraryMenuSheet({
       onPress: run(onToggleListView),
     },
   ];
+
+  if (coverlessPdfCount > 0 && onGenerateCovers) {
+    items.push({
+      key: "pdfCovers",
+      label: t("library.generateCovers", "Generate PDF covers"),
+      value: String(coverlessPdfCount),
+      Icon: SparklesIcon,
+      onPress: run(onGenerateCovers),
+    });
+  }
 
   if (canCreateFolder) {
     items.push({
