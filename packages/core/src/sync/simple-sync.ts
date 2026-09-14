@@ -61,6 +61,7 @@ const SYNC_TABLES: SyncTableConfig[] = [
   { name: "tags", pk: "id", timestampCol: "updated_at" },
   { name: "book_tags", pk: "id", timestampCol: "updated_at" },
   { name: "reading_sessions", pk: "id", timestampCol: "updated_at" },
+  { name: "web_pages", pk: "id", timestampCol: "updated_at" },
 ];
 
 /**

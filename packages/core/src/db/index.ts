@@ -49,6 +49,14 @@ export {
   deleteNote,
   // Bookmark queries
   getBookmarks,
+  getSavedPages,
+  getRecentPages,
+  upsertWebPage,
+  toggleSavedPage,
+  removeSavedPage,
+  deleteWebPage,
+  clearRecentPages,
+  isWebPagesEmpty,
   insertBookmark,
   deleteBookmark,
   // Thread queries
@@ -82,3 +90,4 @@ export {
 } from "./database";
 
 export type { HighlightWithBook } from "./database";
+export type { WebPage as WebPageRecord } from "./database";

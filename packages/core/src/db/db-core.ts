@@ -484,6 +484,22 @@ export async function initDatabase(): Promise<void> {
     )
   `);
 
+      // Saved and recently-visited web pages. These lived in device-local
+      // storage until they were promoted here, which is the only reason they
+      // could never sync: sync carries tables, and they were not one.
+      await database.execute(`
+    CREATE TABLE IF NOT EXISTS web_pages (
+      id TEXT PRIMARY KEY,
+      url TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      visited_at INTEGER NOT NULL,
+      saved INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL DEFAULT 0,
+      sync_version INTEGER DEFAULT 0,
+      last_modified_by TEXT
+    )
+  `);
+
       await database.execute(`
     CREATE TABLE IF NOT EXISTS reading_sessions (
       id TEXT PRIMARY KEY,
@@ -504,6 +520,7 @@ export async function initDatabase(): Promise<void> {
         "CREATE INDEX IF NOT EXISTS idx_highlights_book ON highlights(book_id)",
       );
       await database.execute("CREATE INDEX IF NOT EXISTS idx_notes_book ON notes(book_id)");
+      await database.execute("CREATE INDEX IF NOT EXISTS idx_web_pages_url ON web_pages(url)");
       await database.execute("CREATE INDEX IF NOT EXISTS idx_bookmarks_book ON bookmarks(book_id)");
       await database.execute(
         "CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id)",
@@ -617,6 +634,7 @@ export async function initDatabase(): Promise<void> {
         "threads",
         "messages",
         "skills",
+        "web_pages",
       ];
       for (const table of syncTables) {
         try {
