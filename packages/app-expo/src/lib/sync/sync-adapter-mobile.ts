@@ -1,11 +1,11 @@
-import { closeDB, initDatabase, resetDBCache, resetLocalDBCache } from "@readany/core/db";
 /**
  * Mobile (Expo) sync adapter — implements ISyncAdapter
- * using expo-sqlite, expo-file-system, and expo-crypto.
+ * using expo-sqlite and expo-file-system.
  */
+import { hashFileAtPath } from "@/lib/file-hash";
+import { closeDB, initDatabase, resetDBCache, resetLocalDBCache } from "@readany/core/db";
 import type { ISyncAdapter } from "@readany/core/sync";
 import Constants from "expo-constants";
-import * as Crypto from "expo-crypto";
 import { Directory, File, Paths } from "expo-file-system";
 import { Platform } from "react-native";
 
@@ -84,14 +84,22 @@ export class MobileSyncAdapter implements ISyncAdapter {
     return Paths.document.uri;
   }
 
+  /**
+   * SHA-256 over the file's raw bytes, as lowercase hex — the same string the
+   * desktop's `sync_hash_file` produces.
+   *
+   * ⚠️ This used to hash `arrayBufferToBase64(data)`, which digests the base64
+   * TEXT rather than the bytes it encodes. Mobile devices agreed with each
+   * other, so nothing looked broken, but no mobile hash could ever equal a
+   * desktop one for the same file — and these hashes are what decide whether a
+   * cover already on the server is the cover we hold, so every desktop/mobile
+   * switch re-uploaded covers that had not changed.
+   *
+   * Streamed rather than buffered: `file.bytes()` pulls the whole file into
+   * memory, which is affordable for a cover and not for a book.
+   */
   async hashFile(filePath: string): Promise<string> {
-    const file = new File(filePath);
-    const data = await file.bytes();
-    return Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      arrayBufferToBase64(data),
-      { encoding: Crypto.CryptoEncoding.HEX },
-    );
+    return hashFileAtPath(filePath);
   }
 
   async readFileBytes(filePath: string): Promise<Uint8Array> {
@@ -180,13 +188,4 @@ export class MobileSyncAdapter implements ISyncAdapter {
   async getDeviceName(): Promise<string> {
     return `${Platform.OS}-${Constants.deviceName || "mobile"}`;
   }
-}
-
-/** Convert Uint8Array to base64 string */
-function arrayBufferToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
 }

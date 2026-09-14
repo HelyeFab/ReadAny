@@ -3,7 +3,7 @@ import {
   extractBookMetadata,
   extractBookMetadataFromFile,
 } from "@/lib/book/metadata-extractor";
-import { hashBookFile } from "@/lib/library/file-hash";
+import { hashBookFile } from "@/lib/file-hash";
 import { queueBook as queueAutoVectorize } from "@/lib/rag/auto-vectorize-service";
 import {
   type ImportBooksResult,

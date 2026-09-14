@@ -1,11 +1,14 @@
 /**
- * Reading a book's bytes on the phone, so it can be hashed.
+ * Reading a file's bytes on the phone, so it can be hashed.
  *
  * The hashing itself lives in core (`hashFileSha256`) and knows nothing about
  * platforms; this supplies the only part that must: how to read a range of a
  * file. Expo's `FileHandle` gives us exactly that, and reading in ranges is
  * what makes hashing a 300 MB textbook possible at all — `file.bytes()` would
  * pull the whole thing into memory first.
+ *
+ * Used by two callers that must agree with each other and with the desktop:
+ * import de-duplication, and the sync adapter's cover comparison.
  */
 import { type ChunkedFileReader, hashFileSha256 } from "@readany/core";
 import { File } from "expo-file-system";
@@ -58,5 +61,25 @@ export async function hashBookFile(
     return undefined;
   } finally {
     close?.();
+  }
+}
+
+/**
+ * SHA-256 of any file on disk, as lowercase hex. Throws if it cannot be read —
+ * callers that would rather have no hash than an error should use
+ * {@link hashBookFile}.
+ */
+export async function hashFileAtPath(filePath: string): Promise<string> {
+  const file = new File(filePath);
+  const size = file.size;
+  if (!Number.isFinite(size) || size < 0) {
+    throw new Error(`Cannot hash ${filePath}: unknown size`);
+  }
+
+  const { reader, close } = createExpoChunkedReader(filePath, size);
+  try {
+    return await hashFileSha256(reader);
+  } finally {
+    close();
   }
 }
