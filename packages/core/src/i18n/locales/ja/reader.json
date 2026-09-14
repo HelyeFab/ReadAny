@@ -75,7 +75,11 @@
     "returnToOriginal": "検索前の位置に戻りますか？",
     "searchComplete": "検索完了",
     "unknownBook": "無題の本",
-    "viewNote": "ノートを表示"
+    "viewNote": "ノートを表示",
+    "syncHighlightsTitle": "ハイライト",
+    "highlightsUpToDate": "すべてサーバーに保存済みです。",
+    "highlightsSynced": "{{count}} 件を {{path}} に追加しました",
+    "openMenu": "メニューを開く"
   },
   "bookmarks": {
     "title": "ブックマーク",

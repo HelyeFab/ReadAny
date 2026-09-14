@@ -75,7 +75,11 @@
     "returnToOriginal": "Revenir à la position d'avant la recherche ?",
     "searchComplete": "Recherche terminée",
     "unknownBook": "Livre sans titre",
-    "viewNote": "Voir la note"
+    "viewNote": "Voir la note",
+    "syncHighlightsTitle": "Surlignages",
+    "highlightsUpToDate": "Tout est déjà enregistré sur le serveur.",
+    "highlightsSynced": "{{count}} ajouté(s) dans {{path}}",
+    "openMenu": "Ouvrir le menu"
   },
   "bookmarks": {
     "title": "Signets",

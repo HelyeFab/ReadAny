@@ -1,4 +1,5 @@
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
+import { HighlightExportSheet } from "@/components/notes/HighlightExportSheet";
 import { BookmarkRibbon } from "@/components/reader/BookmarkRibbon";
 import { ChapterTranslationSheet } from "@/components/reader/ChapterTranslationSheet";
 import { ReadingProgressSlider } from "@/components/reader/ReadingProgressSlider";
@@ -74,6 +75,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+import { useReaderAnnotationSync } from "./reader/useReaderAnnotationSync";
 
 // ── Extracted modules ──
 import { ReaderNoteViewModal } from "./reader/ReaderNoteViewModal";
@@ -383,9 +385,13 @@ export function ReaderScreen({ route, navigation }: Props) {
     removeHighlight,
     loadAnnotations,
     highlights,
+    notes,
     removeBookmark,
   } = useAnnotationStore();
   const book = useMemo(() => books.find((b) => b.id === bookId), [books, bookId]);
+
+  // ── Filing this book's highlights to the server ───────────────────────────
+  const annotationSync = useReaderAnnotationSync({ book, highlights, notes });
 
   // ── System info (clock/battery/statusBar/SafeArea) ─────────────────────────
   const { readerClock, batteryLevel, isBatteryCharging, stableTopInset, insets } =
@@ -1624,7 +1630,11 @@ export function ReaderScreen({ route, navigation }: Props) {
                   { flexDirection: "row", alignItems: "center", gap: 6 },
                 ]}
               >
-                <SyncButton size={16} color={colors.foreground} />
+                <SyncButton
+                  size={16}
+                  color={colors.foreground}
+                  task={annotationSync.hasAnnotations ? annotationSync.syncAnnotations : undefined}
+                />
                 <Text style={s.topToolbarMetaText}>
                   {currentPage > 0 && totalPages > 0
                     ? `${currentPage}/${totalPages}`
@@ -2288,6 +2298,12 @@ export function ReaderScreen({ route, navigation }: Props) {
         onPrevChapter={toc.length > 0 ? tts.handleTTSPrevChapter : undefined}
         onNextChapter={toc.length > 0 ? tts.handleTTSNextChapter : undefined}
       />
+
+      {/*
+        Asked once per book, on the first sync: where these highlights should
+        be filed. Every sync after that goes straight to the answer.
+      */}
+      <HighlightExportSheet {...annotationSync.sheetProps} />
     </View>
   );
 }
