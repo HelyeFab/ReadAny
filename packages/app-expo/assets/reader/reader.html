@@ -6,6 +6,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
   <title>ReadAny Reader</title>
   <style>
+    /*
+     * Highlights are drawn by foliate's Overlayer, which sets
+     *   opacity: var(--overlayer-highlight-opacity, .3)
+     * on top of whatever fill colour it is handed. Our colours already carry
+     * their own alpha — rgba(250, 204, 21, 0.4) for yellow — so leaving that
+     * variable unset multiplied the two: 0.4 x 0.3 = 0.12. Every colour came
+     * out as the same barely-there wash, which on a colour e-ink panel reads
+     * as light grey rather than as any colour at all.
+     *
+     * Setting it to 1 makes the rgba alpha in the colour map the single place
+     * highlight strength is decided. drawTTSHighlight already defaulted this
+     * to 1, which is why the TTS highlight looked right while the user's own
+     * highlights did not.
+     */
+    :root {
+      --overlayer-highlight-opacity: 1;
+    }
+
     * {
       margin: 0;
       padding: 0;
