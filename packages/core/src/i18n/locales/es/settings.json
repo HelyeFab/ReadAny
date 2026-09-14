@@ -74,6 +74,8 @@
     "volumeButtonsPageTurnDesc": "Durante la lectura, los botones de volumen pasan página",
     "smoothReading": "Lectura fluida",
     "smoothReadingDesc": "Activa la animación de transición de página y la inercia de desplazamiento. Desactívelo para mejor rendimiento en dispositivos básicos",
+    "bionicReading": "Lectura biónica",
+    "bionicReadingDesc": "Resalta en negrita el principio de cada palabra como punto de apoyo para la vista. Solo alfabeto latino: el japonés y el chino se dejan intactos.",
     "followSystemFontScale": "Seguir escala de fuente del sistema",
     "followSystemFontScaleDesc": "Escalar automáticamente según el tamaño de fuente de accesibilidad del SO",
     "fixedLayoutNotice": "PDF es un formato de diseño fijo. Los ajustes de fuente y diseño no están disponibles.",

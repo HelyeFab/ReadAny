@@ -613,6 +613,7 @@ export function ReaderScreen({ route, navigation }: Props) {
         viewMode: settings.viewMode,
         paginatedLayout: settings.paginatedLayout,
         smoothReading: settings.smoothReading === true,
+        bionicReading: settings.bionicReading === true,
         customFontFaceCSS: fontCSS,
         customFontFamily: fontFamily ?? "",
       });
@@ -1186,6 +1187,7 @@ export function ReaderScreen({ route, navigation }: Props) {
             viewMode: readSettings.viewMode,
             paginatedLayout: readSettings.paginatedLayout,
             smoothReading: readSettings.smoothReading === true,
+            bionicReading: readSettings.bionicReading === true,
           },
         });
 

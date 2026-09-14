@@ -162,6 +162,7 @@
   </div>
 
   <!-- __READANY_JUSTIFIED_TEXT_INSERT_POINT_6c18f4d2__ -->
+  <!-- __READANY_BIONIC_INSERT_POINT_4a91c7e5__ -->
 
   <script>
     // ═══════════════════════════════════════════════════════════════
@@ -1574,6 +1575,12 @@
           if (_rubyMode && rubyDictReady(_rubyMode)) {
             try { doInjectRubyAnnotations(doc, _rubyMode); } catch(e) {}
           }
+          // After ruby, never before: the ruby pass claims the Japanese, and
+          // bionic skips what it produced, so a mixed book gets emboldened
+          // English beside untouched furigana.
+          if (currentBionicReading) {
+            try { globalThis.ReadAnyBionicReading?.apply(doc); } catch(e) {}
+          }
         });
 
         var snippetTimer = null;
@@ -1836,6 +1843,13 @@
       const renderer = view.renderer;
       if (settings.justifyBodyText !== undefined) {
         currentJustifyBodyText = settings.justifyBodyText !== false;
+      }
+      if (settings.bionicReading !== undefined) {
+        var nextBionic = settings.bionicReading === true;
+        if (nextBionic !== currentBionicReading) {
+          currentBionicReading = nextBionic;
+          syncBionicReadingForAllDocs();
+        }
       }
       if (settings.smoothReading !== undefined) {
         currentSmoothReading = settings.smoothReading === true;
@@ -2158,6 +2172,28 @@
       for (const content of getRendererContents()) {
         if (!content || !content.doc) continue;
         syncReaderOverrideStylesForDoc(content.doc, css);
+      }
+    }
+
+    var currentBionicReading = false;
+
+    /**
+     * Bionic reading across every rendered document.
+     *
+     * Applying is idempotent — a rewritten node sits inside a marked span the
+     * walker refuses to enter — so this can be called on every render and on
+     * every settings change without checking what state a document is in.
+     */
+    function syncBionicReadingForAllDocs() {
+      for (const content of getRendererContents()) {
+        if (!content?.doc) continue;
+        try {
+          if (currentBionicReading) {
+            globalThis.ReadAnyBionicReading?.apply(content.doc);
+          } else {
+            globalThis.ReadAnyBionicReading?.remove(content.doc);
+          }
+        } catch (e) {}
       }
     }
 

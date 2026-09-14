@@ -125,6 +125,13 @@ export interface ReadSettings extends ViewSettings {
    * existing persisted settings deserialize cleanly.
    */
   followSystemFontScale?: boolean;
+  /**
+   * Bionic reading: embolden the opening characters of each word as a
+   * fixation point. Latin script only — Japanese and Chinese have no word
+   * front to bold, so they are left alone even with this on. Default false;
+   * optional so existing persisted settings deserialize cleanly.
+   */
+  bionicReading?: boolean;
 }
 
 export type SortField = "title" | "author" | "addedAt" | "lastOpenedAt" | "progress";

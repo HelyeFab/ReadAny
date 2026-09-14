@@ -60,6 +60,7 @@ export interface ReaderInitialSettings {
   paginatedLayout?: "single" | "double";
   /** Smooth reading: foliate `animated` page-turn + `scroll-inertia` physics */
   smoothReading?: boolean;
+  bionicReading?: boolean;
 }
 
 function withJustifiedTextSetting(settings: ReaderInitialSettings = {}): ReaderInitialSettings {
@@ -294,6 +295,7 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       customFontFaceCSS?: string;
       customFontFamily?: string;
       smoothReading?: boolean;
+  bionicReading?: boolean;
     }) => {
       const msg = JSON.stringify({
         type: "applySettings",

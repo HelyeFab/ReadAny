@@ -337,6 +337,137 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
 })();
 
 </script>
+  <script>
+(() => {
+  // ../core/src/reader/bionic-reading.ts
+  var BIONIC_PROCESSED_ATTR = "data-readany-bionic";
+  var BIONIC_STYLE_ID = "readany-bionic-style";
+  var WORD_RE = /[\p{Script=Latin}\p{Mn}ʼ'’]+/gu;
+  var HAS_LETTER_RE = /\p{Script=Latin}/u;
+  function bionicBoldLength(word) {
+    const length = word.length;
+    if (length <= 1) return length;
+    if (length <= 3) return 1;
+    if (length <= 5) return 2;
+    if (length <= 7) return 3;
+    if (length <= 9) return 4;
+    return Math.ceil(length * 0.4);
+  }
+  function splitBionicText(text) {
+    if (!text) return [];
+    const tokens = [];
+    let cursor = 0;
+    WORD_RE.lastIndex = 0;
+    let match = WORD_RE.exec(text);
+    while (match !== null) {
+      const word = match[0];
+      const start = match.index;
+      if (start > cursor) {
+        tokens.push({ bold: "", rest: text.slice(cursor, start) });
+      }
+      if (HAS_LETTER_RE.test(word)) {
+        const boldLength = bionicBoldLength(word);
+        tokens.push({ bold: word.slice(0, boldLength), rest: word.slice(boldLength) });
+      } else {
+        tokens.push({ bold: "", rest: word });
+      }
+      cursor = start + word.length;
+      match = WORD_RE.exec(text);
+    }
+    if (cursor < text.length) {
+      tokens.push({ bold: "", rest: text.slice(cursor) });
+    }
+    return tokens;
+  }
+  function hasBionicCandidates(text) {
+    return HAS_LETTER_RE.test(text);
+  }
+  var BIONIC_CSS = `
+[${BIONIC_PROCESSED_ATTR}] b {
+  font-weight: 700;
+}
+`;
+  var SKIP_SELECTOR = `.readany-translation, ruby, rt, rp, script, style, code, pre, kbd, samp, b, strong, [${BIONIC_PROCESSED_ATTR}]`;
+  var BLOCK_SELECTOR = "p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, figcaption, td, th, div";
+  function shouldSkip(el) {
+    return typeof el.closest === "function" && el.closest(SKIP_SELECTOR) !== null;
+  }
+  function injectStyles(doc) {
+    if (doc.getElementById(BIONIC_STYLE_ID)) return;
+    const style = doc.createElement("style");
+    style.id = BIONIC_STYLE_ID;
+    style.textContent = BIONIC_CSS;
+    (doc.head || doc.documentElement)?.appendChild(style);
+  }
+  function applyBionicReading(doc) {
+    if (!doc) return 0;
+    injectStyles(doc);
+    let count = 0;
+    const blocks = doc.querySelectorAll(BLOCK_SELECTOR);
+    for (const block of Array.from(blocks)) {
+      const blockText = block.textContent;
+      if (!blockText || !blockText.trim()) continue;
+      if (shouldSkip(block)) continue;
+      if (!hasBionicCandidates(blockText)) continue;
+      const walker = doc.createTreeWalker(block, NodeFilter.SHOW_TEXT, {
+        acceptNode(node2) {
+          const value = node2.nodeValue;
+          if (!value || !value.trim()) return NodeFilter.FILTER_SKIP;
+          if (!hasBionicCandidates(value)) return NodeFilter.FILTER_SKIP;
+          const parent = node2.parentElement;
+          if (!parent) return NodeFilter.FILTER_ACCEPT;
+          return shouldSkip(parent) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      const textNodes = [];
+      let node = walker.nextNode();
+      while (node) {
+        textNodes.push(node);
+        node = walker.nextNode();
+      }
+      for (const textNode of textNodes) {
+        const text = textNode.nodeValue || "";
+        const tokens = splitBionicText(text);
+        if (tokens.every((token) => !token.bold)) continue;
+        const span = doc.createElement("span");
+        span.setAttribute(BIONIC_PROCESSED_ATTR, "true");
+        for (const token of tokens) {
+          if (token.bold) {
+            const bold = doc.createElement("b");
+            bold.textContent = token.bold;
+            span.appendChild(bold);
+          }
+          if (token.rest) span.appendChild(doc.createTextNode(token.rest));
+        }
+        textNode.parentNode?.replaceChild(span, textNode);
+        count++;
+      }
+    }
+    return count;
+  }
+  function removeBionicReading(doc) {
+    if (!doc) return;
+    doc.getElementById(BIONIC_STYLE_ID)?.remove();
+    const processed = doc.querySelectorAll(`[${BIONIC_PROCESSED_ATTR}]`);
+    for (const el of Array.from(processed)) {
+      el.parentNode?.replaceChild(doc.createTextNode(el.textContent || ""), el);
+    }
+  }
+  function installReadAnyBionicReading(root) {
+    const target = root ?? {};
+    target.ReadAnyBionicReading = {
+      apply: (doc) => applyBionicReading(doc),
+      remove: (doc) => removeBionicReading(doc),
+      splitBionicText,
+      BIONIC_PROCESSED_ATTR
+    };
+  }
+
+  // ../core/src/reader/bionic-reading-entry.ts
+  installReadAnyBionicReading(globalThis);
+})();
+
+</script>
 
   <script>
     // ═══════════════════════════════════════════════════════════════
@@ -1749,6 +1880,12 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
           if (_rubyMode && rubyDictReady(_rubyMode)) {
             try { doInjectRubyAnnotations(doc, _rubyMode); } catch(e) {}
           }
+          // After ruby, never before: the ruby pass claims the Japanese, and
+          // bionic skips what it produced, so a mixed book gets emboldened
+          // English beside untouched furigana.
+          if (currentBionicReading) {
+            try { globalThis.ReadAnyBionicReading?.apply(doc); } catch(e) {}
+          }
         });
 
         var snippetTimer = null;
@@ -2011,6 +2148,13 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
       const renderer = view.renderer;
       if (settings.justifyBodyText !== undefined) {
         currentJustifyBodyText = settings.justifyBodyText !== false;
+      }
+      if (settings.bionicReading !== undefined) {
+        var nextBionic = settings.bionicReading === true;
+        if (nextBionic !== currentBionicReading) {
+          currentBionicReading = nextBionic;
+          syncBionicReadingForAllDocs();
+        }
       }
       if (settings.smoothReading !== undefined) {
         currentSmoothReading = settings.smoothReading === true;
@@ -2333,6 +2477,28 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
       for (const content of getRendererContents()) {
         if (!content || !content.doc) continue;
         syncReaderOverrideStylesForDoc(content.doc, css);
+      }
+    }
+
+    var currentBionicReading = false;
+
+    /**
+     * Bionic reading across every rendered document.
+     *
+     * Applying is idempotent — a rewritten node sits inside a marked span the
+     * walker refuses to enter — so this can be called on every render and on
+     * every settings change without checking what state a document is in.
+     */
+    function syncBionicReadingForAllDocs() {
+      for (const content of getRendererContents()) {
+        if (!content?.doc) continue;
+        try {
+          if (currentBionicReading) {
+            globalThis.ReadAnyBionicReading?.apply(content.doc);
+          } else {
+            globalThis.ReadAnyBionicReading?.remove(content.doc);
+          }
+        } catch (e) {}
       }
     }
 

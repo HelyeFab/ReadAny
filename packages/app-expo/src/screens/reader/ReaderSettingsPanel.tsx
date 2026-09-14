@@ -60,6 +60,7 @@ export function ReaderSettingsPanel({
     showTopTitleProgress,
     showBottomTimeBattery,
     followSystemFontScale,
+    bionicReading,
   } = readSettings;
 
   return (
@@ -303,6 +304,26 @@ export function ReaderSettingsPanel({
             >
               <Text style={[s.settingToggleText, !!smoothReading && s.settingToggleTextActive]}>
                 {smoothReading ? t("settings.enabled") : t("settings.disabled")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {/* Bionic reading: emboldened word fronts as fixation points */}
+          <View style={s.settingRow}>
+            <View style={s.settingLabelBlock}>
+              <Text style={s.settingLabel}>{t("settings.bionicReading", "仿生阅读")}</Text>
+              <Text style={s.settingHint}>
+                {t(
+                  "settings.bionicReadingDesc",
+                  "加粗每个单词的开头作为视觉落点。仅适用于拉丁字母，日文与中文不受影响。",
+                )}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[s.settingToggleBtn, !!bionicReading && s.settingToggleBtnActive]}
+              onPress={() => onUpdateSetting("bionicReading", !bionicReading)}
+            >
+              <Text style={[s.settingToggleText, !!bionicReading && s.settingToggleTextActive]}>
+                {bionicReading ? t("settings.enabled") : t("settings.disabled")}
               </Text>
             </TouchableOpacity>
           </View>
