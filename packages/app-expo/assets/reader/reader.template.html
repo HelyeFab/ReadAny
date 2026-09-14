@@ -3215,29 +3215,25 @@ html, body {
         doc.__readany_selection_interaction = false;
       }
 
-      doc.addEventListener('pointerdown', (e) => {
-        if (currentViewMode === 'scroll') return;
-        clearPreview();
-        gesture = PS.onPointerDown({ x: e.clientX, y: e.clientY }, Date.now());
-        if (holdTimer) clearTimeout(holdTimer);
-        holdTimer = setTimeout(() => {
-          holdTimer = null;
-          gesture = PS.onHoldElapsed(gesture);
-          if (PS.isSelecting(gesture)) {
-            // Own the gesture: the tap handler and the bookmark pull both
-            // stand off while this flag is set.
-            doc.__readany_selection_interaction = true;
-            const ends = PS.selectionEndpoints(gesture);
-            const range = ends ? rangeBetween(ends[0], ends[1]) : null;
-            if (range) { previewRange = range; paintPreview(range); }
-          }
-        }, PS.SELECTION_HOLD_MS);
-      }, { passive: true, capture: true });
+      /**
+       * ⚠️ TOUCH events, not pointer events, drive this.
+       *
+       * On this device the WebView fires pointercancel 19-35ms into a pen
+       * gesture — measured, repeatedly, in the traces of the old bug. A hold
+       * of 350ms driven by pointer events would therefore be cancelled ten
+       * times over before it could ever arm, which is exactly the "sometimes I
+       * have to try several times" this is meant to end. Touch events are not
+       * taken away like that.
+       *
+       * Nothing here needs to know whether it is a pen or a finger: resting
+       * then sweeping means the same thing from either.
+       */
+      function pointFromTouch(e) {
+        const t = e.touches && e.touches.length ? e.touches[0] : (e.changedTouches && e.changedTouches[0]);
+        return t ? { x: t.clientX, y: t.clientY } : null;
+      }
 
-      doc.addEventListener('pointermove', (e) => {
-        if (currentViewMode === 'scroll') return;
-        gesture = PS.onPointerMove(gesture, { x: e.clientX, y: e.clientY });
-        if (!PS.isSelecting(gesture)) return;
+      function updateSelectionFromGesture() {
         const ends = PS.selectionEndpoints(gesture);
         const range = ends ? rangeBetween(ends[0], ends[1]) : null;
         if (!range) return;
@@ -3246,6 +3242,35 @@ html, body {
         if (previewRange && range.toString() === previewRange.toString()) return;
         previewRange = range;
         paintPreview(range);
+      }
+
+      doc.addEventListener('touchstart', (e) => {
+        if (currentViewMode === 'scroll') return;
+        if (!e.touches || e.touches.length !== 1) { endGesture(); return; }
+        const point = pointFromTouch(e);
+        if (!point) return;
+        clearPreview();
+        gesture = PS.onPointerDown(point, Date.now());
+        if (holdTimer) clearTimeout(holdTimer);
+        holdTimer = setTimeout(() => {
+          holdTimer = null;
+          gesture = PS.onHoldElapsed(gesture);
+          if (PS.isSelecting(gesture)) {
+            // Own the gesture: the tap handler and the bookmark pull both
+            // stand off while this flag is set.
+            doc.__readany_selection_interaction = true;
+            updateSelectionFromGesture();
+          }
+        }, PS.SELECTION_HOLD_MS);
+      }, { passive: true, capture: true });
+
+      doc.addEventListener('touchmove', (e) => {
+        if (currentViewMode === 'scroll') return;
+        const point = pointFromTouch(e);
+        if (!point) return;
+        gesture = PS.onPointerMove(gesture, point);
+        if (!PS.isSelecting(gesture)) return;
+        updateSelectionFromGesture();
       }, { passive: true, capture: true });
 
       const finish = () => {
@@ -3260,13 +3285,12 @@ html, body {
         emitSelection(doc, { toString: () => previewRange.toString() }, previewRange);
       };
 
-      doc.addEventListener('pointerup', finish, { passive: true, capture: true });
-      doc.addEventListener('pointercancel', () => {
-        // ⚠️ The WebView cancels the pointer freely on this device — that was
-        // the trigger for the old runaway. Here it simply ends the gesture with
-        // whatever was legitimately swept so far.
-        finish();
-      }, { passive: true, capture: true });
+      doc.addEventListener('touchend', finish, { passive: true, capture: true });
+      doc.addEventListener('touchcancel', finish, { passive: true, capture: true });
+
+      // Deliberately NOT listening to pointercancel. It arrives within tens of
+      // milliseconds of a pen touching this screen and means nothing about
+      // whether the pen is still down.
     }
 
     function emitSelection(doc, sel, range) {
