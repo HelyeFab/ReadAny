@@ -1,14 +1,14 @@
+import type { DictionaryInfo } from "@/lib/dictionary/yomitan-import";
+import { radius, spacing, ui, useColors } from "@/styles/theme";
+import * as DocumentPicker from "expo-document-picker";
 /**
  * Dictionaries — import the same Yomitan packs used in the browser.
  */
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useTranslation } from "react-i18next";
-import * as DocumentPicker from "expo-document-picker";
 import { SettingsHeader } from "./SettingsHeader";
-import { radius, spacing, useColors } from "@/styles/theme";
-import type { DictionaryInfo } from "@/lib/dictionary/yomitan-import";
 
 export default function DictionarySettingsScreen() {
   const { t } = useTranslation();
@@ -70,7 +70,7 @@ export default function DictionarySettingsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
       <SettingsHeader title={t("dictionary.title", "Dictionaries")} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
-        <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
+        <Text style={{ color: colors.mutedForeground, fontSize: ui(13) }}>
           {t(
             "dictionary.description",
             "Import a Yomitan dictionary archive. The same packs your browser extension uses will work here.",
@@ -123,16 +123,13 @@ export default function DictionarySettingsScreen() {
             >
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.foreground, fontWeight: "600" }}>{dict.title}</Text>
-                <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                  {dict.termCount.toLocaleString()}{" "}
-                  {t("dictionary.entries", "entries")}
+                <Text style={{ color: colors.mutedForeground, fontSize: ui(12) }}>
+                  {dict.termCount.toLocaleString()} {t("dictionary.entries", "entries")}
                   {dict.revision ? ` · ${dict.revision}` : ""}
                 </Text>
               </View>
               <TouchableOpacity onPress={() => void handleDelete(dict)}>
-                <Text style={{ color: colors.destructive }}>
-                  {t("common.delete", "Delete")}
-                </Text>
+                <Text style={{ color: colors.destructive }}>{t("common.delete", "Delete")}</Text>
               </TouchableOpacity>
             </View>
           ))

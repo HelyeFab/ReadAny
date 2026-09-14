@@ -1,5 +1,5 @@
 import { Download, Maximize2, Minimize2, RotateCcw } from "@/components/ui/Icon";
-import { useColors } from "@/styles/theme";
+import { ui, useColors } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   title: {
-    fontSize: 14,
+    fontSize: ui(14),
     fontWeight: "500",
     flex: 1,
   },
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   hint: {
-    fontSize: 13,
+    fontSize: ui(13),
   },
   fullscreen: {
     flex: 1,
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   },
   fullscreenTitle: {
     flex: 1,
-    fontSize: 15,
+    fontSize: ui(15),
     fontWeight: "500",
   },
   fullscreenWebviewContainer: {

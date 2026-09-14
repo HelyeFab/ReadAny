@@ -2,7 +2,14 @@ import { MermaidView } from "@/components/common/MermaidView";
 import { MindmapView } from "@/components/common/MindmapView";
 import { BrainIcon, CheckIcon, ChevronDownIcon, OctagonXIcon, XIcon } from "@/components/ui/Icon";
 import { useThrottledValue } from "@/hooks";
-import { fontSize as fs, fontWeight as fw, radius, useColors, withOpacity } from "@/styles/theme";
+import {
+  fontSize as fs,
+  fontWeight as fw,
+  radius,
+  ui,
+  useColors,
+  withOpacity,
+} from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 import type {
   AbortedPart,
@@ -254,7 +261,9 @@ function ToolCallPartView({ part }: { part: ToolCallPart }) {
           {hasError && (
             <View style={s.errorBlock}>
               <Text style={s.errorTitle}>{t("streaming.toolFailedDetail", "工具调用失败")}</Text>
-              <Text style={s.errorText}>{errorMessage || t("streaming.toolFailed", "调用失败")}</Text>
+              <Text style={s.errorText}>
+                {errorMessage || t("streaming.toolFailed", "调用失败")}
+              </Text>
             </View>
           )}
         </View>
@@ -335,7 +344,7 @@ const makeReasoningStyles = (colors: ThemeColors) =>
     },
     bodyText: {
       fontSize: fs.sm,
-      lineHeight: 18,
+      lineHeight: ui(18),
       color: colors.foreground,
       opacity: 0.85,
     },
@@ -424,7 +433,7 @@ const makeToolStyles = (colors: ThemeColors) =>
       fontSize: fs.xs,
       fontFamily: "Menlo",
       color: colors.foreground,
-      lineHeight: 16,
+      lineHeight: ui(16),
     },
     codeKey: { color: colors.mutedForeground },
     errorBlock: {
@@ -437,7 +446,7 @@ const makeToolStyles = (colors: ThemeColors) =>
     errorText: {
       fontSize: fs.xs,
       color: colors.destructive,
-      lineHeight: 16,
+      lineHeight: ui(16),
     },
     errorTitle: {
       marginBottom: 4,

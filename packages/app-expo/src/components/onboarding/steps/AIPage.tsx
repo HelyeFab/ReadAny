@@ -1,23 +1,16 @@
 import { DarkModeSvg } from "@/components/DarkModeSvg";
 import { KeyboardAwareScrollView } from "@/components/ui/KeyboardAwareScrollView";
-import { useTheme } from "@/styles/theme";
+import { useSettingsStore } from "@/stores";
+import { ui, useTheme } from "@/styles/theme";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { testAIEndpoint } from "@readany/core/ai";
-import { useSettingsStore } from "@/stores";
 import type { AIProviderType } from "@readany/core/types";
-import { getDefaultBaseUrl, PROVIDER_CONFIGS, providerRequiresApiKey } from "@readany/core/utils";
+import { PROVIDER_CONFIGS, getDefaultBaseUrl, providerRequiresApiKey } from "@readany/core/utils";
 import { AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { SlideInRight } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BrainSvg from "../../../../assets/illustrations/ai_assistant.svg";
@@ -362,16 +355,16 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: ui(28),
     fontWeight: "800",
     color: "#0f172a",
     textAlign: "center",
     marginBottom: 8,
   },
-  subtitle: { fontSize: 16, color: "#64748b", textAlign: "center" },
+  subtitle: { fontSize: ui(16), color: "#64748b", textAlign: "center" },
   section: { marginBottom: 24 },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: ui(14),
     fontWeight: "600",
     color: "#64748b",
     textTransform: "uppercase",
@@ -386,12 +379,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 4,
   },
-  providerText: { fontSize: 14, fontWeight: "600" },
-  input: { padding: 16, borderRadius: 12, borderWidth: 2, fontSize: 16 },
+  providerText: { fontSize: ui(14), fontWeight: "600" },
+  input: { padding: 16, borderRadius: 12, borderWidth: 2, fontSize: ui(16) },
   baseUrlHint: {
     marginTop: 8,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: ui(12),
+    lineHeight: ui(18),
   },
   inputContainer: {
     flexDirection: "row",
@@ -402,13 +395,13 @@ const styles = StyleSheet.create({
   inputWithIcon: {
     flex: 1,
     padding: 16,
-    fontSize: 16,
+    fontSize: ui(16),
   },
   eyeIcon: {
     padding: 16,
   },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
-  statusText: { fontSize: 14, fontWeight: "500" },
+  statusText: { fontSize: ui(14), fontWeight: "500" },
   testBtn: {
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -416,7 +409,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: "center",
   },
-  testBtnText: { fontSize: 14, fontWeight: "600" },
+  testBtnText: { fontSize: ui(14), fontWeight: "600" },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -428,15 +421,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
   },
   backBtn: { paddingVertical: 12, paddingHorizontal: 4 },
-  backText: { fontSize: 16, color: "#64748b", fontWeight: "500" },
+  backText: { fontSize: ui(16), color: "#64748b", fontWeight: "500" },
   rightActions: { flexDirection: "row", gap: 16, alignItems: "center" },
   skipBtn: { paddingVertical: 12 },
-  skipText: { fontSize: 14, color: "#94a3b8", fontWeight: "500" },
+  skipText: { fontSize: ui(14), color: "#94a3b8", fontWeight: "500" },
   nextBtn: {
     backgroundColor: "#6366f1",
     paddingVertical: 14,
     paddingHorizontal: 28,
     borderRadius: 999,
   },
-  nextText: { color: "#ffffff", fontSize: 16, fontWeight: "600" },
+  nextText: { color: "#ffffff", fontSize: ui(16), fontWeight: "600" },
 });

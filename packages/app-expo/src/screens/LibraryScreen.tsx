@@ -1,13 +1,12 @@
-import { ImportDestinationSheet } from "@/components/library/ImportDestinationSheet";
-import type { ImportDestination } from "@/components/library/ImportDestinationSheet";
 import { BookCard } from "@/components/library/BookCard";
 import { ContinueReadingCard } from "@/components/library/ContinueReadingCard";
-import { GroupCard } from "@/components/library/GroupCard";
 import { FolderColorSheet } from "@/components/library/FolderColorSheet";
+import { GroupCard } from "@/components/library/GroupCard";
 import { GroupPickerSheet } from "@/components/library/GroupPickerSheet";
+import { ImportDestinationSheet } from "@/components/library/ImportDestinationSheet";
+import type { ImportDestination } from "@/components/library/ImportDestinationSheet";
 import { LibraryListRow } from "@/components/library/LibraryListRow";
 import { LibraryMenuSheet } from "@/components/library/LibraryMenuSheet";
-import { cafeIllustration } from "@/lib/library/cafe-illustration";
 import { type ExtractorRef, ExtractorWebView } from "@/components/rag/ExtractorWebView";
 import {
   ArrowDownAZIcon,
@@ -17,21 +16,17 @@ import {
   ClockIcon,
   DatabaseIcon,
   FolderInputIcon,
-  FolderPlusIcon,
-  LayoutGridIcon,
-  ListIcon,
-  MoreVerticalIcon,
   FolderMinusIcon,
   HashIcon,
-  LayersIcon,
+  MoreVerticalIcon,
   PlusIcon,
   SearchIcon,
-  SortAscIcon,
   Trash2Icon,
   XIcon,
 } from "@/components/ui/Icon";
 import { SyncButton } from "@/components/ui/SyncButton";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
+import { cafeIllustration } from "@/lib/library/cafe-illustration";
 import { openMobileBook } from "@/lib/library/open-mobile-book";
 import { setCallback, setExtractorRef } from "@/lib/rag/auto-vectorize-service";
 import type { RootStackParamList } from "@/navigation/RootNavigator";
@@ -43,6 +38,7 @@ import {
   fontSize,
   fontWeight,
   radius,
+  ui,
   useColors,
   useTheme,
   withOpacity,
@@ -618,10 +614,7 @@ export function LibraryScreen() {
         );
       } catch (err) {
         console.error("Import failed:", err);
-        Alert.alert(
-          t("common.error", "Error"),
-          err instanceof Error ? err.message : String(err),
-        );
+        Alert.alert(t("common.error", "Error"), err instanceof Error ? err.message : String(err));
       } finally {
         setImportProgress(null);
         setIsPickingImport(false);
@@ -856,7 +849,10 @@ export function LibraryScreen() {
     (field: SortField) => {
       const next =
         filter.sortField === field
-          ? { sortField: field, sortOrder: (filter.sortOrder === "asc" ? "desc" : "asc") as SortOrder }
+          ? {
+              sortField: field,
+              sortOrder: (filter.sortOrder === "asc" ? "desc" : "asc") as SortOrder,
+            }
           : {
               sortField: field,
               sortOrder: (field === "title" || field === "author" ? "asc" : "desc") as SortOrder,
@@ -1049,28 +1045,31 @@ export function LibraryScreen() {
 
   const handleGroupLongPress = useCallback(
     (group: BookGroup) => {
-      Alert.alert(group.name, undefined, [
-        {
-          text: t("common.rename", "重命名"),
-          onPress: () => openGroupNameModal("rename", group),
-        },
-        {
-          text: t("library.folderColor", "Colour"),
-          onPress: () => setColorPickerGroup(group),
-        },
-        {
-          text: t("common.delete", "删除"),
-          style: "destructive",
-          onPress: () => void removeGroup(group.id),
-        },
-        { text: t("common.cancel", "取消"), style: "cancel" },
-      ],
-      // Android's alert shows at most three buttons and silently drops the
-      // rest, so the cancel above never rendered here and the dialog had no
-      // visible way out. Without this it also refused the back button and a
-      // tap outside, which left it genuinely inescapable.
-      { cancelable: true },
-    );
+      Alert.alert(
+        group.name,
+        undefined,
+        [
+          {
+            text: t("common.rename", "重命名"),
+            onPress: () => openGroupNameModal("rename", group),
+          },
+          {
+            text: t("library.folderColor", "Colour"),
+            onPress: () => setColorPickerGroup(group),
+          },
+          {
+            text: t("common.delete", "删除"),
+            style: "destructive",
+            onPress: () => void removeGroup(group.id),
+          },
+          { text: t("common.cancel", "取消"), style: "cancel" },
+        ],
+        // Android's alert shows at most three buttons and silently drops the
+        // rest, so the cancel above never rendered here and the dialog had no
+        // visible way out. Without this it also refused the back button and a
+        // tap outside, which left it genuinely inescapable.
+        { cancelable: true },
+      );
     },
     [openGroupNameModal, removeGroup, t],
   );
@@ -1118,9 +1117,7 @@ export function LibraryScreen() {
         <LibraryListRow
           book={item.book}
           selected={selectedBookIds.has(item.book.id)}
-          onPress={() =>
-            selectionMode ? toggleBookSelection(item.book) : handleOpen(item.book)
-          }
+          onPress={() => (selectionMode ? toggleBookSelection(item.book) : handleOpen(item.book))}
           onLongPress={() => (selectionMode ? undefined : enterSelectionMode(item.book))}
         />
       ),
@@ -1805,7 +1802,7 @@ const makeStyles = (
       fontWeight: fontWeight.medium,
       color: colors.primary,
     },
-    vecBannerTitle: { fontSize: 12, color: colors.mutedForeground, marginTop: 2 },
+    vecBannerTitle: { fontSize: ui(12), color: colors.mutedForeground, marginTop: 2 },
     vecProgressBg: {
       height: 4,
       backgroundColor: `${colors.muted}1A`,
@@ -1874,7 +1871,7 @@ const makeStyles = (
       color: colors.mutedForeground,
       fontSize: fontSize.sm,
       textAlign: "center",
-      lineHeight: 20,
+      lineHeight: ui(20),
       marginBottom: 12,
     },
     gridItem: { width: layout.gridItemWidth, marginBottom: layout.gridGap },

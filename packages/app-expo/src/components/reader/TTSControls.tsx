@@ -1,7 +1,7 @@
-import { ChevronDownIcon, ChevronUpIcon, ClockIcon } from "@/components/ui/Icon";
 import { TTSSleepTimerSheet } from "@/components/tts/TTSSleepTimerSheet";
+import { ChevronDownIcon, ChevronUpIcon, ClockIcon } from "@/components/ui/Icon";
 import { useTTSStore } from "@/stores";
-import { type ThemeColors, fontSize, radius, useColors, withOpacity } from "@/styles/theme";
+import { type ThemeColors, fontSize, radius, ui, useColors, withOpacity } from "@/styles/theme";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -227,10 +227,7 @@ export function TTSControls({ onClose, onReplay }: TTSControlsProps) {
 
           <View style={s.divider} />
 
-          <TouchableOpacity
-            style={s.playBtn}
-            onPress={handlePlayPress}
-          >
+          <TouchableOpacity style={s.playBtn} onPress={handlePlayPress}>
             {playState === "playing" || playState === "loading" ? (
               <PauseIcon size={16} color="#fff" />
             ) : (
@@ -260,7 +257,11 @@ export function TTSControls({ onClose, onReplay }: TTSControlsProps) {
       </View>
 
       {remainingLabel ? (
-        <TouchableOpacity style={s.timerCountdownRow} onPress={() => setTimerSheetVisible(true)} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={s.timerCountdownRow}
+          onPress={() => setTimerSheetVisible(true)}
+          activeOpacity={0.8}
+        >
           <ClockIcon size={12} color={colors.primary} />
           <Text style={s.timerCountdownText}>
             {t("tts.sleepTimerRemaining", {
@@ -271,10 +272,7 @@ export function TTSControls({ onClose, onReplay }: TTSControlsProps) {
         </TouchableOpacity>
       ) : null}
 
-      <TTSSleepTimerSheet
-        visible={timerSheetVisible}
-        onClose={() => setTimerSheetVisible(false)}
-      />
+      <TTSSleepTimerSheet visible={timerSheetVisible} onClose={() => setTimerSheetVisible(false)} />
     </View>
   );
 }
@@ -405,7 +403,7 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: -2,
     },
     timerCountdownText: {
-      fontSize: 11,
+      fontSize: ui(11),
       color: colors.primary,
       fontWeight: "600",
     },

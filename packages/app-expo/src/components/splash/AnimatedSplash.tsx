@@ -1,3 +1,4 @@
+import { ui } from "@/styles/theme";
 /**
  * AnimatedSplash — animated splash screen.
  *
@@ -156,14 +157,14 @@ const styles = StyleSheet.create({
   },
   title: {
     marginTop: 24,
-    fontSize: 28,
+    fontSize: ui(28),
     fontWeight: "700",
     color: "#F5F5F7",
     letterSpacing: 1.5,
   },
   subtitle: {
     marginTop: 6,
-    fontSize: 13,
+    fontSize: ui(13),
     color: "rgba(245, 245, 247, 0.5)",
     letterSpacing: 0.5,
   },

@@ -1,5 +1,6 @@
 import { DarkModeSvg } from "@/components/DarkModeSvg";
 import { type ThemeMode, useTheme } from "@/styles/ThemeContext";
+import { ui } from "@/styles/theme";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Coffee, Moon, Sun } from "lucide-react-native";
@@ -244,17 +245,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: ui(28),
     fontWeight: "800",
     color: "#0f172a",
     textAlign: "center",
     marginBottom: 8,
   },
-  subtitle: { fontSize: 16, color: "#64748b", textAlign: "center" },
+  subtitle: { fontSize: ui(16), color: "#64748b", textAlign: "center" },
   grid: { gap: 16 },
   card: { borderRadius: 16, borderWidth: 1, padding: 16 },
   cardTitle: {
-    fontSize: 11,
+    fontSize: ui(11),
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 1,
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 4,
   },
-  themeName: { fontSize: 13, fontWeight: "500" },
+  themeName: { fontSize: ui(13), fontWeight: "500" },
   langGrid: { gap: 8 },
   langBtn: {
     flexDirection: "row",
@@ -292,7 +293,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 4,
   },
-  langLabel: { fontSize: 15, fontWeight: "500" },
+  langLabel: { fontSize: ui(15), fontWeight: "500" },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -304,15 +305,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
   },
   backBtn: { paddingVertical: 12, paddingHorizontal: 4 },
-  backText: { fontSize: 16, color: "#64748b", fontWeight: "500" },
+  backText: { fontSize: ui(16), color: "#64748b", fontWeight: "500" },
   rightActions: { flexDirection: "row", gap: 16, alignItems: "center" },
   skipBtn: { paddingVertical: 12 },
-  skipText: { fontSize: 14, color: "#94a3b8", fontWeight: "500" },
+  skipText: { fontSize: ui(14), color: "#94a3b8", fontWeight: "500" },
   nextBtn: {
     backgroundColor: "#6366f1",
     paddingVertical: 14,
     paddingHorizontal: 28,
     borderRadius: 999,
   },
-  nextText: { color: "#ffffff", fontSize: 16, fontWeight: "600" },
+  nextText: { color: "#ffffff", fontSize: ui(16), fontWeight: "600" },
 });

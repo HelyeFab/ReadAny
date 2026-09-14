@@ -2,7 +2,9 @@
  * Theme constants — re-exports dark colors as default for backward compat.
  * Use `useTheme()` from ThemeContext for reactive theme colors.
  */
+import { Dimensions } from "react-native";
 import { darkColors, useTheme } from "./ThemeContext";
+import { classifyViewport, scaleFont, typeScaleFor } from "./viewport";
 export type { ThemeColors } from "./ThemeContext";
 export { useTheme } from "./ThemeContext";
 
@@ -55,7 +57,11 @@ export const radius = {
   full: 9999,
 } as const;
 
-export const fontSize = {
+/**
+ * The type scale as designed, at phone size. Exported so tests and any future
+ * size preference have the unscaled numbers to work from.
+ */
+export const baseFontSize = {
   xs: 12,
   sm: 14,
   base: 16,
@@ -64,6 +70,48 @@ export const fontSize = {
   xl: 22,
   "2xl": 26,
   "3xl": 30,
+} as const;
+
+/**
+ * How much this device's text is scaled up from the phone design — 1 on a
+ * phone, larger on tablets. See `typeScaleFor` for why this exists at all.
+ *
+ * Read once at module load rather than through a hook, because almost every
+ * screen puts these numbers inside a module-level `StyleSheet.create`, which
+ * runs once and cannot react to a hook. A device's physical size does not
+ * change while the app runs, and the scale uses the orientation-independent
+ * shortest/longest sides, so rotation does not change it either.
+ */
+export const uiTypeScale: number = (() => {
+  const { width, height } = Dimensions.get("window");
+  // A zero here means the window was measured before layout; fall back to the
+  // phone scale rather than computing a nonsense one from 0x0.
+  if (!width || !height) return 1;
+  return typeScaleFor(classifyViewport(width, height));
+})();
+
+/**
+ * Scale a one-off size that is not in the type scale.
+ *
+ * Over half the app's text sizes are literals rather than tokens — the library
+ * grid's 13pt book titles, for instance. Wrapping the literal keeps the phone
+ * design exactly as drawn (`ui(13)` is 13 on a phone) while letting it grow on
+ * a tablet. Use it for `lineHeight` as well: scaling a font size and leaving
+ * its line height behind is how text gets clipped.
+ */
+export function ui(size: number): number {
+  return scaleFont(size, uiTypeScale);
+}
+
+export const fontSize = {
+  xs: scaleFont(baseFontSize.xs, uiTypeScale),
+  sm: scaleFont(baseFontSize.sm, uiTypeScale),
+  base: scaleFont(baseFontSize.base, uiTypeScale),
+  md: scaleFont(baseFontSize.md, uiTypeScale),
+  lg: scaleFont(baseFontSize.lg, uiTypeScale),
+  xl: scaleFont(baseFontSize.xl, uiTypeScale),
+  "2xl": scaleFont(baseFontSize["2xl"], uiTypeScale),
+  "3xl": scaleFont(baseFontSize["3xl"], uiTypeScale),
 } as const;
 
 export const fontWeight = {

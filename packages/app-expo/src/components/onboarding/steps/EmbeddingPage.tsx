@@ -1,7 +1,7 @@
 import { DarkModeSvg } from "@/components/DarkModeSvg";
 import { KeyboardAwareScrollView } from "@/components/ui/KeyboardAwareScrollView";
 import { useVectorModelStore } from "@/stores/vector-model-store";
-import { useTheme } from "@/styles/theme";
+import { ui, useTheme } from "@/styles/theme";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { VectorModelConfig } from "@readany/core/types";
@@ -347,13 +347,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: ui(28),
     fontWeight: "800",
     color: "#0f172a",
     textAlign: "center",
     marginBottom: 8,
   },
-  subtitle: { fontSize: 16, color: "#64748b", textAlign: "center" },
+  subtitle: { fontSize: ui(16), color: "#64748b", textAlign: "center" },
   section: { gap: 12 },
   modeCard: {
     flexDirection: "row",
@@ -376,8 +376,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modeContent: { flex: 1, marginLeft: 16 },
-  modeTitle: { fontSize: 16, fontWeight: "600", marginBottom: 2 },
-  modeDesc: { fontSize: 13 },
+  modeTitle: { fontSize: ui(16), fontWeight: "600", marginBottom: 2 },
+  modeDesc: { fontSize: ui(13) },
   remoteSection: { marginTop: 24, gap: 12 },
   addBtn: {
     flexDirection: "row",
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     gap: 8,
   },
-  addBtnText: { fontSize: 14, fontWeight: "600" },
+  addBtnText: { fontSize: ui(14), fontWeight: "600" },
   formCard: {
     padding: 20,
     borderRadius: 16,
@@ -401,15 +401,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  formTitle: { fontSize: 16, fontWeight: "600" },
+  formTitle: { fontSize: ui(16), fontWeight: "600" },
   formField: { gap: 6 },
-  fieldLabel: { fontSize: 12, fontWeight: "500" },
-  fieldHint: { fontSize: 11, lineHeight: 15 },
+  fieldLabel: { fontSize: ui(12), fontWeight: "500" },
+  fieldHint: { fontSize: ui(11), lineHeight: ui(15) },
   fieldInput: {
     padding: 12,
     borderRadius: 10,
     borderWidth: 1,
-    fontSize: 14,
+    fontSize: ui(14),
   },
   saveBtn: {
     padding: 14,
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 4,
   },
-  saveBtnText: { fontSize: 14, fontWeight: "600" },
+  saveBtnText: { fontSize: ui(14), fontWeight: "600" },
   modelItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -426,12 +426,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   modelItemInfo: { flex: 1 },
-  modelItemName: { fontSize: 14, fontWeight: "600" },
-  modelItemMeta: { fontSize: 12, marginTop: 2 },
+  modelItemName: { fontSize: ui(14), fontWeight: "600" },
+  modelItemMeta: { fontSize: ui(12), marginTop: 2 },
   modelItemActions: { flexDirection: "row", alignItems: "center", gap: 12 },
   testBtnSmall: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
-  testBtnText: { fontSize: 12, fontWeight: "600" },
-  emptyText: { fontSize: 14, textAlign: "center", marginTop: 16 },
+  testBtnText: { fontSize: ui(12), fontWeight: "600" },
+  emptyText: { fontSize: ui(14), textAlign: "center", marginTop: 16 },
   footer: {
     flexDirection: "row",
     alignItems: "center",
@@ -441,10 +441,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   backBtn: { padding: 8 },
-  backText: { fontSize: 14, color: "#64748b" },
+  backText: { fontSize: ui(14), color: "#64748b" },
   rightActions: { flexDirection: "row", alignItems: "center", gap: 12 },
   skipBtn: { paddingVertical: 10 },
-  skipText: { fontSize: 14 },
+  skipText: { fontSize: ui(14) },
   nextBtn: {
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -453,5 +453,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
   },
-  nextText: { fontSize: 14, fontWeight: "600" },
+  nextText: { fontSize: ui(14), fontWeight: "600" },
 });

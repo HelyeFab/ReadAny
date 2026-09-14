@@ -5,6 +5,7 @@ import {
   fontWeight,
   radius,
   spacing,
+  ui,
   withOpacity,
 } from "../../../styles/theme";
 
@@ -78,7 +79,7 @@ export const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
       marginTop: 2,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     chevron: { fontSize: fontSize.sm, color: colors.mutedForeground },
 
@@ -131,7 +132,7 @@ export const makeStyles = (colors: ThemeColors) =>
     },
     baseUrlHint: {
       fontSize: fontSize.sm,
-      lineHeight: 20,
+      lineHeight: ui(20),
       color: colors.mutedForeground,
     },
     exactUrlCard: {
@@ -164,7 +165,7 @@ export const makeStyles = (colors: ThemeColors) =>
     previewLabel: {
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     previewValue: {
       fontSize: fontSize.sm,
@@ -229,7 +230,7 @@ export const makeStyles = (colors: ThemeColors) =>
     endpointTestResult: {
       fontSize: fontSize.sm,
       marginTop: spacing.xs,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     endpointTestSuccess: { color: "#16a34a" },
     endpointTestError: { color: colors.destructive },
@@ -237,9 +238,15 @@ export const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.destructive,
       marginTop: spacing.xs,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
-    modelTags: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, maxHeight: 120, overflow: "hidden" },
+    modelTags: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.xs,
+      maxHeight: 120,
+      overflow: "hidden",
+    },
     modelTag: {
       flexDirection: "row",
       alignItems: "center",
@@ -304,7 +311,7 @@ export const makeStyles = (colors: ThemeColors) =>
     sectionDesc: {
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
 
     paramRow: {

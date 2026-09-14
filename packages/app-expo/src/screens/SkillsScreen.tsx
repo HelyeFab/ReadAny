@@ -1,6 +1,6 @@
 import { ChevronLeftIcon, EditIcon, PlusIcon, PuzzleIcon, Trash2Icon } from "@/components/ui/Icon";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
-import { type ThemeColors, fontSize, fontWeight, radius, useColors } from "@/styles/theme";
+import { type ThemeColors, fontSize, fontWeight, radius, ui, useColors } from "@/styles/theme";
 import { useNavigation } from "@react-navigation/native";
 import { builtinSkills } from "@readany/core/ai/skills/builtin-skills";
 import { deleteSkill, getSkills, insertSkill, upsertSkill } from "@readany/core/db";
@@ -441,7 +441,7 @@ const makeStyles = (colors: ThemeColors) =>
       padding: 16,
       marginBottom: 8,
     },
-    skillEmoji: { fontSize: 24 },
+    skillEmoji: { fontSize: ui(24) },
     skillInfo: { flex: 1, minWidth: 0 },
     skillName: { fontSize: fontSize.md, fontWeight: fontWeight.medium, color: colors.foreground },
     skillDesc: { fontSize: fontSize.sm, color: colors.mutedForeground, marginTop: 2 },

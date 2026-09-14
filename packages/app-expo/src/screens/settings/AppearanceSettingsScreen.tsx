@@ -2,7 +2,7 @@ import { BookOpenIcon, CheckIcon, ChevronDownIcon, MoonIcon, SunIcon } from "@/c
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { useTheme } from "@/styles/ThemeContext";
 import type { ThemeMode } from "@/styles/ThemeContext";
-import { fontSize, fontWeight, radius, spacing } from "@/styles/theme";
+import { fontSize, fontWeight, radius, spacing, ui } from "@/styles/theme";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -219,7 +219,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>["colors"]) {
     },
     themeLabel: { fontSize: fontSize.sm },
     checkBadge: { position: "absolute", top: 8, right: 8 },
-    checkMark: { fontSize: 14 },
+    checkMark: { fontSize: ui(14) },
     langRow: {
       flexDirection: "row",
       alignItems: "center",

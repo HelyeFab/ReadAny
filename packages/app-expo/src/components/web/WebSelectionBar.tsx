@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { BookOpenIcon, CopyIcon, SparklesIcon, Volume2Icon, XIcon } from "@/components/ui/Icon";
-import { fontSize as fs, radius, spacing, useColors, withOpacity } from "@/styles/theme";
+import { fontSize as fs, radius, spacing, ui, useColors, withOpacity } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 
 interface Props {
@@ -144,6 +144,6 @@ const makeStyles = (colors: ThemeColors) =>
     },
     actionLabel: {
       color: colors.mutedForeground,
-      fontSize: 10,
+      fontSize: ui(10),
     },
   });

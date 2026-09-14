@@ -1,10 +1,10 @@
-import { useColors, withOpacity } from "@/styles/theme";
+import { ui, useColors, withOpacity } from "@/styles/theme";
 import type { StatsChartBlock } from "@readany/core/stats";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
+import type { StatsCopy } from "./StatsSections";
 import { makeStyles } from "./stats-styles";
 import { formatCompactMinutes } from "./stats-utils";
-import type { StatsCopy } from "./StatsSections";
 
 type MonthCell = {
   dateKey: string;
@@ -66,7 +66,7 @@ function buildMonthGrid(
     }
 
     const dateKey = toDateKey(date);
-    const value = inCurrentMonth ? valueMap.get(dateKey) ?? 0 : 0;
+    const value = inCurrentMonth ? (valueMap.get(dateKey) ?? 0) : 0;
     cells.push({
       dateKey,
       dayOfMonth,
@@ -231,7 +231,7 @@ export function MonthHeatmap({
                 >
                   <Text
                     style={{
-                      fontSize: 12,
+                      fontSize: ui(12),
                       fontWeight: "700",
                       color: cell.inCurrentMonth
                         ? cell.intensity >= 3
@@ -315,7 +315,7 @@ export function MonthHeatmap({
           <Text style={s.legendText}>{copy.heatmapLegendHigh}</Text>
         </View>
 
-        <Text style={{ fontSize: 11, color: withOpacity(colors.foreground, 0.6) }}>
+        <Text style={{ fontSize: ui(11), color: withOpacity(colors.foreground, 0.6) }}>
           {copy.activeDaysSummary(chart.data.filter((item) => item.value > 0).length)}
         </Text>
       </View>

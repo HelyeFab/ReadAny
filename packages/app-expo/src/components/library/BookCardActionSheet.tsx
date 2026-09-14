@@ -8,7 +8,15 @@ import {
   Trash2Icon,
 } from "@/components/ui/Icon";
 import { useLibraryStore } from "@/stores/library-store";
-import { type ThemeColors, fontSize, fontWeight, radius, spacing, useColors } from "@/styles/theme";
+import {
+  type ThemeColors,
+  fontSize,
+  fontWeight,
+  radius,
+  spacing,
+  ui,
+  useColors,
+} from "@/styles/theme";
 import type { Book } from "@readany/core/types";
 import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -338,7 +346,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     confirmDescription: {
       fontSize: fontSize.sm,
-      lineHeight: 20,
+      lineHeight: ui(20),
       color: colors.mutedForeground,
     },
     checkboxRow: {
@@ -373,7 +381,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     checkboxHint: {
       fontSize: fontSize.xs,
-      lineHeight: 18,
+      lineHeight: ui(18),
       color: colors.mutedForeground,
     },
     confirmActions: {

@@ -25,6 +25,7 @@ import {
   fontWeight,
   radius,
   spacing,
+  ui,
   useColors,
 } from "../../styles/theme";
 import { SettingsHeader } from "./SettingsHeader";
@@ -81,149 +82,153 @@ export default function TranslationSettingsScreen() {
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { alignItems: "center" }]}
       >
-          <View style={[styles.contentColumn, { width: "100%", maxWidth: layout.centeredContentWidth }]}>
-            {/* Provider */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t("translation.engine", "翻译引擎")}</Text>
-              <View style={styles.listCard}>
-                {TRANSLATOR_PROVIDERS.map((p, idx) => (
-                  <TouchableOpacity
-                    key={p.id}
-                    style={[
-                      styles.listItem,
-                      idx < TRANSLATOR_PROVIDERS.length - 1 && styles.listItemBorder,
-                    ]}
-                    onPress={() => handleProviderChange(p.id, p.labelKey)}
-                    activeOpacity={0.7}
-                  >
-                    <View>
-                      <Text style={styles.listItemText}>{t(p.labelKey)}</Text>
-                      {p.id === "ai" && (
-                        <Text style={styles.listItemSub}>
-                          {t("translation.useAIModel", {
-                            model: selectedModel || "AI",
-                          })}
-                        </Text>
-                      )}
-                      {p.id === "microsoft" && (
-                        <Text style={styles.listItemSub}>
-                          {t("translation.microsoftHint", "免费，无需配置")}
-                        </Text>
-                      )}
-                    </View>
-                    {translationConfig.provider.id === p.id && <Text style={styles.check}>✓</Text>}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* DeepL API Key */}
-            {translationConfig.provider.id === "deepl" && (
-              <View style={[styles.section, styles.sectionSpaced]}>
-                <Text style={styles.sectionTitle}>{t("translation.deeplApiKey", "DeepL API Key")}</Text>
-                <PasswordInput
-                  style={styles.apiKeyInput}
-                  value={translationConfig.provider.apiKey || ""}
-                  onChangeText={(v) =>
-                    updateTranslationConfig({
-                      provider: {
-                        ...translationConfig.provider,
-                        apiKey: v,
-                      },
-                    })
-                  }
-                  placeholder={t("translation.deeplApiKeyPlaceholder", "输入 DeepL API Key")}
-                  placeholderTextColor={colors.mutedForeground}
-                />
-                <Text style={styles.fieldHint}>{t("settings.deeplKeyHint", "DeepL API 密钥")}</Text>
-
-                <Text style={[styles.sectionTitle, styles.subSectionTitle]}>
-                  {t("translation.deeplBaseUrl", "DeepL 请求地址")}
-                </Text>
-                <TextInput
-                  style={styles.apiKeyInput}
-                  value={translationConfig.provider.baseUrl || ""}
-                  onChangeText={(v) =>
-                    updateTranslationConfig({
-                      provider: {
-                        ...translationConfig.provider,
-                        baseUrl: v,
-                      },
-                    })
-                  }
-                  placeholder={t(
-                    "translation.deeplBaseUrlPlaceholder",
-                    "https://api-free.deepl.com/v2",
-                  )}
-                  placeholderTextColor={colors.mutedForeground}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <Text style={styles.fieldHint}>
-                  {t(
-                    "translation.deeplBaseUrlHint",
-                    "填写基础地址，也支持直接粘贴完整的 /translate 地址。",
-                  )}
-                </Text>
-              </View>
-            )}
-
-            {/* AI Model Selection */}
-            {isAIProvider && (
-              <View style={[styles.section, styles.sectionSpaced]}>
-                <Text style={styles.sectionTitle}>{t("settings.translationModel", "翻译模型")}</Text>
-                {endpointsWithModels.length > 0 ? (
-                  <TouchableOpacity
-                    style={styles.modelSelector}
-                    onPress={() => totalModels > 1 && setShowModelPicker(true)}
-                    activeOpacity={totalModels > 1 ? 0.7 : 1}
-                  >
-                    <Text style={styles.modelSelectorText} numberOfLines={1}>
-                      {selectedModel || t("settings.selectModel", "选择模型")}
-                    </Text>
-                    {totalModels > 1 && <Text style={styles.chevron}>▾</Text>}
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.modelSelector}>
-                    <Text style={styles.modelSelectorPlaceholder}>
-                      {t("settings.noModelsFetched", "未获取到模型")}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* Target Language */}
-            <View style={[styles.section, styles.sectionSpaced]}>
-              <Text style={styles.sectionTitle}>{t("translation.targetLanguage", "目标语言")}</Text>
-              <View style={[styles.listCard, { maxHeight: 320 }]}>
-                <ScrollView nestedScrollEnabled>
-                  {Object.entries(TRANSLATOR_LANGS).map(([code, name]) => (
-                    <TouchableOpacity
-                      key={code}
-                      style={styles.langItem}
-                      onPress={() =>
-                        updateTranslationConfig({
-                          targetLang: code as TranslationTargetLang,
-                        })
-                      }
-                      activeOpacity={0.7}
-                    >
-                      <Text
-                        style={[
-                          styles.langText,
-                          translationConfig.targetLang === code && styles.langTextActive,
-                        ]}
-                      >
-                        {name}
+        <View
+          style={[styles.contentColumn, { width: "100%", maxWidth: layout.centeredContentWidth }]}
+        >
+          {/* Provider */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t("translation.engine", "翻译引擎")}</Text>
+            <View style={styles.listCard}>
+              {TRANSLATOR_PROVIDERS.map((p, idx) => (
+                <TouchableOpacity
+                  key={p.id}
+                  style={[
+                    styles.listItem,
+                    idx < TRANSLATOR_PROVIDERS.length - 1 && styles.listItemBorder,
+                  ]}
+                  onPress={() => handleProviderChange(p.id, p.labelKey)}
+                  activeOpacity={0.7}
+                >
+                  <View>
+                    <Text style={styles.listItemText}>{t(p.labelKey)}</Text>
+                    {p.id === "ai" && (
+                      <Text style={styles.listItemSub}>
+                        {t("translation.useAIModel", {
+                          model: selectedModel || "AI",
+                        })}
                       </Text>
-                      {translationConfig.targetLang === code && <Text style={styles.check}>✓</Text>}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
+                    )}
+                    {p.id === "microsoft" && (
+                      <Text style={styles.listItemSub}>
+                        {t("translation.microsoftHint", "免费，无需配置")}
+                      </Text>
+                    )}
+                  </View>
+                  {translationConfig.provider.id === p.id && <Text style={styles.check}>✓</Text>}
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
+
+          {/* DeepL API Key */}
+          {translationConfig.provider.id === "deepl" && (
+            <View style={[styles.section, styles.sectionSpaced]}>
+              <Text style={styles.sectionTitle}>
+                {t("translation.deeplApiKey", "DeepL API Key")}
+              </Text>
+              <PasswordInput
+                style={styles.apiKeyInput}
+                value={translationConfig.provider.apiKey || ""}
+                onChangeText={(v) =>
+                  updateTranslationConfig({
+                    provider: {
+                      ...translationConfig.provider,
+                      apiKey: v,
+                    },
+                  })
+                }
+                placeholder={t("translation.deeplApiKeyPlaceholder", "输入 DeepL API Key")}
+                placeholderTextColor={colors.mutedForeground}
+              />
+              <Text style={styles.fieldHint}>{t("settings.deeplKeyHint", "DeepL API 密钥")}</Text>
+
+              <Text style={[styles.sectionTitle, styles.subSectionTitle]}>
+                {t("translation.deeplBaseUrl", "DeepL 请求地址")}
+              </Text>
+              <TextInput
+                style={styles.apiKeyInput}
+                value={translationConfig.provider.baseUrl || ""}
+                onChangeText={(v) =>
+                  updateTranslationConfig({
+                    provider: {
+                      ...translationConfig.provider,
+                      baseUrl: v,
+                    },
+                  })
+                }
+                placeholder={t(
+                  "translation.deeplBaseUrlPlaceholder",
+                  "https://api-free.deepl.com/v2",
+                )}
+                placeholderTextColor={colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <Text style={styles.fieldHint}>
+                {t(
+                  "translation.deeplBaseUrlHint",
+                  "填写基础地址，也支持直接粘贴完整的 /translate 地址。",
+                )}
+              </Text>
+            </View>
+          )}
+
+          {/* AI Model Selection */}
+          {isAIProvider && (
+            <View style={[styles.section, styles.sectionSpaced]}>
+              <Text style={styles.sectionTitle}>{t("settings.translationModel", "翻译模型")}</Text>
+              {endpointsWithModels.length > 0 ? (
+                <TouchableOpacity
+                  style={styles.modelSelector}
+                  onPress={() => totalModels > 1 && setShowModelPicker(true)}
+                  activeOpacity={totalModels > 1 ? 0.7 : 1}
+                >
+                  <Text style={styles.modelSelectorText} numberOfLines={1}>
+                    {selectedModel || t("settings.selectModel", "选择模型")}
+                  </Text>
+                  {totalModels > 1 && <Text style={styles.chevron}>▾</Text>}
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.modelSelector}>
+                  <Text style={styles.modelSelectorPlaceholder}>
+                    {t("settings.noModelsFetched", "未获取到模型")}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Target Language */}
+          <View style={[styles.section, styles.sectionSpaced]}>
+            <Text style={styles.sectionTitle}>{t("translation.targetLanguage", "目标语言")}</Text>
+            <View style={[styles.listCard, { maxHeight: 320 }]}>
+              <ScrollView nestedScrollEnabled>
+                {Object.entries(TRANSLATOR_LANGS).map(([code, name]) => (
+                  <TouchableOpacity
+                    key={code}
+                    style={styles.langItem}
+                    onPress={() =>
+                      updateTranslationConfig({
+                        targetLang: code as TranslationTargetLang,
+                      })
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.langText,
+                        translationConfig.targetLang === code && styles.langTextActive,
+                      ]}
+                    >
+                      {name}
+                    </Text>
+                    {translationConfig.targetLang === code && <Text style={styles.check}>✓</Text>}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </View>
       </KeyboardAwareScrollView>
 
       {/* Model Picker Modal */}
@@ -323,10 +328,10 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
       marginTop: 2,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     check: {
-      fontSize: 14,
+      fontSize: ui(14),
       color: colors.primary,
     },
     apiKeyInput: {
@@ -343,7 +348,7 @@ const makeStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.mutedForeground,
       marginTop: 6,
-      lineHeight: 20,
+      lineHeight: ui(20),
     },
     subSectionTitle: {
       marginTop: 16,
@@ -385,7 +390,7 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.mutedForeground,
     },
     chevron: {
-      fontSize: 14,
+      fontSize: ui(14),
       color: colors.mutedForeground,
       marginLeft: 8,
     },

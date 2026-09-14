@@ -1,12 +1,3 @@
-/**
- * The library's own menu.
- *
- * The header had grown to six unlabelled icons, which is how folders stayed
- * hidden for months: nothing said what any of them did. One entry point, with
- * words next to the icons, and the state each option is in shown on the right.
- */
-import { Modal, Pressable, Text, TouchableOpacity, View } from "react-native";
-import { useTranslation } from "react-i18next";
 import {
   FolderPlusIcon,
   LayersIcon,
@@ -15,7 +6,16 @@ import {
   SearchIcon,
   SortAscIcon,
 } from "@/components/ui/Icon";
-import { radius, spacing, useColors } from "@/styles/theme";
+import { radius, spacing, ui, useColors } from "@/styles/theme";
+import { useTranslation } from "react-i18next";
+/**
+ * The library's own menu.
+ *
+ * The header had grown to six unlabelled icons, which is how folders stayed
+ * hidden for months: nothing said what any of them did. One entry point, with
+ * words next to the icons, and the state each option is in shown on the right.
+ */
+import { Modal, Pressable, Text, TouchableOpacity, View } from "react-native";
 
 interface Props {
   visible: boolean;
@@ -120,9 +120,11 @@ export function LibraryMenuSheet({
             }}
           >
             <item.Icon size={18} color={colors.mutedForeground} />
-            <Text style={{ flex: 1, fontSize: 15, color: colors.foreground }}>{item.label}</Text>
+            <Text style={{ flex: 1, fontSize: ui(15), color: colors.foreground }}>
+              {item.label}
+            </Text>
             {item.value ? (
-              <Text style={{ fontSize: 13, color: colors.mutedForeground }}>{item.value}</Text>
+              <Text style={{ fontSize: ui(13), color: colors.mutedForeground }}>{item.value}</Text>
             ) : null}
           </TouchableOpacity>
         ))}

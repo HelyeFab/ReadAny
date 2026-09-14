@@ -1,8 +1,8 @@
 import { DarkModeSvg } from "@/components/DarkModeSvg";
-import { useTheme } from "@/styles/theme";
+import { useSettingsStore } from "@/stores";
+import { ui, useTheme } from "@/styles/theme";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useSettingsStore } from "@/stores";
 import { Bot, Languages, Search } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -136,12 +136,12 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   iconContainer: { marginBottom: 24 },
-  title: { fontSize: 28, fontWeight: "800", textAlign: "center", marginBottom: 12 },
+  title: { fontSize: ui(28), fontWeight: "800", textAlign: "center", marginBottom: 12 },
   subtitle: {
-    fontSize: 16,
+    fontSize: ui(16),
     textAlign: "center",
     marginBottom: 32,
-    lineHeight: 24,
+    lineHeight: ui(24),
     paddingHorizontal: 12,
   },
   features: { width: "100%", marginBottom: 24 },
@@ -155,8 +155,8 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   featureText: { flex: 1 },
-  featureTitle: { fontSize: 15, fontWeight: "600", marginBottom: 4 },
-  featureDesc: { fontSize: 13, lineHeight: 18 },
+  featureTitle: { fontSize: ui(15), fontWeight: "600", marginBottom: 4 },
+  featureDesc: { fontSize: ui(13), lineHeight: ui(18) },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   skipBtn: { paddingVertical: 12, paddingHorizontal: 16 },
-  skipText: { fontSize: 16, fontWeight: "500" },
+  skipText: { fontSize: ui(16), fontWeight: "500" },
   nextBtn: { paddingVertical: 14, paddingHorizontal: 28, borderRadius: 999 },
-  nextText: { fontSize: 16, fontWeight: "600" },
+  nextText: { fontSize: ui(16), fontWeight: "600" },
 });

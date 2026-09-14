@@ -1,10 +1,11 @@
+import { ui } from "@/styles/theme";
 /**
  * ReadingProgressSlider — A draggable progress slider for the reader.
  *
  * Uses pageX (absolute screen coordinates) for reliable tracking on iOS.
  * Debounces seek at 100ms, with cooldown to prevent snap-back.
  */
-import React, { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Animated, PanResponder, StyleSheet, Text, View } from "react-native";
 
 interface Props {
@@ -135,7 +136,10 @@ export function ReadingProgressSlider({
       >
         <View style={[styles.track, { backgroundColor: trackColor }]}>
           <View
-            style={[styles.fill, { backgroundColor: accentColor, width: `${displayProgress * 100}%` }]}
+            style={[
+              styles.fill,
+              { backgroundColor: accentColor, width: `${displayProgress * 100}%` },
+            ]}
           />
         </View>
         <Animated.View
@@ -162,7 +166,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   label: {
-    fontSize: 12,
+    fontSize: ui(12),
     fontWeight: "600",
     fontVariant: ["tabular-nums"],
     minWidth: 36,

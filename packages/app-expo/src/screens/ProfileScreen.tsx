@@ -33,6 +33,7 @@ import {
   fontSize,
   fontWeight,
   radius,
+  ui,
   useColors,
   withOpacity,
 } from "@/styles/theme";
@@ -292,7 +293,7 @@ function MiniHeatmap({ dailyStats }: { dailyStats: DailyStats[] }) {
         >
           <Text
             style={{
-              fontSize: 12,
+              fontSize: ui(12),
               color: themeColors.cardForeground,
               fontWeight: "500",
               textAlign: "center",
@@ -725,23 +726,23 @@ const makeStyles = (colors: ThemeColors) =>
     },
     statCardTitle: {
       flex: 1,
-      fontSize: 11,
-      lineHeight: 16,
+      fontSize: ui(11),
+      lineHeight: ui(16),
       fontWeight: fontWeight.medium,
       color: withOpacity(colors.mutedForeground, 0.8),
     },
     statCardBody: { flexDirection: "row", alignItems: "baseline", gap: 4 },
     statCardValue: {
       flexShrink: 1,
-      fontSize: 25,
-      lineHeight: 32,
+      fontSize: ui(25),
+      lineHeight: ui(32),
       fontWeight: fontWeight.bold,
       color: colors.foreground,
       letterSpacing: -0.8,
     },
     statCardUnit: {
-      fontSize: 12,
-      lineHeight: 18,
+      fontSize: ui(12),
+      lineHeight: ui(18),
       color: withOpacity(colors.mutedForeground, 0.78),
       fontWeight: fontWeight.medium,
     },
@@ -749,8 +750,8 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 6,
     },
     statCardMetaText: {
-      fontSize: 11,
-      lineHeight: 16,
+      fontSize: ui(11),
+      lineHeight: ui(16),
       color: withOpacity(colors.mutedForeground, 0.72),
     },
     statCardMetaLabel: {
@@ -807,7 +808,7 @@ const makeStyles = (colors: ThemeColors) =>
       gap: 4,
       marginTop: 8,
     },
-    heatmapLegendText: { fontSize: 9, color: colors.mutedForeground },
+    heatmapLegendText: { fontSize: ui(9), color: colors.mutedForeground },
     heatmapLegendCell: { width: 8, height: 8, borderRadius: 2 },
     // Menu
     menuSection: { paddingHorizontal: 16, marginTop: 16 },

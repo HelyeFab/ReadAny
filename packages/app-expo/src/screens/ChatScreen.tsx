@@ -67,6 +67,7 @@ import {
   fontSize as fs,
   fontWeight as fw,
   radius,
+  ui,
   useColors,
   useTheme,
   withOpacity,
@@ -714,7 +715,7 @@ const makeStyles = (
     },
     suggestionText: {
       fontSize: fs.xs,
-      lineHeight: 16,
+      lineHeight: ui(16),
       color: colors.foreground,
     },
 
@@ -783,7 +784,7 @@ const makeStyles = (
       color: colors.mutedForeground,
     },
     sectionLabel: {
-      fontSize: 12,
+      fontSize: ui(12),
       fontWeight: fw.medium,
       color: colors.mutedForeground,
       paddingHorizontal: 10,
@@ -819,12 +820,12 @@ const makeStyles = (
       color: colors.primary,
     },
     threadTime: {
-      fontSize: 11,
+      fontSize: ui(11),
       color: colors.mutedForeground,
       opacity: 0.5,
     },
     threadPreview: {
-      fontSize: 13,
+      fontSize: ui(13),
       color: colors.mutedForeground,
     },
     threadDeleteBtn: {

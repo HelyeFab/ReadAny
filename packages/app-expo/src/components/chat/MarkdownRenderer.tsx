@@ -1,7 +1,7 @@
 import { renderRubyText } from "@/components/chat/RubyText";
 import { MermaidView } from "@/components/common/MermaidView";
 import { hasRubyParens } from "@/lib/ruby/parse-ruby-parens";
-import { fontSize as fs, radius, useColors } from "@/styles/theme";
+import { fontSize as fs, radius, ui, useColors } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 import type { CitationPart } from "@readany/core/types/message";
 import * as Clipboard from "expo-clipboard";
@@ -59,7 +59,7 @@ function CodeBlockWithCopy({
           zIndex: 10,
         }}
       >
-        <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+        <Text style={{ fontSize: ui(12), color: colors.mutedForeground }}>
           {t("common.copy", "复制")}
         </Text>
       </TouchableOpacity>
@@ -128,7 +128,7 @@ function CitationLink({
       <Text
         style={{
           color: colors.primary,
-          fontSize: 8,
+          fontSize: ui(8),
           marginLeft: 1,
           lineHeight: fs.sm * 1.4,
         }}
@@ -263,7 +263,7 @@ const makeMarkdownStyles = (colors: ThemeColors) =>
       fontSize: fs.sm,
       // Leaves room in the leading for the stacked readings RubyText draws, so
       // a line carrying furigana is no taller than a plain one.
-      lineHeight: 28,
+      lineHeight: ui(28),
     },
     text: {
       color: colors.foreground,
@@ -295,7 +295,7 @@ const makeMarkdownStyles = (colors: ThemeColors) =>
     paragraph: {
       color: colors.foreground,
       fontSize: fs.sm,
-      lineHeight: 28,
+      lineHeight: ui(28),
       marginBottom: 8,
       marginTop: 0,
     },
