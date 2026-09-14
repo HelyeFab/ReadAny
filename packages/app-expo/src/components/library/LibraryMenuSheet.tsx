@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/Icon";
 import { radius, spacing, ui, useColors } from "@/styles/theme";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 /**
  * The library's own menu.
  *
@@ -62,6 +63,8 @@ export function LibraryMenuSheet({
   const layoutIcon =
     viewMode === "list" ? ListIcon : viewMode === "shelf" ? LibraryIcon : LayoutGridIcon;
 
+  const insets = useSafeAreaInsets();
+
   const items: {
     key: string;
     label: string;
@@ -114,7 +117,12 @@ export function LibraryMenuSheet({
           backgroundColor: colors.card,
           borderTopLeftRadius: radius.lg,
           borderTopRightRadius: radius.lg,
-          paddingVertical: spacing.sm,
+          paddingTop: spacing.sm,
+          // The app draws edge to edge on Android 15+, so the system
+          // navigation bar sits ON the window. Without this the last rows are
+          // under it — invisible and untappable, which is how "Layout" went
+          // missing on a device with a tall button bar.
+          paddingBottom: Math.max(spacing.sm, insets.bottom + spacing.sm),
         }}
       >
         {items.map((item) => (
