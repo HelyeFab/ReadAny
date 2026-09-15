@@ -181,7 +181,10 @@
     "shelfCount": "{{count}} books",
     "generateCovers": "Generate PDF covers",
     "generateCoversDone": "{{count}} covers made, {{failed}} could not be read.",
-    "generateCoversProgress": "Making covers… {{done}}/{{total}}"
+    "generateCoversProgress": "Making covers… {{done}}/{{total}}",
+    "identifyBooks": "Identify books",
+    "identifyBooksDone": "{{count}} books identified, {{failed}} could not be read. {{duplicates}} are a second copy of a book already here.",
+    "identifyBooksProgress": "Identifying… {{done}}/{{total}} — tap to stop"
   },
   "home": {
     "library": "Library",

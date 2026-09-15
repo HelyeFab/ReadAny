@@ -1,4 +1,5 @@
 import {
+  CopyIcon,
   FolderPlusIcon,
   LayersIcon,
   LayoutGridIcon,
@@ -29,6 +30,9 @@ interface Props {
   /** How many PDFs could be given a cover; the row hides when none can. */
   coverlessPdfCount?: number;
   onGenerateCovers?: () => void;
+  /** How many books have no content hash yet; the row hides when none do. */
+  unidentifiedBookCount?: number;
+  onIdentifyBooks?: () => void;
   onClose: () => void;
   onSearch: () => void;
   onSort: () => void;
@@ -44,6 +48,8 @@ export function LibraryMenuSheet({
   canCreateFolder,
   coverlessPdfCount = 0,
   onGenerateCovers,
+  unidentifiedBookCount = 0,
+  onIdentifyBooks,
   onClose,
   onSearch,
   onSort,
@@ -113,6 +119,16 @@ export function LibraryMenuSheet({
       value: String(coverlessPdfCount),
       Icon: SparklesIcon,
       onPress: run(onGenerateCovers),
+    });
+  }
+
+  if (unidentifiedBookCount > 0 && onIdentifyBooks) {
+    items.push({
+      key: "identifyBooks",
+      label: t("library.identifyBooks", "Identify books"),
+      value: String(unidentifiedBookCount),
+      Icon: CopyIcon,
+      onPress: run(onIdentifyBooks),
     });
   }
 

@@ -181,7 +181,10 @@
     "shelfCount": "{{count}} 本",
     "generateCovers": "生成 PDF 封面",
     "generateCoversDone": "已生成 {{count}} 个封面，{{failed}} 个无法读取。",
-    "generateCoversProgress": "正在生成封面… {{done}}/{{total}}"
+    "generateCoversProgress": "正在生成封面… {{done}}/{{total}}",
+    "identifyBooks": "识别书籍",
+    "identifyBooksDone": "已识别 {{count}} 本，{{failed}} 本无法读取。其中 {{duplicates}} 本与书架上已有的书重复。",
+    "identifyBooksProgress": "正在识别… {{done}}/{{total}} — 点按停止"
   },
   "home": {
     "library": "书库",

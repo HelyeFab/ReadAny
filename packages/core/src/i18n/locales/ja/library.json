@@ -160,7 +160,10 @@
     "gridView": "グリッド表示",
     "menu": "ライブラリの操作",
     "folderView": "フォルダ",
-    "layout": "表示"
+    "layout": "表示",
+    "identifyBooks": "本を識別",
+    "identifyBooksDone": "{{count}} 冊を識別しました。{{failed}} 冊は読み込めませんでした。{{duplicates}} 冊はすでにある本の重複です。",
+    "identifyBooksProgress": "識別中… {{done}}/{{total}} — タップで停止"
   },
   "home": {
     "library": "ライブラリ",

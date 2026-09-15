@@ -160,7 +160,10 @@
     "gridView": "Vue grille",
     "menu": "Options de la bibliothèque",
     "folderView": "Dossiers",
-    "layout": "Disposition"
+    "layout": "Disposition",
+    "identifyBooks": "Identifier les livres",
+    "identifyBooksDone": "{{count}} livres identifiés, {{failed}} illisibles. {{duplicates}} sont un double d'un livre déjà présent.",
+    "identifyBooksProgress": "Identification… {{done}}/{{total}} — touchez pour arrêter"
   },
   "home": {
     "library": "Bibliothèque",

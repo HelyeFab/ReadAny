@@ -83,7 +83,14 @@ function shouldConfirmReimportCandidate(
   return titleMismatch || (formatMismatch && authorMismatch);
 }
 
-function isLikelyRelativeAppPath(path: string): boolean {
+/**
+ * Whether a stored path is relative to the app's data directory.
+ *
+ * Book records hold `books/<id>.epub` for files the app imported and an
+ * absolute or scheme-prefixed path for anything it merely points at, so
+ * anything that has to touch the file itself has to tell the two apart first.
+ */
+export function isLikelyRelativeAppPath(path: string): boolean {
   if (!path) return false;
   return !/^(\/|file:\/\/|content:\/\/|ph:\/\/|asset:\/\/|https?:\/\/)/i.test(path);
 }
