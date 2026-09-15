@@ -74,6 +74,8 @@
     "volumeButtonsPageTurnDesc": "While reading, volume keys turn pages",
     "smoothReading": "Smooth Reading",
     "smoothReadingDesc": "Enable page-turn transition animation and scroll inertia. Disable for better performance on low-end devices",
+    "bionicReading": "Bionic reading",
+    "bionicReadingDesc": "Embolden the start of each word as a landing point for the eye. Latin script only — Japanese and Chinese are left as they are.",
     "followSystemFontScale": "Follow System Font Scale",
     "followSystemFontScaleDesc": "Auto-scale by the OS accessibility font size",
     "fixedLayoutNotice": "PDF is a fixed layout format. Font and layout settings are not available.",

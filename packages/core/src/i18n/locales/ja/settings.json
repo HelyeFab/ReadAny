@@ -74,6 +74,8 @@
     "volumeButtonsPageTurnDesc": "読書中は音量ボタンでページ送りします",
     "smoothReading": "スムーズリーディング",
     "smoothReadingDesc": "ページめくりアニメーションとスクロール慣性を有効化。低スペック端末ではオフにすると快適です",
+    "bionicReading": "バイオニックリーディング",
+    "bionicReadingDesc": "単語の先頭を太字にして視線の着地点にします。ラテン文字のみで、日本語と中国語はそのままです。",
     "followSystemFontScale": "システムフォントサイズに従う",
     "followSystemFontScaleDesc": "OSのアクセシビリティフォントサイズで自動調整",
     "fixedLayoutNotice": "PDFは固定レイアウト形式です。フォントとレイアウト設定は利用できません。",
