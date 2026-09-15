@@ -92,6 +92,7 @@
     "passwordNotFound": "Sync password not found — please reconfigure",
     "removeFromGroup": "Remove from group",
     "select": "Select",
+    "selectBooks": "Select books",
     "selectAll": "Select all",
     "selectedCount": "{{count}} selected",
     "sort": "Sort",

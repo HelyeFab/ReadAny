@@ -92,6 +92,7 @@
     "passwordNotFound": "未找到同步密码，请重新配置",
     "removeFromGroup": "移出分组",
     "select": "选择",
+    "selectBooks": "选择书籍",
     "selectAll": "全选",
     "selectedCount": "已选 {{count}} 本",
     "sort": "排序",

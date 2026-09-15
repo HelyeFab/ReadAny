@@ -92,6 +92,7 @@
     "passwordNotFound": "同期パスワードが見つかりません — 再設定してください",
     "removeFromGroup": "グループから削除",
     "select": "選択",
+    "selectBooks": "本を選択",
     "selectAll": "すべて選択",
     "selectedCount": "{{count}}件選択中",
     "sort": "並び替え",

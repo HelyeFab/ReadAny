@@ -30,6 +30,9 @@ interface ShelfTileProps {
   width: number;
   onOpen: (book: Book) => void;
   onLongPress?: (book: Book) => void;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: (book: Book) => void;
 }
 
 export const ShelfTile = memo(function ShelfTile({
@@ -37,6 +40,9 @@ export const ShelfTile = memo(function ShelfTile({
   width,
   onOpen,
   onLongPress,
+  isSelectionMode = false,
+  isSelected = false,
+  onSelect,
 }: ShelfTileProps) {
   const colors = useColors();
   const [uri, setUri] = useState<string | undefined>();
@@ -77,12 +83,17 @@ export const ShelfTile = memo(function ShelfTile({
   return (
     <TouchableOpacity
       activeOpacity={0.76}
-      onPress={() => onOpen(book)}
-      onLongPress={onLongPress ? () => onLongPress(book) : undefined}
+      onPress={() => isSelectionMode ? onSelect?.(book) : onOpen(book)}
+      onLongPress={!isSelectionMode && onLongPress ? () => onLongPress(book) : undefined}
       delayLongPress={400}
       accessibilityLabel={book.meta.title}
       style={[styles.tile, { width, height, borderColor: colors.border }]}
     >
+      {isSelectionMode && (
+        <View style={[styles.selectionBadge, { backgroundColor: isSelected ? colors.primary : "rgba(0,0,0,0.55)" }]}>
+          <Text style={styles.selectionMark}>{isSelected ? "✓" : ""}</Text>
+        </View>
+      )}
       {showCover ? (
         <Image
           source={{ uri }}
@@ -116,6 +127,8 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
+  selectionBadge: { position: "absolute", top: 5, left: 5, zIndex: 2, width: 24, height: 24, borderRadius: 12, borderWidth: 1, borderColor: "white", alignItems: "center", justifyContent: "center" },
+  selectionMark: { color: "white", fontSize: 16, lineHeight: 20 },
   cover: { width: "100%", height: "100%" },
   fallback: {
     width: "100%",

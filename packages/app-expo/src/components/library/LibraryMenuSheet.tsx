@@ -6,6 +6,7 @@ import {
   LibraryIcon,
   ListIcon,
   SearchIcon,
+  CheckCheckIcon,
   SortAscIcon,
   SparklesIcon,
 } from "@/components/ui/Icon";
@@ -27,6 +28,7 @@ interface Props {
   /** Current layout, so the row can name it and show its icon. */
   viewMode: "grid" | "list" | "shelf";
   canCreateFolder: boolean;
+  canSelectBooks: boolean;
   /** How many PDFs could be given a cover; the row hides when none can. */
   coverlessPdfCount?: number;
   onGenerateCovers?: () => void;
@@ -35,6 +37,7 @@ interface Props {
   onIdentifyBooks?: () => void;
   onClose: () => void;
   onSearch: () => void;
+  onSelectBooks: () => void;
   onSort: () => void;
   onToggleFolders: () => void;
   onToggleListView: () => void;
@@ -46,12 +49,14 @@ export function LibraryMenuSheet({
   isGroupView,
   viewMode,
   canCreateFolder,
+  canSelectBooks,
   coverlessPdfCount = 0,
   onGenerateCovers,
   unidentifiedBookCount = 0,
   onIdentifyBooks,
   onClose,
   onSearch,
+  onSelectBooks,
   onSort,
   onToggleFolders,
   onToggleListView,
@@ -84,6 +89,12 @@ export function LibraryMenuSheet({
     Icon: typeof SearchIcon;
     onPress: () => void;
   }[] = [
+    ...(canSelectBooks ? [{
+      key: "selectBooks",
+      label: t("library.selectBooks", "Select books"),
+      Icon: CheckCheckIcon,
+      onPress: run(onSelectBooks),
+    }] : []),
     {
       key: "search",
       label: t("library.searchBooks", "Search"),

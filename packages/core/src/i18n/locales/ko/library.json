@@ -92,6 +92,7 @@
     "passwordNotFound": "동기화 비밀번호를 찾을 수 없어요 — 다시 설정해주세요",
     "removeFromGroup": "그룹에서 제거",
     "select": "선택",
+    "selectBooks": "책 선택",
     "selectAll": "전체 선택",
     "selectedCount": "{{count}}개 선택됨",
     "sort": "정렬",

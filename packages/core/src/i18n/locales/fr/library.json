@@ -92,6 +92,7 @@
     "passwordNotFound": "Mot de passe de synchronisation introuvable — veuillez reconfigurer",
     "removeFromGroup": "Retirer du groupe",
     "select": "Sélectionner",
+    "selectBooks": "Sélectionner des livres",
     "selectAll": "Tout sélectionner",
     "selectedCount": "{{count}} sélectionné(s)",
     "sort": "Trier",

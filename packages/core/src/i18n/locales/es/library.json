@@ -92,6 +92,7 @@
     "passwordNotFound": "Contraseña de sincronización no encontrada — reconfigura",
     "removeFromGroup": "Quitar del grupo",
     "select": "Seleccionar",
+    "selectBooks": "Seleccionar libros",
     "selectAll": "Seleccionar todo",
     "selectedCount": "{{count}} seleccionado(s)",
     "sort": "Ordenar",
