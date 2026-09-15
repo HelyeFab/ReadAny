@@ -571,6 +571,9 @@ importers:
       i18next:
         specifier: ^25.8.13
         version: 25.8.18(typescript@5.9.3)
+      markdown-it:
+        specifier: 14.1.1
+        version: 14.1.1
       pdfjs-dist:
         specifier: ^5.5.207
         version: 5.5.207
@@ -590,6 +593,9 @@ importers:
         specifier: ^5.0.5
         version: 5.0.11(@types/react@19.1.17)(react@19.1.0)(use-sync-external-store@1.6.0(react@19.1.0))
     devDependencies:
+      '@types/markdown-it':
+        specifier: 14.1.2
+        version: 14.1.2
       '@types/node':
         specifier: ^25.5.2
         version: 25.5.2
