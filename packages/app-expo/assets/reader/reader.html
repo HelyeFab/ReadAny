@@ -567,6 +567,15 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
     }
     window.__READANY_READER_BUILD_ID = 'android-local-server-cors';
     postToRN('debug', { message: '[ReaderBuild] ' + window.__READANY_READER_BUILD_ID });
+    window.addEventListener('error', function (e) {
+      postToRN('debug', {
+        message: '[FatalJS] ' + (e && e.message) + ' @ ' + (e && e.filename) + ':' + (e && e.lineno),
+      });
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      var reason = e && e.reason;
+      postToRN('debug', { message: '[FatalRejection] ' + (reason && (reason.stack || reason.message) || reason) });
+    });
     Promise.withResolvers ??= function () {
       let resolve;
       let reject;

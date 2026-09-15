@@ -533,15 +533,30 @@ export function ReaderScreen({ route, navigation }: Props) {
     assetLoadedRef.current = true;
 
     const loadAsset = async () => {
-      try {
-        const asset = READER_HTML_ASSET;
-        await asset.downloadAsync();
-        const uri = asset.localUri || asset.uri;
-        setReaderHtmlUri(uri);
-      } catch (err) {
-        console.error("[ReaderScreen] Failed to load reader.html asset:", err);
-        setError("Failed to load reader");
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const asset = READER_HTML_ASSET;
+          await Promise.race([
+            asset.downloadAsync(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("reader asset timed out")), 8000),
+            ),
+          ]);
+          const uri = asset.localUri || asset.uri;
+          if (!uri) throw new Error("reader asset has no URI");
+          setReaderHtmlUri(uri);
+          return;
+        } catch (err) {
+          console.warn(`[ReaderScreen] reader asset attempt ${attempt} failed:`, err);
+          const fallback = READER_HTML_ASSET.localUri || READER_HTML_ASSET.uri;
+          if (fallback) {
+            setReaderHtmlUri(fallback);
+            return;
+          }
+        }
       }
+      setError("Failed to load reader");
+      assetLoadedRef.current = false;
     };
     loadAsset();
   }, []);
@@ -561,30 +576,52 @@ export function ReaderScreen({ route, navigation }: Props) {
     return server ? [`${server.replace(/\/$/, "")}/dicts/ja`, direct] : [direct, direct];
   }, []);
 
-  // Controls toggle — declared before bridge so onTap can reference it without TS error
-  const toggleControls = useCallback(() => {
-    const willShow = !showControls;
-    setShowControls(willShow);
-    Animated.timing(toolbarAnim, {
-      toValue: willShow ? 0 : TOOLBAR_HIDE_OFFSET,
-      duration: 180,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
+  const animateToolbar = useCallback(
+    (toValue: number) => {
+      Animated.timing(toolbarAnim, {
+        toValue,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    },
+    [toolbarAnim],
+  );
 
-    if (willShow) {
-      if (controlsTimer.current) clearTimeout(controlsTimer.current);
-      controlsTimer.current = setTimeout(() => {
-        setShowControls(false);
-        Animated.timing(toolbarAnim, {
-          toValue: TOOLBAR_HIDE_OFFSET,
-          duration: 180,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }).start();
-      }, CONTROLS_TIMEOUT);
+  const hideControls = useCallback(() => {
+    if (controlsTimer.current) {
+      clearTimeout(controlsTimer.current);
+      controlsTimer.current = null;
     }
-  }, [showControls, toolbarAnim]);
+    setShowControls(false);
+    animateToolbar(TOOLBAR_HIDE_OFFSET);
+  }, [animateToolbar]);
+
+  // Keep the toolbar visible while its buttons or slider are in use.
+  const keepControlsAlive = useCallback(() => {
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    controlsTimer.current = setTimeout(hideControls, CONTROLS_TIMEOUT);
+  }, [hideControls]);
+
+  const keepControlsAliveOnTouch = useCallback(() => {
+    keepControlsAlive();
+    return false;
+  }, [keepControlsAlive]);
+
+  // Declared before the bridge so its tap handler can reference it.
+  const toggleControls = useCallback(() => {
+    if (showControls) {
+      hideControls();
+      return;
+    }
+    setShowControls(true);
+    animateToolbar(0);
+    keepControlsAlive();
+  }, [showControls, hideControls, animateToolbar, keepControlsAlive]);
+
+  useEffect(() => () => {
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+  }, []);
 
   // Reader bridge
   const bridge = useReaderBridge({
@@ -1582,6 +1619,8 @@ export function ReaderScreen({ route, navigation }: Props) {
       {!showSearch && (
         <Animated.View
           pointerEvents={showControls ? "auto" : "none"}
+          onStartShouldSetResponderCapture={keepControlsAliveOnTouch}
+          onMoveShouldSetResponderCapture={keepControlsAliveOnTouch}
           style={[
             s.topToolbar,
             {
@@ -1803,6 +1842,8 @@ export function ReaderScreen({ route, navigation }: Props) {
       {!showSearch && (
         <Animated.View
           pointerEvents={showControls ? "auto" : "none"}
+          onStartShouldSetResponderCapture={keepControlsAliveOnTouch}
+          onMoveShouldSetResponderCapture={keepControlsAliveOnTouch}
           style={[
             s.floatingTools,
             {
@@ -1888,6 +1929,8 @@ export function ReaderScreen({ route, navigation }: Props) {
       {!showSearch && (
         <Animated.View
           pointerEvents={showControls ? "auto" : "none"}
+          onStartShouldSetResponderCapture={keepControlsAliveOnTouch}
+          onMoveShouldSetResponderCapture={keepControlsAliveOnTouch}
           style={[
             s.bottomToolbar,
             {
