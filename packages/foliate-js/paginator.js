@@ -953,7 +953,10 @@ export class Paginator extends HTMLElement {
         'no-preload', 'no-background', 'no-continuous-scroll', 'scroll-inertia',
     ]
     #root = this.attachShadow({ mode: 'closed' })
-    #observer = new ResizeObserver(() => this.render())
+    #observer = new ResizeObserver(() => {
+        this.#activePageTurn?.skipTransition()
+        this.render()
+    })
     #top
     #background
     #container
@@ -979,11 +982,15 @@ export class Paginator extends HTMLElement {
     #scrollInertiaFrame = null
     #scrollInertiaToken = 0
     #visibilityHandler = () => {
-        if (document.hidden) this.#cancelScrollInertia()
+        if (document.hidden) {
+            this.#cancelScrollInertia()
+            this.#activePageTurn?.skipTransition()
+        }
     }
     #lastVisibleRange
     #scrollLocked = false
     #isAnimating = false
+    #activePageTurn = null
     #filling = false // true while #fillVisibleArea is running
     #fillPromise = null // tracks in-progress #fillVisibleArea for awaiting
     #stabilizing = false // true while #display is stabilizing layout
@@ -2421,6 +2428,53 @@ export class Paginator extends HTMLElement {
         }
         // FIXME: vertical-rl only, not -lr
         if (this.scrolled && this.#vertical) offset = -offset
+        if (this.hasAttribute('page-curl')
+            && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            this.containerPosition = offset
+            this.#scrollBounds = [offset, this.atStart ? 0 : size, this.atEnd ? 0 : size]
+            this.#afterScroll(reason)
+            return
+        }
+        // Capture only the visible WebView viewport, rather than compositing a
+        // whole EPUB section. A paper turn is opt-in and only applies to one
+        // horizontal, paginated step. Scroll mode and unsupported WebViews use
+        // the existing navigation path.
+        if ((reason === 'page' || reason === 'snap')
+            && this.hasAttribute('page-curl') && !this.scrolled && !this.#vertical
+            && !this.hasAttribute('eink') && !document.hidden
+            && !matchMedia('(prefers-reduced-motion: reduce)').matches
+            && typeof document.startViewTransition === 'function') {
+            const direction = offset > this.containerPosition ? 'forward' : 'backward'
+            document.documentElement.dataset.readanyPageTurn = direction
+            this.#isAnimating = true
+            let turnTimeout
+            try {
+                const transition = document.startViewTransition(() => {
+                    this.containerPosition = offset
+                    this.#scrollBounds = [offset, this.atStart ? 0 : size, this.atEnd ? 0 : size]
+                    this.#afterScroll(reason)
+                })
+                this.#activePageTurn = transition
+                await Promise.race([
+                    transition.finished,
+                    new Promise(resolve => {
+                        turnTimeout = setTimeout(() => {
+                            try { transition.skipTransition() } catch (_) {} finally { resolve() }
+                        }, 700)
+                    }),
+                ])
+                return
+            } catch (error) {
+                // A failed capture should never leave navigation disabled.
+                console.warn('Page turn capture failed; using normal navigation', error)
+            } finally {
+                if (turnTimeout) clearTimeout(turnTimeout)
+                this.#activePageTurn = null
+                this.#isAnimating = false
+                delete document.documentElement.dataset.readanyPageTurn
+            }
+            if (this.containerPosition === offset) return
+        }
         if ((reason === 'snap' || smooth) && this.hasAttribute('animated') && !this.hasAttribute('eink')) {
             const startPosition = this.containerPosition
             this.#isAnimating = true

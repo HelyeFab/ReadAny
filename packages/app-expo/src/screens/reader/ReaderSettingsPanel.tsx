@@ -57,6 +57,7 @@ export function ReaderSettingsPanel({
     viewMode: settingViewMode,
     volumeButtonsPageTurn,
     smoothReading,
+    pageCurl,
     showTopTitleProgress,
     showBottomTimeBattery,
     followSystemFontScale,
@@ -307,6 +308,26 @@ export function ReaderSettingsPanel({
               </Text>
             </TouchableOpacity>
           </View>
+          {/* Capture the visible page for a paper-like turn. Off by default
+              because the WebView needs an extra viewport snapshot. */}
+          {settingViewMode === "paginated" && (
+            <View style={s.settingRow}>
+              <View style={s.settingLabelBlock}>
+                <Text style={s.settingLabel}>{t("settings.pageCurl", "Paper page turn")}</Text>
+                <Text style={s.settingHint}>
+                  {t("settings.pageCurlDesc", "Fold the outgoing page with a shadow. Tap again to turn it off.")}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[s.settingToggleBtn, !!pageCurl && s.settingToggleBtnActive]}
+                onPress={() => onUpdateSetting("pageCurl", !pageCurl)}
+              >
+                <Text style={[s.settingToggleText, !!pageCurl && s.settingToggleTextActive]}>
+                  {pageCurl ? t("settings.enabled") : t("settings.disabled")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {/* Bionic reading: emboldened word fronts as fixation points */}
           <View style={s.settingRow}>
             <View style={s.settingLabelBlock}>

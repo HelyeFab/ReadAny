@@ -72,6 +72,8 @@
     "showBottomTimeBattery": "底部時間與電量",
     "volumeButtonsPageTurn": "音量鍵翻頁",
     "volumeButtonsPageTurnDesc": "開啟後閱讀時音量鍵用於上下翻頁",
+    "pageCurl": "紙張翻頁",
+    "pageCurlDesc": "翻頁時折疊目前頁面並顯示陰影。關閉可提高翻頁速度。",
     "smoothReading": "平滑閱讀",
     "smoothReadingDesc": "開啟翻頁過渡動畫與滾動慣性，關閉可提升低效能裝置流暢度",
     "bionicReading": "仿生閱讀",

@@ -72,6 +72,8 @@
     "showBottomTimeBattery": "Heure et batterie en bas",
     "volumeButtonsPageTurn": "Tourner les pages avec les boutons de volume",
     "volumeButtonsPageTurnDesc": "En lecture, les boutons de volume tournent les pages",
+    "pageCurl": "Tourner la page comme du papier",
+    "pageCurlDesc": "Plie la page sortante avec une ombre. Désactivez pour tourner les pages plus vite.",
     "smoothReading": "Lecture fluide",
     "smoothReadingDesc": "Active l'animation de transition de page et l'inertie de défilement. Désactivez pour de meilleures performances sur les appareils modestes",
     "bionicReading": "Lecture bionique",

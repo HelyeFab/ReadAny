@@ -72,6 +72,8 @@
     "showBottomTimeBattery": "下部時刻＆バッテリー表示",
     "volumeButtonsPageTurn": "音量ボタンでページ送り",
     "volumeButtonsPageTurnDesc": "読書中は音量ボタンでページ送りします",
+    "pageCurl": "紙のページめくり",
+    "pageCurlDesc": "ページを影付きでめくります。速いページ送りにはオフにしてください。",
     "smoothReading": "スムーズリーディング",
     "smoothReadingDesc": "ページめくりアニメーションとスクロール慣性を有効化。低スペック端末ではオフにすると快適です",
     "bionicReading": "バイオニックリーディング",

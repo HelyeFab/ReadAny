@@ -72,6 +72,8 @@
     "showBottomTimeBattery": "Hora y batería inferior",
     "volumeButtonsPageTurn": "Botones de volumen cambian página",
     "volumeButtonsPageTurnDesc": "Durante la lectura, los botones de volumen pasan página",
+    "pageCurl": "Pasar página como papel",
+    "pageCurlDesc": "Dobla la página saliente con una sombra. Desactívalo para pasar más rápido.",
     "smoothReading": "Lectura fluida",
     "smoothReadingDesc": "Activa la animación de transición de página y la inercia de desplazamiento. Desactívelo para mejor rendimiento en dispositivos básicos",
     "bionicReading": "Lectura biónica",

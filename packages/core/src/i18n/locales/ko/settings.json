@@ -72,6 +72,8 @@
     "showBottomTimeBattery": "하단 시간 및 배터리",
     "volumeButtonsPageTurn": "볼륨 버튼으로 페이지 넘기기",
     "volumeButtonsPageTurnDesc": "독서 중 볼륨 버튼으로 페이지를 넘깁니다",
+    "pageCurl": "종이 페이지 넘김",
+    "pageCurlDesc": "나가는 페이지를 그림자와 함께 접습니다. 빠른 페이지 넘김을 원하면 끄세요.",
     "smoothReading": "부드러운 읽기",
     "smoothReadingDesc": "페이지 넘김 전환 애니메이션과 스크롤 관성을 켭니다. 저사양 기기에서는 끄면 더 부드럽습니다",
     "bionicReading": "바이오닉 리딩",
