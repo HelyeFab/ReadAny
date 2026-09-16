@@ -12,7 +12,9 @@
  * the cover for the tap — on a card whose only action is "open this", a
  * separate play button is a second thing to aim at for no gain.
  */
+import { XIcon } from "@/components/ui/Icon";
 import { COVER_PLACEHOLDER } from "@/lib/library/cover-placeholder";
+import { useResolvedCoverUrl } from "@/lib/library/use-resolved-cover";
 import {
   type ThemeColors,
   fontSize,
@@ -22,10 +24,9 @@ import {
   useColors,
   withOpacity,
 } from "@/styles/theme";
-import { getPlatformService } from "@readany/core/services";
 import type { Book } from "@readany/core/types";
 import { getBookProgressPercent } from "@readany/core/utils";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -40,45 +41,22 @@ const RIBBON_NOTCH = 6;
 interface ContinueReadingCardProps {
   book: Book;
   onOpen: (book: Book) => void;
+  /**
+   * Take this book out of the recent row. Omitted where the card is shown for
+   * its own sake rather than as the head of a list that can be corrected.
+   */
+  onDismiss?: (book: Book) => void;
 }
 
 export const ContinueReadingCard = memo(function ContinueReadingCard({
   book,
   onOpen,
+  onDismiss,
 }: ContinueReadingCardProps) {
   const colors = useColors();
   const { t } = useTranslation();
   const s = useMemo(() => makeStyles(colors), [colors]);
-  const [resolvedCoverUrl, setResolvedCoverUrl] = useState<string | undefined>(undefined);
-
-  // Covers are stored relative to the app data dir; resolve the same way the
-  // shelf cards do, and fall back to the drawing when there is no art at all.
-  useEffect(() => {
-    const raw = book.meta.coverUrl;
-    if (!raw) {
-      setResolvedCoverUrl(undefined);
-      return;
-    }
-    if (raw.startsWith("http") || raw.startsWith("blob") || raw.startsWith("file")) {
-      setResolvedCoverUrl(raw);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const platform = getPlatformService();
-        const appData = await platform.getAppDataDir();
-        const absPath = await platform.joinPath(appData, raw);
-        if (!cancelled) setResolvedCoverUrl(absPath);
-      } catch (err) {
-        console.warn("[Library] Failed to resolve cover URL:", err);
-        if (!cancelled) setResolvedCoverUrl(undefined);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [book.meta.coverUrl]);
+  const resolvedCoverUrl = useResolvedCoverUrl(book.meta.coverUrl);
 
   const progressPct = getBookProgressPercent(book.progress);
   const started = progressPct > 0;
@@ -97,70 +75,90 @@ export const ContinueReadingCard = memo(function ContinueReadingCard({
       : null;
 
   return (
-    <TouchableOpacity
-      style={s.card}
-      onPress={() => onOpen(book)}
-      activeOpacity={0.85}
-      accessibilityRole="button"
-      accessibilityLabel={t("library.continueReadingA11y", {
-        title: book.meta.title,
-        percent: progressPct,
-        defaultValue: "Continue reading {{title}}, {{percent}} percent through",
-      })}
-    >
-      <View style={s.coverSlot}>
-        <View style={s.coverWrap}>
-          {resolvedCoverUrl ? (
-            <Image source={{ uri: resolvedCoverUrl }} style={s.coverImage} resizeMode="cover" />
-          ) : (
-            <View style={s.coverFallback}>
-              <Image
-                source={COVER_PLACEHOLDER}
-                style={s.coverFallbackArt}
-                resizeMode="contain"
-                tintColor={colors.stone400}
-              />
-            </View>
-          )}
-        </View>
-        {/* Sits outside the clipped cover so it can overhang the top edge. */}
-        <View style={s.ribbon} pointerEvents="none">
-          <View style={s.ribbonNotch} />
-        </View>
-      </View>
-
-      <View style={s.body}>
-        <Text style={s.eyebrow} numberOfLines={1}>
-          {started
-            ? t("library.continueReading", "Continue reading")
-            : t("library.startReading", "Pick up where you left off")}
-        </Text>
-        <Text style={s.title} numberOfLines={2}>
-          {book.meta.title}
-        </Text>
-
-        <View style={s.rule} />
-
-        <View style={s.progressRow}>
-          {pageLine ? <Text style={s.pageText}>{pageLine}</Text> : null}
-          <View style={s.progressTrack}>
-            <View style={[s.progressFill, { width: `${Math.max(progressPct, 1)}%` }]} />
+    // The dismiss control is a SIBLING of the card, not a child. A touchable
+    // inside a touchable is a coin toss on Android: the tap that removes the
+    // book can just as easily open it.
+    <View style={s.wrap}>
+      <TouchableOpacity
+        style={s.card}
+        onPress={() => onOpen(book)}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={t("library.continueReadingA11y", {
+          title: book.meta.title,
+          percent: progressPct,
+          defaultValue: "Continue reading {{title}}, {{percent}} percent through",
+        })}
+      >
+        <View style={s.coverSlot}>
+          <View style={s.coverWrap}>
+            {resolvedCoverUrl ? (
+              <Image source={{ uri: resolvedCoverUrl }} style={s.coverImage} resizeMode="cover" />
+            ) : (
+              <View style={s.coverFallback}>
+                <Image
+                  source={COVER_PLACEHOLDER}
+                  style={s.coverFallbackArt}
+                  resizeMode="contain"
+                  tintColor={colors.stone400}
+                />
+              </View>
+            )}
           </View>
-          <Text style={s.progressText}>{progressPct}%</Text>
+          {/* Sits outside the clipped cover so it can overhang the top edge. */}
+          <View style={s.ribbon} pointerEvents="none">
+            <View style={s.ribbonNotch} />
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
+
+        <View style={s.body}>
+          <Text style={s.eyebrow} numberOfLines={1}>
+            {started
+              ? t("library.continueReading", "Continue reading")
+              : t("library.startReading", "Pick up where you left off")}
+          </Text>
+          <Text style={s.title} numberOfLines={2}>
+            {book.meta.title}
+          </Text>
+
+          <View style={s.rule} />
+
+          <View style={s.progressRow}>
+            {pageLine ? <Text style={s.pageText}>{pageLine}</Text> : null}
+            <View style={s.progressTrack}>
+              <View style={[s.progressFill, { width: `${Math.max(progressPct, 1)}%` }]} />
+            </View>
+            <Text style={s.progressText}>{progressPct}%</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      {onDismiss ? (
+        <TouchableOpacity
+          style={s.dismissTouch}
+          onPress={() => onDismiss(book)}
+          activeOpacity={0.6}
+          accessibilityRole="button"
+          accessibilityLabel={t("library.recentDismissA11y", {
+            title: book.meta.title,
+            defaultValue: "Remove {{title}} from recently read",
+          })}
+        >
+          <XIcon size={14} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      ) : null}
+    </View>
   );
 });
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    wrap: { marginBottom: 12 },
     card: {
       flexDirection: "row",
       alignItems: "center",
       gap: 14,
       padding: 14,
-      marginBottom: 12,
       borderRadius: radius.xl,
       backgroundColor: colors.card,
       borderWidth: StyleSheet.hairlineWidth,
@@ -170,6 +168,18 @@ const makeStyles = (colors: ThemeColors) =>
       shadowOpacity: 0.08,
       shadowRadius: 6,
       elevation: 2,
+    },
+    // Quiet, in the corner the layout already leaves empty. On a plain card
+    // the glyph alone reads as a control; the strip's covers need a plate
+    // behind theirs only because they sit on artwork.
+    dismissTouch: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      width: 40,
+      height: 40,
+      alignItems: "center",
+      justifyContent: "center",
     },
     // Holds the cover and the ribbon; the ribbon overhangs, so this must not clip.
     coverSlot: {
@@ -218,12 +228,14 @@ const makeStyles = (colors: ThemeColors) =>
     },
     body: { flex: 1, minWidth: 0, gap: 4 },
     eyebrow: {
+      paddingRight: 22,
       fontSize: fontSize.xs - 1,
       color: colors.mutedForeground,
       letterSpacing: 1.1,
       textTransform: "uppercase",
     },
     title: {
+      paddingRight: 22,
       fontFamily: "serif",
       fontSize: fontSize.md,
       fontWeight: fontWeight.semibold,
