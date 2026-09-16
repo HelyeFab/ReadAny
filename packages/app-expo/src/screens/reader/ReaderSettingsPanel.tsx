@@ -57,6 +57,7 @@ export function ReaderSettingsPanel({
     viewMode: settingViewMode,
     volumeButtonsPageTurn,
     smoothReading,
+    pageCurl,
     showTopTitleProgress,
     showBottomTimeBattery,
     followSystemFontScale,
@@ -307,6 +308,25 @@ export function ReaderSettingsPanel({
               </Text>
             </TouchableOpacity>
           </View>
+          {/* Finger-driven page curl for Android paginated books. */}
+          {Platform.OS === "android" && (
+            <View style={s.settingRow}>
+              <View style={s.settingLabelBlock}>
+                <Text style={s.settingLabel}>{t("settings.pageCurl", "Page curl")}</Text>
+                <Text style={s.settingHint}>
+                  {t("settings.pageCurlDesc", "Turn a page by bending its surface")}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[s.settingToggleBtn, !!pageCurl && s.settingToggleBtnActive]}
+                onPress={() => onUpdateSetting("pageCurl", !pageCurl)}
+              >
+                <Text style={[s.settingToggleText, !!pageCurl && s.settingToggleTextActive]}>
+                  {pageCurl ? t("settings.enabled") : t("settings.disabled")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {/* Bionic reading: emboldened word fronts as fixation points */}
           <View style={s.settingRow}>
             <View style={s.settingLabelBlock}>
