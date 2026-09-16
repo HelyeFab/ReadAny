@@ -228,15 +228,36 @@ export const makeStyles = (colors: ThemeColors, cardWidth: number) => {
       bottom: 6,
       zIndex: 22,
     },
+    /**
+     * No plate behind the dots.
+     *
+     * This used to be a 36%-black scrim with a pale border — a mid-grey
+     * rounded square parked on every cover. Colour e-ink is at its worst with
+     * mid-greys: on a Kaleido panel over a cream page the neutral #949292 it
+     * resolves to reads as a warm red-brown block. The dots get a halo
+     * instead, which costs no background at all and stays legible on light
+     * artwork and dark alike.
+     */
     moreButton: {
       width: 28,
       height: 28,
-      borderRadius: radius.md,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "rgba(0,0,0,0.36)",
-      borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.16)",
+    },
+    /**
+     * The dots are drawn rather than iconified, so each can carry its own
+     * outline. Scaling a second copy of the icon up behind the first only
+     * spreads its dots further apart — the ring it adds is thinner than the
+     * gap it introduces, which is no outline at all.
+     */
+    moreDots: { alignItems: "center", justifyContent: "center", gap: 2.5 },
+    moreDot: {
+      width: 5.5,
+      height: 5.5,
+      borderRadius: 2.75,
+      backgroundColor: "#1c1c1e",
+      borderWidth: 1.25,
+      borderColor: "rgba(255,255,255,0.92)",
     },
     infoWrap: { paddingTop: 6, paddingHorizontal: 1 },
     bookTitle: {

@@ -1,11 +1,11 @@
-import { CheckIcon, ClockIcon, Loader2Icon, MoreVerticalIcon } from "@/components/ui/Icon";
-import { useColors } from "@/styles/theme";
-import { getPlatformService } from "@readany/core/services";
+import { CheckIcon, ClockIcon, Loader2Icon } from "@/components/ui/Icon";
 /**
  * BookCard — Touch-optimized book card matching Tauri mobile MobileBookCard exactly.
  * Cover (28:41), progress bar, vectorization overlay, tag badges, long-press action sheet.
  */
 import { COVER_PLACEHOLDER } from "@/lib/library/cover-placeholder";
+import { useColors } from "@/styles/theme";
+import { getPlatformService } from "@readany/core/services";
 import type { Book } from "@readany/core/types";
 import { getBookProgressPercent } from "@readany/core/utils";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -362,7 +362,14 @@ export const BookCard = memo(function BookCard({
                 void openActions();
               }}
             >
-              <MoreVerticalIcon size={14} color="#fff" />
+              {/* Deliberately not themed: these sit on cover artwork, not on
+                  the app's own surface, so they have to read against a
+                  photograph rather than against the current palette. */}
+              <View style={s.moreDots} pointerEvents="none">
+                <View style={s.moreDot} />
+                <View style={s.moreDot} />
+                <View style={s.moreDot} />
+              </View>
             </TouchableOpacity>
           </View>
         </View>
