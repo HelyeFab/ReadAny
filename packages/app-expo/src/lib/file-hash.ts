@@ -39,20 +39,31 @@ function toHex(buffer: ArrayBuffer): string {
 /**
  * SHA-256 over bytes already in memory, computed natively.
  *
- * ⚠️ The argument must be the TYPED ARRAY, never its `.buffer`. expo-crypto
- * types this parameter as `BufferSource`, so an `ArrayBuffer` compiles — but
- * the Android binding is `digest(algorithm, output: TypedArray, data:
- * TypedArray)`, and a raw buffer dies at the bridge with "Cannot convert
- * '[object ArrayBuffer]' to a Kotlin type". Nothing catches it until runtime,
- * and `hashFileAtPath` is called for every cover during sync, so the failure
- * arrives a few hundred times at once and only in a warning.
+ * ⚠️ REVERTED DELIBERATELY, 2026-09-16. Passing `view` here instead of
+ * `view.buffer` makes the native digest actually succeed — the Android
+ * binding is `digest(algorithm, output: TypedArray, data: TypedArray)`, so a
+ * raw ArrayBuffer dies at the bridge. But making it succeed CHANGED WHICH CODE
+ * PATH COMPUTES AN IMPORT HASH: `hashBookFile` catches the throw and falls
+ * back to a chunked walk that reads the file through a file handle, and that
+ * fallback is what has been producing every import hash until now.
+ *
+ * Immediately after the fixed build went on, a folder import of 35 markdown
+ * files reported all 35 as duplicates although none were in the library —
+ * consistent with the native path returning the same bytes for all of them.
+ * Until that is understood, the throw stays, because the fallback it triggers
+ * is known to hash correctly.
+ *
+ * The cost of leaving it broken is known and survivable: `hashFileAtPath` does
+ * NOT catch, so cover hashing during sync fails with a warning per cover and
+ * cover de-duplication does nothing. That has been true for as long as this
+ * code has existed.
  */
 async function digestBytes(bytes: Uint8Array): Promise<string> {
-  // Copy into a view over a plain ArrayBuffer: the parameter type excludes a
-  // view backed by a SharedArrayBuffer.
+  // Copy into a plain ArrayBuffer: expo-crypto types the input as BufferSource,
+  // which excludes a view backed by a SharedArrayBuffer.
   const view = new Uint8Array(bytes.byteLength);
   view.set(bytes);
-  return toHex(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, view));
+  return toHex(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, view.buffer));
 }
 
 /** A reader over a file on disk. The handle stays open for the walk. */
