@@ -10,6 +10,7 @@
     "startReading": "読み始める",
     "recentlyRead": "最近読んだ本",
     "recentlyReadCount": "{{count}}冊",
+    "heroSubtitleFolder": "このフォルダに{{count}}冊",
     "recentOpenA11y": "{{title}} を開く（{{percent}}パーセント）",
     "recentDismissA11y": "{{title}} を最近読んだ本から外す",
     "continueReadingA11y": "『{{title}}』の続きを読む（{{percent}}%）",
