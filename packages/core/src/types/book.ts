@@ -118,6 +118,8 @@ export interface ReadSettings extends ViewSettings {
    * cleanly.
    */
   smoothReading?: boolean;
+  /** Android page-surface curl, enabled only when explicitly selected. */
+  pageCurl?: boolean;
   /**
    * Mobile-only opt-in: when true, the reader scales fontSize by the OS
    * accessibility font scale (PixelRatio.getFontScale()) before rendering.

@@ -12,7 +12,7 @@
 import * as FileSystem from "expo-file-system/legacy";
 
 export const IMPORTABLE_EXTENSIONS = [
-  ".epub", ".pdf", ".mobi", ".azw", ".azw3", ".fb2", ".fbz", ".cbz", ".txt", ".umd",
+  ".epub", ".pdf", ".mobi", ".azw", ".azw3", ".fb2", ".fbz", ".cbz", ".txt", ".md", ".markdown", ".umd",
 ];
 
 const MAX_DEPTH = 6;

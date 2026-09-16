@@ -610,6 +610,7 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
     let currentCustomFontFamily = '';
     let currentUseBookFonts = true;
     let currentSmoothReading = false;
+    let currentPageCurl = false;
     let tapNavigationInFlight = false;
     let tapNavigationResetTimer = null;
     let readerElement = null;
@@ -2271,6 +2272,7 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
         currentSmoothReading = settings.smoothReading === true;
         syncSmoothReadingAttribute(renderer);
       }
+      if (settings.pageCurl !== undefined) currentPageCurl = settings.pageCurl === true;
       // PDF pages are fixed-layout canvases. Reader font, line-height, custom
       // font and paragraph-spacing rules would move the transparent text layer
       // away from the canvas and render a second, misaligned copy of the text.
@@ -3152,9 +3154,15 @@ html, body {
         e.stopPropagation();
 
         if (normalizedX < centerStart) {
-          if (view) goPrevByMode(undefined, 'tap:left');
+          if (view) {
+            if (currentPageCurl && !currentBookIsPdf) postToRN('pageTurnRequest', { direction: 'prev' });
+            else goPrevByMode(undefined, 'tap:left');
+          }
         } else {
-          if (view) goNextByMode(undefined, 'tap:right');
+          if (view) {
+            if (currentPageCurl && !currentBookIsPdf) postToRN('pageTurnRequest', { direction: 'next' });
+            else goNextByMode(undefined, 'tap:right');
+          }
         }
       }, { passive: false, capture: true });
     }

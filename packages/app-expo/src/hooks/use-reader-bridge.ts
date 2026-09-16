@@ -60,6 +60,7 @@ export interface ReaderInitialSettings {
   paginatedLayout?: "single" | "double";
   /** Smooth reading: foliate `animated` page-turn + `scroll-inertia` physics */
   smoothReading?: boolean;
+  pageCurl?: boolean;
   bionicReading?: boolean;
 }
 
@@ -77,6 +78,7 @@ export interface ReaderBridgeCallbacks {
   onSelection?: (detail: SelectionEvent) => void;
   onSelectionCleared?: () => void;
   onTap?: () => void;
+  onPageTurnRequest?: (direction: "next" | "prev") => void;
   /** Why furigana did or did not load — surfaced in the UI, since release builds have no readable console. */
   onRubyStatus?: (message: string) => void;
   onSearchResult?: (index: number, count: number) => void;
@@ -295,7 +297,8 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       customFontFaceCSS?: string;
       customFontFamily?: string;
       smoothReading?: boolean;
-  bionicReading?: boolean;
+      pageCurl?: boolean;
+      bionicReading?: boolean;
     }) => {
       const msg = JSON.stringify({
         type: "applySettings",
@@ -767,6 +770,10 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
             break;
           case "tap":
             cb.onTap?.();
+            break;
+          case "pageTurnRequest":
+            if (msg.direction === "next" || msg.direction === "prev")
+              cb.onPageTurnRequest?.(msg.direction);
             break;
           case "searchResult":
             cb.onSearchResult?.(msg.index || 0, msg.count || 0);

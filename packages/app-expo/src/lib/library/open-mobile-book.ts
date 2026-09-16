@@ -19,6 +19,7 @@ const BOOK_MIME_TYPES = [
   "application/vnd.comicbook+zip",
   "application/x-fictionbook+xml",
   "text/plain",
+  "text/markdown",
   "application/octet-stream",
 ];
 

@@ -370,6 +370,8 @@ async function restoreDeletedMobileBook(
     fb2: "fb2",
     fbz: "fbz",
     txt: "txt",
+    md: "epub",
+    markdown: "epub",
     umd: "umd",
   };
   const format: Book["format"] = formatMap[ext || ""] || "epub";
@@ -377,7 +379,7 @@ async function restoreDeletedMobileBook(
   const platform = getPlatformService();
   const { size: fileSize, fileHash } = await getMobileFileStat(filePath);
 
-  if (ext === "txt") {
+  if (ext === "txt" || ext === "md" || ext === "markdown") {
     const sourceBytes = await platform.readFile(filePath);
     const { TxtToEpubConverter } = await import("@readany/core/utils/txt-to-epub");
     const bytes = ensureUtf8Bytes(sourceBytes);
@@ -406,7 +408,9 @@ async function restoreDeletedMobileBook(
         }),
     } as unknown as File;
 
-    const conversion = await new TxtToEpubConverter().convertToBytes({ file: txtFile });
+    const conversion = ext === "txt"
+      ? await new TxtToEpubConverter().convertToBytes({ file: txtFile })
+      : await (await import("@readany/core/utils/markdown-to-epub")).markdownToEpubBytes(bytes, fileName);
     await ensureAppSubDir("books");
     const relativePath = `books/${bookId}.epub`;
     await platform.writeFile(await resolveAppPath(relativePath), conversion.epubBytes);
@@ -567,13 +571,15 @@ async function inspectDeletedMobileBookCandidate(
     fb2: "fb2",
     fbz: "fbz",
     txt: "txt",
+    md: "epub",
+    markdown: "epub",
     umd: "umd",
   };
   const format: Book["format"] = formatMap[ext || ""] || "epub";
   const fileName = originalName;
   const { size: fileSize, fileHash } = await getMobileFileStat(filePath);
 
-  if (ext === "txt") {
+  if (ext === "txt" || ext === "md" || ext === "markdown") {
     try {
       const { TxtToEpubConverter } = await import("@readany/core/utils/txt-to-epub");
       const platform = getPlatformService();
@@ -605,7 +611,9 @@ async function inspectDeletedMobileBookCandidate(
             },
           }),
       } as unknown as File;
-      const conversion = await new TxtToEpubConverter().convertToBytes({ file: txtFile });
+      const conversion = ext === "txt"
+        ? await new TxtToEpubConverter().convertToBytes({ file: txtFile })
+        : await (await import("@readany/core/utils/markdown-to-epub")).markdownToEpubBytes(bytes, fileName);
       return {
         title: conversion.bookTitle || fileName.replace(/\.\w+$/i, "") || originalBook.meta.title,
         author: "",
@@ -877,6 +885,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
             fb2: "fb2",
             fbz: "fbz",
             txt: "txt",
+            md: "epub",
+            markdown: "epub",
             umd: "umd",
           };
           const format: Book["format"] = formatMap[ext || ""] || "epub";
@@ -906,7 +916,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
           );
 
           // For TXT files: convert to EPUB bytes directly, skip Blob/File (slow in RN)
-          if (ext === "txt") {
+          if (ext === "txt" || ext === "md" || ext === "markdown") {
             try {
               const { TxtToEpubConverter } = await import("@readany/core/utils/txt-to-epub");
               const sourceBytes = await platform.readFile(filePath);
@@ -949,7 +959,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
               // Use convertToBytes: pure-JS ZIP builder, no Blob bridge
               const converter = new TxtToEpubConverter();
-              const conversion = await converter.convertToBytes({ file: txtFile });
+              const conversion = ext === "txt"
+                ? await converter.convertToBytes({ file: txtFile })
+                : await (await import("@readany/core/utils/markdown-to-epub")).markdownToEpubBytes(bytes, fileName);
 
               // Write EPUB bytes directly to final app data location
               await ensureAppSubDir("books");
@@ -1007,7 +1019,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
               if (fileHash) {
                 duplicateIndex.byHash.set(fileHash, book);
               }
-              console.log(`[importBooks] TXT imported as EPUB: ${title}`);
+              console.log(`[importBooks] ${ext.toUpperCase()} imported as EPUB: ${title}`);
 
               // Auto-vectorize if enabled. Keep failures isolated so a
               // successful import doesn't get reported as a failed import.
@@ -1017,7 +1029,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
                   vmState.autoVectorizeOnImport &&
                   vmState.vectorModelEnabled &&
                   vmState.hasVectorCapability() &&
-                  shouldAutoVectorizeMobile("txt")
+                  shouldAutoVectorizeMobile("epub")
                 ) {
                   const base64 = bytesToBase64(conversion.epubBytes);
                   queueAutoVectorize(book, base64, "application/epub+zip");

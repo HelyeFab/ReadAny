@@ -1242,15 +1242,16 @@ export function LibraryScreen() {
     setSelectedBookIds(new Set());
   }, []);
 
-  const isAllSelected = visibleBooks.length > 0 && selectedBookIds.size === visibleBooks.length;
+  const selectableBooks = isShelfView ? shelfBooks : visibleBooks;
+  const isAllSelected = selectableBooks.length > 0 && selectableBooks.every((book) => selectedBookIds.has(book.id));
 
   const toggleSelectAll = useCallback(() => {
     if (isAllSelected) {
       setSelectedBookIds(new Set());
     } else {
-      setSelectedBookIds(new Set(visibleBooks.map((b) => b.id)));
+      setSelectedBookIds(new Set(selectableBooks.map((b) => b.id)));
     }
-  }, [visibleBooks, isAllSelected]);
+  }, [selectableBooks, isAllSelected]);
 
   const handleBatchDelete = useCallback(() => {
     if (selectedBookIds.size === 0) return;
@@ -1508,9 +1509,12 @@ export function LibraryScreen() {
           width={shelfTileWidth}
           onOpen={handleOpen}
           onLongPress={handleShowDetails}
+          isSelectionMode={selectionMode}
+          isSelected={selectedBookIds.has(item.book.id)}
+          onSelect={toggleBookSelection}
         />
       ) : null,
-    [shelfTileWidth, handleOpen, handleShowDetails],
+    [shelfTileWidth, handleOpen, handleShowDetails, selectionMode, selectedBookIds, toggleBookSelection],
   );
 
   const renderGridItem = useCallback(
@@ -2042,8 +2046,13 @@ export function LibraryScreen() {
         unidentifiedBookCount={booksNeedingHash.length}
         onIdentifyBooks={handleBackfillHashes}
         canCreateFolder={isGroupView}
+        canSelectBooks={selectableBooks.length > 0}
         onClose={() => setShowLibraryMenu(false)}
         onSearch={() => (showSearch ? closeSearch() : openSearch())}
+        onSelectBooks={() => {
+          setSelectionMode(true);
+          setSelectedBookIds(new Set());
+        }}
         onSort={() => setShowSort(true)}
         onToggleFolders={() => {
           setActiveGroupId("");
