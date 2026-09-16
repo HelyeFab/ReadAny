@@ -18,7 +18,7 @@
  * more things to read in a row meant to be scanned, and the bar answers the
  * only question being asked — near the start, or nearly done.
  */
-import { XIcon } from "@/components/ui/Icon";
+import { ChevronDownIcon, ChevronRightIcon, XIcon } from "@/components/ui/Icon";
 import { COVER_PLACEHOLDER } from "@/lib/library/cover-placeholder";
 import { useResolvedCoverUrl } from "@/lib/library/use-resolved-cover";
 import {
@@ -49,12 +49,16 @@ const BADGE_TOUCH = 34;
 
 interface RecentReadsStripProps {
   books: Book[];
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   onOpen: (book: Book) => void;
   onDismiss: (book: Book) => void;
 }
 
 export const RecentReadsStrip = memo(function RecentReadsStrip({
   books,
+  collapsed,
+  onToggleCollapsed,
   onOpen,
   onDismiss,
 }: RecentReadsStripProps) {
@@ -65,28 +69,55 @@ export const RecentReadsStrip = memo(function RecentReadsStrip({
   if (books.length === 0) return null;
 
   return (
-    <View style={s.section}>
-      <Text style={s.heading} numberOfLines={1}>
-        {t("library.recentlyRead", "Recently read")}
-      </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.row}
-        // The badges sit outside their covers, so the row must not clip them.
-        style={s.scroller}
+    <View style={[s.section, collapsed ? s.sectionCollapsed : null]}>
+      {/* The heading IS the control. A row that can be folded away needs the
+          whole line to be the target, not a chevron to hunt for. */}
+      <TouchableOpacity
+        style={s.headingRow}
+        onPress={onToggleCollapsed}
+        activeOpacity={0.6}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: !collapsed }}
+        accessibilityLabel={t("library.recentlyRead", "Recently read")}
       >
-        {books.map((book) => (
-          <RecentReadTile
-            key={book.id}
-            book={book}
-            colors={colors}
-            s={s}
-            onOpen={onOpen}
-            onDismiss={onDismiss}
-          />
-        ))}
-      </ScrollView>
+        <Text style={s.heading} numberOfLines={1}>
+          {t("library.recentlyRead", "Recently read")}
+        </Text>
+        {collapsed ? (
+          <ChevronRightIcon size={14} color={colors.mutedForeground} />
+        ) : (
+          <ChevronDownIcon size={14} color={colors.mutedForeground} />
+        )}
+        {collapsed ? (
+          <Text style={s.foldedCount} numberOfLines={1}>
+            {t("library.recentlyReadCount", {
+              count: books.length,
+              defaultValue: "{{count}} books",
+            })}
+          </Text>
+        ) : null}
+      </TouchableOpacity>
+
+      {collapsed ? null : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.row}
+          // The badges sit outside their covers, so the row must not clip them.
+          style={s.scroller}
+        >
+          {books.map((book) => (
+            <RecentReadTile
+              key={book.id}
+              book={book}
+              colors={colors}
+              s={s}
+              onOpen={onOpen}
+              onDismiss={onDismiss}
+            />
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 });
@@ -169,13 +200,27 @@ const RecentReadTile = memo(function RecentReadTile({
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     section: { marginBottom: 14 },
+    // Folded, the heading is the whole section, so it needs no room beneath it.
+    sectionCollapsed: { marginBottom: 8 },
+    headingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingVertical: 6,
+      marginLeft: 2,
+    },
     heading: {
       fontSize: fontSize.xs - 1,
       color: colors.mutedForeground,
       letterSpacing: 1.1,
       textTransform: "uppercase",
-      marginBottom: 8,
-      marginLeft: 2,
+    },
+    // Only when folded: says what is behind the heading, so the row is not
+    // simply gone.
+    foldedCount: {
+      fontSize: fontSize.xs - 1,
+      color: colors.mutedForeground,
+      fontVariant: ["tabular-nums"],
     },
     // Room above for the badge overhang and below for the two-line title.
     scroller: { overflow: "visible" },

@@ -9,6 +9,7 @@
     "continueReading": "繼續閱讀",
     "startReading": "開始閱讀",
     "recentlyRead": "最近在讀",
+    "recentlyReadCount": "{{count}} 本",
     "recentOpenA11y": "開啟《{{title}}》，已讀 {{percent}}%",
     "recentDismissA11y": "從最近在讀中移除《{{title}}》",
     "continueReadingA11y": "繼續閱讀《{{title}}》，已讀 {{percent}}%",

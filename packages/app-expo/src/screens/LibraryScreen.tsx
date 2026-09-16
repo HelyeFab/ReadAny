@@ -79,8 +79,10 @@ import {
   type DismissedRecents,
   RECENT_READS_LIMIT,
   loadDismissedRecents,
+  loadRecentReadsCollapsed,
   pruneDismissedRecents,
   saveDismissedRecents,
+  saveRecentReadsCollapsed,
   selectRecentReads,
 } from "@readany/core/utils/recent-reads";
 import * as DocumentPicker from "expo-document-picker";
@@ -185,7 +187,26 @@ export function LibraryScreen() {
   const layout = useResponsiveLayout();
   const gridGap = layout.isTablet ? 16 : GRID_GAP;
   const contentWidthForShelf = layout.centeredContentWidth;
-  const columnCount = layout.isTabletLandscape ? 5 : layout.isTablet ? 4 : NUM_COLUMNS;
+  /**
+   * The grid sizes itself by how wide a cover needs to be to be recognised,
+   * the way the shelf already does, rather than by a fixed number of columns.
+   *
+   * A fixed count assumes every screen below the tablet threshold is a phone.
+   * The Boox Note Air is 620dp wide and falls under that 768dp line, so a 10"
+   * e-ink tablet was drawing 188dp covers — three to a row, each one towering
+   * over the folder tiles beside it. Measuring instead of guessing fixes that
+   * screen and every other in-between one without naming any of them.
+   *
+   * The floor of three is what keeps small phones exactly where they were: at
+   * 360dp the arithmetic wants two, and two covers a row is not a shelf.
+   */
+  const GRID_TARGET_TILE = 110;
+  const columnCount = layout.isTabletLandscape
+    ? 5
+    : Math.max(
+        NUM_COLUMNS,
+        Math.floor((layout.centeredContentWidth + gridGap) / (GRID_TARGET_TILE + gridGap)),
+      );
   /**
    * The shelf sizes itself by how big a cover needs to be to be recognised —
    * about 84dp — rather than by a fixed number of columns, so a phone shows
@@ -485,14 +506,27 @@ export function LibraryScreen() {
    */
   const [dismissedRecents, setDismissedRecents] = useState<DismissedRecents>({});
 
+  const [recentsCollapsed, setRecentsCollapsed] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     loadDismissedRecents().then((loaded) => {
       if (!cancelled) setDismissedRecents(loaded);
     });
+    loadRecentReadsCollapsed().then((collapsed) => {
+      if (!cancelled) setRecentsCollapsed(collapsed);
+    });
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  const toggleRecentsCollapsed = useCallback(() => {
+    setRecentsCollapsed((prev) => {
+      const next = !prev;
+      void saveRecentReadsCollapsed(next);
+      return next;
+    });
   }, []);
 
   const recentReads = useMemo(() => {
@@ -1359,6 +1393,8 @@ export function LibraryScreen() {
             ) : null}
             <RecentReadsStrip
               books={stripBooks}
+              collapsed={recentsCollapsed}
+              onToggleCollapsed={toggleRecentsCollapsed}
               onOpen={handleOpen}
               onDismiss={handleDismissRecent}
             />
@@ -1383,6 +1419,8 @@ export function LibraryScreen() {
     stripBooks,
     handleOpen,
     handleDismissRecent,
+    recentsCollapsed,
+    toggleRecentsCollapsed,
     bandFolders,
     contentWidth,
     setActiveGroupId,
