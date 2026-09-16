@@ -2048,6 +2048,22 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
           const { draw, annotation, doc, range } = e.detail;
           if (!draw || !annotation) return;
           console.log('[draw-annotation] annotation:', JSON.stringify(annotation));
+
+          // Old builds could persist a malformed CFI whose endpoints landed
+          // in different hidden paginator columns. Do not let one of those
+          // paint every line and the empty remainder of the visible page.
+          // Normal highlights remain untouched because every rect they draw
+          // belongs to the same CSS column.
+          if (
+            annotation.type !== 'tts-highlight' &&
+            range &&
+            selectionEscapedVisiblePage(range)
+          ) {
+            postToRN('debug', {
+              message: '[SelGuard] suppressed stored annotation spanning CSS columns',
+            });
+            return;
+          }
           const color = annotation.color || 'yellow';
           // Fluorescent rather than pastel, and at 0.5 rather than 0.4. A
           // colour e-ink panel desaturates everything on its way to the eye,
