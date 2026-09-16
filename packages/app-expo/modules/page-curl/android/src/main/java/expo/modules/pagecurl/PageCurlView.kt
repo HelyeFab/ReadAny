@@ -1,5 +1,6 @@
 package expo.modules.pagecurl
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -7,7 +8,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
-import android.os.SystemClock
 import android.util.Log
 import android.view.animation.DecelerateInterpolator
 import expo.modules.kotlin.AppContext
@@ -36,14 +36,14 @@ class PageCurlView(context: Context, appContext: AppContext) : ExpoView(context,
   private var progress = 0f
   private var direction = "next"
   private var dualPage = false
-  private var animationToken = 0
+  private var animator: ValueAnimator? = null
   private var lastAnimateTarget: Float? = null
   private var drawLogged = false
 
   fun setImageUri(uri: String?) {
     imageToken++
     val token = imageToken
-    animationToken++
+    animator?.cancel()
     bitmap?.recycle()
     page?.recycle()
     bitmap = null
@@ -68,7 +68,7 @@ class PageCurlView(context: Context, appContext: AppContext) : ExpoView(context,
   }
 
   fun setProgress(value: Float) {
-    animationToken++
+    animator?.cancel()
     progress = value.coerceIn(0f, 1f)
     invalidate()
   }
@@ -80,25 +80,20 @@ class PageCurlView(context: Context, appContext: AppContext) : ExpoView(context,
     val end = target.coerceIn(0f, 1f)
     if (lastAnimateTarget == end) return
     lastAnimateTarget = end
-    val token = ++animationToken
-    val start = progress
-    val startedAt = SystemClock.uptimeMillis()
-    // BOOX commonly disables Android's global animator scale. Drive the curl
-    // from elapsed time so its speed remains visible without changing device
-    // settings. Finger-driven progress still updates immediately.
-    val durationMs = max(240L, (kotlin.math.abs(end - start) * 1250f).toLong())
-    val easing = DecelerateInterpolator(1.2f)
-    postOnAnimation(object : Runnable {
-      override fun run() {
-        if (token != animationToken) return
-        val elapsed = SystemClock.uptimeMillis() - startedAt
-        val fraction = (elapsed.toFloat() / durationMs).coerceIn(0f, 1f)
-        val eased = easing.getInterpolation(fraction)
-        progress = start + (end - start) * eased
-        invalidate()
-        if (fraction < 1f) postOnAnimation(this) else onFinished(Unit)
-      }
-    })
+    animator?.cancel()
+    animator = ValueAnimator.ofFloat(progress, end).apply {
+      duration = max(90L, ((kotlin.math.abs(end - progress) * 430f).toLong()))
+      interpolator = DecelerateInterpolator(1.2f)
+      addUpdateListener { progress = it.animatedValue as Float; invalidate() }
+      addListener(object : android.animation.AnimatorListenerAdapter() {
+        private var cancelled = false
+        override fun onAnimationCancel(animation: android.animation.Animator) { cancelled = true }
+        override fun onAnimationEnd(animation: android.animation.Animator) {
+          if (!cancelled) onFinished(Unit)
+        }
+      })
+      start()
+    }
   }
 
   private fun rebuildPage() {
@@ -210,7 +205,7 @@ class PageCurlView(context: Context, appContext: AppContext) : ExpoView(context,
   }
 
   override fun onDetachedFromWindow() {
-    animationToken++
+    animator?.cancel()
     decodeQueue.shutdownNow()
     bitmap?.recycle()
     page?.recycle()
