@@ -49,7 +49,6 @@ import type { HighlightColor, ReadSettings, TOCItem } from "@readany/core/types"
 import { eventBus } from "@readany/core/utils/event-bus";
 import { throttle } from "@readany/core/utils/throttle";
 import { Asset } from "expo-asset";
-import { requireNativeView } from "expo";
 import * as DocumentPicker from "expo-document-picker";
 /**
  * ReaderScreen — WebView-based reader with foliate-js engine.
@@ -65,7 +64,6 @@ import {
   Easing,
   Modal,
   Platform,
-  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -77,7 +75,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
-import { captureRef } from "react-native-view-shot";
 import { useReaderAnnotationSync } from "./reader/useReaderAnnotationSync";
 
 // ── Extracted modules ──
@@ -89,20 +86,6 @@ const MAX_TRACKED_PAGE_DELTA = 20;
 const MAX_TRACKED_FRACTION_DELTA = 0.08;
 const INITIAL_PROGRESS_RESTORE_GUARD_MS = 1800;
 const PROGRAMMATIC_NAV_GUARD_MS = 1200;
-type PageCurlProps = {
-  imageUri: string;
-  progress: number;
-  direction: "next" | "prev";
-  dualPage: boolean;
-  animateTo?: number;
-  onReady?: () => void;
-  onFinished?: () => void;
-  pointerEvents?: "none";
-  style?: object;
-};
-const AndroidPageCurl = Platform.OS === "android"
-  ? requireNativeView<PageCurlProps>("PageCurl")
-  : null;
 const BOOK_MIME_TYPES = [
   "application/epub+zip",
   "application/pdf",
@@ -238,34 +221,6 @@ export function ReaderScreen({ route, navigation }: Props) {
 
   // State
   const [loading, setLoading] = useState(true);
-  const [pageCurl, setPageCurl] = useState<{
-    uri: string; direction: "next" | "prev"; progress: number; animateTo?: number;
-    title: string; pageText: string;
-  } | null>(null);
-  const pageCaptureRef = useRef<View>(null);
-  const pageImageRef = useRef<string | null>(null);
-  const pageCurlActiveRef = useRef(false);
-  const pageCaptureGenerationRef = useRef(0);
-  const pageCurlTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pageCurlGestureRef = useRef(false);
-  const pageCurlAbortRef = useRef(false);
-  const pageCurlDestinationReadyRef = useRef(false);
-  const pageCurlFinishPendingRef = useRef(false);
-  const pageCurlStartCfiRef = useRef("");
-  const pageCurlNavigatedRef = useRef(false);
-  const pageCurlRestoreAttemptsRef = useRef(0);
-  const pageCurlGestureProgressRef = useRef(0);
-  const pageCurlPendingDirectionRef = useRef<"next" | "prev" | null>(null);
-  useEffect(() => {
-    pageCaptureGenerationRef.current++;
-    pageImageRef.current = null;
-    pageCurlActiveRef.current = false;
-    setPageCurl(null);
-    return () => {
-      pageCaptureGenerationRef.current++;
-      if (pageCurlTimeoutRef.current) clearTimeout(pageCurlTimeoutRef.current);
-    };
-  }, [bookId]);
   const [error, setError] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(false);
   const [showTOC, setShowTOC] = useState(false);
@@ -367,17 +322,7 @@ export function ReaderScreen({ route, navigation }: Props) {
 
   // Track OS-level accessibility font scale; re-renders when the user
   // changes the system font size while the reader is open.
-  const { fontScale: systemFontScale, width: windowWidth } = useWindowDimensions();
-  useEffect(() => {
-    // A cached image has the old page geometry after a fold or resize.
-    pageCaptureGenerationRef.current++;
-    pageImageRef.current = null;
-    if (pageCurlActiveRef.current) {
-      pageCurlActiveRef.current = false;
-      if (pageCurlTimeoutRef.current) clearTimeout(pageCurlTimeoutRef.current);
-      setPageCurl(null);
-    }
-  }, [windowWidth]);
+  const { fontScale: systemFontScale } = useWindowDimensions();
   // Apply the system scale only when the user has opted into
   // followSystemFontScale. The store keeps the user's raw fontSize, so
   // toggling the option (or changing OS font size) doesn't drift the
@@ -712,7 +657,6 @@ export function ReaderScreen({ route, navigation }: Props) {
         viewMode: settings.viewMode,
         paginatedLayout: settings.paginatedLayout,
         smoothReading: settings.smoothReading === true,
-        pageCurl: settings.pageCurl === true && Platform.OS === "android",
         bionicReading: settings.bionicReading === true,
         customFontFaceCSS: fontCSS,
         customFontFamily: fontFamily ?? "",
@@ -762,38 +706,6 @@ export function ReaderScreen({ route, navigation }: Props) {
       totalBookCharactersRef.current = totalCharacters > 0 ? totalCharacters : null;
     },
     onRelocate: (detail: RelocateEvent) => {
-      if (pageCurlAbortRef.current && pageCurlNavigatedRef.current && pageCurlStartCfiRef.current) {
-        if (detail.cfi === pageCurlStartCfiRef.current) {
-          pageCurlAbortRef.current = false;
-          pageCurlRestoreAttemptsRef.current = 0;
-        } else if (pageCurlRestoreAttemptsRef.current < 2) {
-          pageCurlRestoreAttemptsRef.current++;
-          const original = pageCurlStartCfiRef.current;
-          setTimeout(() => bridge.goToCFI(original), 100);
-        }
-      }
-      const captureGeneration = ++pageCaptureGenerationRef.current;
-      if (pageCurlActiveRef.current) {
-        pageCurlDestinationReadyRef.current = true;
-        if (!pageCurlGestureRef.current || pageCurlFinishPendingRef.current) {
-          setPageCurl((current) => current && !pageCurlAbortRef.current
-            ? { ...current, animateTo: 1 } : current);
-        }
-      }
-      if (Platform.OS === "android" && useSettingsStore.getState().readSettings.pageCurl) {
-        setTimeout(() => {
-          if (captureGeneration !== pageCaptureGenerationRef.current || pageCurlActiveRef.current || !pageCaptureRef.current) return;
-          void captureRef(pageCaptureRef, { format: "jpg", quality: 0.9, result: "tmpfile" })
-            .then((uri) => {
-              if (captureGeneration === pageCaptureGenerationRef.current) pageImageRef.current = uri;
-              console.log("[PageCurl] page image ready", uri);
-            })
-            .catch((error) => {
-              pageImageRef.current = null;
-              console.warn("[PageCurl] page capture failed", error);
-            });
-        }, 100);
-      }
       console.log("[ReaderScreen] onRelocate", {
         section: detail.section,
         fraction: detail.fraction,
@@ -975,38 +887,6 @@ export function ReaderScreen({ route, navigation }: Props) {
         readingContextService.clearSelection();
       }
     },
-    onPageTurnRequest: (direction) => {
-      const turn = () => direction === "next" ? bridge.goNext() : bridge.goPrev();
-      const uri = pageImageRef.current;
-      if (pageCurlActiveRef.current) {
-        pageCurlPendingDirectionRef.current = direction;
-        return;
-      }
-      if (!AndroidPageCurl || !uri || loading) {
-        console.log("[PageCurl] ordinary tap turn; image ready:", !!uri);
-        turn();
-        return;
-      }
-      pageCurlActiveRef.current = true;
-      pageImageRef.current = null;
-      pageCurlGestureRef.current = false;
-      pageCurlAbortRef.current = false;
-      pageCurlDestinationReadyRef.current = false;
-      pageCurlFinishPendingRef.current = false;
-      pageCurlNavigatedRef.current = false;
-      pageCurlRestoreAttemptsRef.current = 0;
-      setPageCurl({
-        uri, direction, progress: 0,
-        title: currentChapter || bookTitle,
-        pageText: currentPage > 0 && totalPages > 0
-          ? `${currentPage}/${totalPages}` : `${Math.round(progress * 100)}%`,
-      });
-      // If an EPUB section cannot relocate, restore input promptly.
-      pageCurlTimeoutRef.current = setTimeout(() => {
-        pageCurlActiveRef.current = false;
-        setPageCurl(null);
-      }, 2000);
-    },
     onTap: () => {
       if (noteTooltipVisibleRef.current || Date.now() < suppressReaderTapUntilRef.current) {
         return;
@@ -1127,94 +1007,6 @@ export function ReaderScreen({ route, navigation }: Props) {
   });
 
   bridgeRef.current = bridge;
-
-  const pageCurlGestureActionsRef = useRef<{
-    start: (direction: "next" | "prev") => void;
-    move: (direction: "next" | "prev", dx: number) => void;
-    end: (direction: "next" | "prev", vx: number) => void;
-  } | null>(null);
-  pageCurlGestureActionsRef.current = {
-    start: (direction) => {
-      const uri = pageImageRef.current;
-      console.log("[PageCurl] gesture start; image ready:", !!uri);
-      pageCurlGestureProgressRef.current = 0;
-      if (!uri || pageCurlActiveRef.current || loading) return;
-      pageImageRef.current = null;
-      pageCurlActiveRef.current = true;
-      pageCurlGestureRef.current = true;
-      pageCurlAbortRef.current = false;
-      pageCurlDestinationReadyRef.current = false;
-      pageCurlFinishPendingRef.current = false;
-      pageCurlNavigatedRef.current = false;
-      pageCurlRestoreAttemptsRef.current = 0;
-      pageCurlStartCfiRef.current = lastCfiRef.current;
-      setPageCurl({
-        uri, direction, progress: 0,
-        title: currentChapter || bookTitle,
-        pageText: currentPage > 0 && totalPages > 0
-          ? `${currentPage}/${totalPages}` : `${Math.round(progress * 100)}%`,
-      });
-      pageCurlTimeoutRef.current = setTimeout(() => {
-        pageCurlActiveRef.current = false;
-        setPageCurl(null);
-      }, 2000);
-    },
-    move: (direction, dx) => {
-      const signed = direction === "next" ? -dx : dx;
-      const progress = Math.min(0.98, Math.max(0, signed / (windowWidth * 0.82)));
-      pageCurlGestureProgressRef.current = progress;
-      if (!pageCurlActiveRef.current || !pageCurlGestureRef.current) return;
-      setPageCurl((current) => current ? { ...current, progress } : null);
-    },
-    end: (direction, vx) => {
-      if (pageCurlActiveRef.current && !pageCurlGestureRef.current) {
-        pageCurlPendingDirectionRef.current = direction;
-        return;
-      }
-      if (!pageCurlActiveRef.current || !pageCurlGestureRef.current) {
-        // A screenshot may still be refreshing just after relocation. Preserve
-        // edge-tap paging, but do not turn a page for a short cancelled drag.
-        const progress = pageCurlGestureProgressRef.current;
-        const edgeTap = progress < 0.03;
-        const complete = edgeTap || progress > 0.38 ||
-          (progress > 0.08 && (direction === "next" ? vx < -0.4 : vx > 0.4));
-        if (complete) {
-          if (direction === "next") bridge.goNext();
-          else bridge.goPrev();
-        }
-        return;
-      }
-      // A release without horizontal travel is an edge tap. Complete it with
-      // the same curl animation instead of treating it as a cancelled drag.
-      const edgeTap = pageCurlGestureProgressRef.current < 0.03;
-      const complete = edgeTap || pageCurlGestureProgressRef.current > 0.38 ||
-        (pageCurlGestureProgressRef.current > 0.08 && (direction === "next" ? vx < -0.4 : vx > 0.4));
-      if (complete) {
-        pageCurlFinishPendingRef.current = true;
-        if (pageCurlDestinationReadyRef.current) {
-          setPageCurl((current) => current ? { ...current, animateTo: 1 } : null);
-        }
-      } else {
-        pageCurlAbortRef.current = true;
-        setPageCurl((current) => current ? { ...current, animateTo: 0 } : null);
-        if (pageCurlNavigatedRef.current && pageCurlStartCfiRef.current) {
-          pageCurlRestoreAttemptsRef.current = 1;
-          bridge.goToCFI(pageCurlStartCfiRef.current);
-        }
-      }
-    },
-  };
-  const pageCurlEdgeResponders = useMemo(() => {
-    const create = (direction: "next" | "prev") => PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => pageCurlGestureActionsRef.current?.start(direction),
-      onPanResponderMove: (_event, gesture) => pageCurlGestureActionsRef.current?.move(direction, gesture.dx),
-      onPanResponderRelease: (_event, gesture) => pageCurlGestureActionsRef.current?.end(direction, gesture.vx),
-      onPanResponderTerminate: () => pageCurlGestureActionsRef.current?.end(direction, 0),
-    });
-    return { next: create("next"), prev: create("prev") };
-  }, []);
   chapterTranslationBridgeRef.current = bridge;
 
   // ── useReaderTTS ──
@@ -1281,15 +1073,6 @@ export function ReaderScreen({ route, navigation }: Props) {
         customFontFaceCSS: fontCSS,
         customFontFamily: fontFamily ?? "",
       });
-      if (key === "pageCurl" && value === true && Platform.OS === "android") {
-        const generation = ++pageCaptureGenerationRef.current;
-        setTimeout(() => {
-          if (generation !== pageCaptureGenerationRef.current || !pageCaptureRef.current) return;
-          void captureRef(pageCaptureRef, { format: "jpg", quality: 0.9, result: "tmpfile" })
-            .then((uri) => { if (generation === pageCaptureGenerationRef.current) pageImageRef.current = uri; })
-            .catch((error) => console.warn("[PageCurl] initial page capture failed", error));
-        }, 250);
-      }
     },
     [bridge, updateReadSettings, computeEffectiveFontSize],
   );
@@ -1448,7 +1231,6 @@ export function ReaderScreen({ route, navigation }: Props) {
             viewMode: readSettings.viewMode,
             paginatedLayout: readSettings.paginatedLayout,
             smoothReading: readSettings.smoothReading === true,
-            pageCurl: readSettings.pageCurl === true && Platform.OS === "android",
             bionicReading: readSettings.bionicReading === true,
           },
         });
@@ -1774,15 +1556,16 @@ export function ReaderScreen({ route, navigation }: Props) {
       >
         {/* WebView with foliate-js */}
         <View style={{ flex: 1 }}>
-          <View
-            ref={pageCaptureRef}
-            collapsable={false}
-            style={{ flex: 1, marginTop: readerTopMargin, marginBottom: readerBottomInset }}
-          >
           <WebView
             ref={bridge.webViewRef}
             source={{ uri: readerHtmlUri }}
-            style={s.webview}
+            style={[
+              s.webview,
+              {
+                marginTop: readerTopMargin,
+                marginBottom: readerBottomInset,
+              },
+            ]}
             pointerEvents={isPanelOpen ? "none" : "auto"}
             onMessage={bridge.handleMessage}
             onError={(e) => {
@@ -1806,46 +1589,6 @@ export function ReaderScreen({ route, navigation }: Props) {
             originWhitelist={["*"]}
             mixedContentMode="always"
           />
-          </View>
-          {pageCurl && AndroidPageCurl && (
-            <AndroidPageCurl
-              style={{ position: "absolute", top: readerTopMargin, bottom: readerBottomInset, left: 0, right: 0 }}
-              pointerEvents="none"
-              imageUri={pageCurl.uri}
-              progress={pageCurl.progress}
-              direction={pageCurl.direction}
-              dualPage={windowWidth >= 768 && readSettings.paginatedLayout === "double"}
-              animateTo={pageCurl.animateTo}
-              onReady={() => {
-                console.log("[PageCurl] native image ready");
-                if (pageCurlActiveRef.current && !pageCurlAbortRef.current) {
-                  pageCurlNavigatedRef.current = true;
-                  if (pageCurl.direction === "next") bridge.goNext();
-                  else bridge.goPrev();
-                }
-              }}
-              onFinished={() => {
-                console.log("[PageCurl] native curl finished");
-                pageCurlActiveRef.current = false;
-                pageCurlGestureRef.current = false;
-                if (pageCurlAbortRef.current && !pageCurlNavigatedRef.current)
-                  pageCurlAbortRef.current = false;
-                if (pageCurlTimeoutRef.current) clearTimeout(pageCurlTimeoutRef.current);
-                setPageCurl(null);
-                const pending = pageCurlPendingDirectionRef.current;
-                pageCurlPendingDirectionRef.current = null;
-                if (pending && !pageCurlAbortRef.current) {
-                  setTimeout(() => pending === "next" ? bridge.goNext() : bridge.goPrev(), 60);
-                }
-              }}
-            />
-          )}
-          {Platform.OS === "android" && readSettings.pageCurl && readSettings.viewMode === "paginated" && book?.format !== "pdf" && !loading && !isPanelOpen && !selection && (
-            <>
-              <View style={{ position: "absolute", left: 20, top: readerTopMargin, bottom: readerBottomInset, width: 38 }} {...pageCurlEdgeResponders.prev.panHandlers} />
-              <View style={{ position: "absolute", right: 20, top: readerTopMargin, bottom: readerBottomInset, width: 38 }} {...pageCurlEdgeResponders.next.panHandlers} />
-            </>
-          )}
         </View>
 
         {/* Loading overlay */}
@@ -1860,10 +1603,10 @@ export function ReaderScreen({ route, navigation }: Props) {
           <View style={[s.topInfoBar, { top: layoutTopInset }]}>
             <View style={s.topInfoRow}>
               <Text style={s.topInfoText} numberOfLines={1}>
-                {pageCurl?.title ?? (currentChapter || bookTitle)}
+                {currentChapter || bookTitle}
               </Text>
               <Text style={s.topInfoPageText}>
-                {pageCurl?.pageText ?? (currentPage > 0 && totalPages > 0 ? `${currentPage}/${totalPages}` : `${percent}%`)}
+                {currentPage > 0 && totalPages > 0 ? `${currentPage}/${totalPages}` : `${percent}%`}
               </Text>
             </View>
           </View>

@@ -57,7 +57,6 @@ const defaultReadSettings: ReadSettings = {
   showBottomTimeBattery: true,
   volumeButtonsPageTurn: false,
   smoothReading: false,
-  pageCurl: false,
   bionicReading: false,
   defaultHighlightColor: "yellow",
 };
