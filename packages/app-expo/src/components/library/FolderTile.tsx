@@ -12,7 +12,7 @@
  * the count, and the folder's own colour as a tint — the one piece of it that
  * is genuinely worth recognising at a glance.
  */
-import { MoreVerticalIcon } from "@/components/ui/Icon";
+import { CheckIcon, MoreVerticalIcon } from "@/components/ui/Icon";
 import { folderColor } from "@/lib/library/folder-colors";
 import { type ThemeColors, fontSize, fontWeight, radius, ui, useColors } from "@/styles/theme";
 import type { BookGroup } from "@readany/core/types";
@@ -31,6 +31,10 @@ interface FolderTileProps {
   width: number;
   onOpen: (groupId: string) => void;
   onMore?: (group: BookGroup) => void;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onSelect?: (group: BookGroup) => void;
+  onLongPress?: (group: BookGroup) => void;
 }
 
 export const FolderTile = memo(function FolderTile({
@@ -39,6 +43,10 @@ export const FolderTile = memo(function FolderTile({
   width,
   onOpen,
   onMore,
+  selectionMode = false,
+  selected = false,
+  onSelect,
+  onLongPress,
 }: FolderTileProps) {
   const colors = useColors();
   const { t } = useTranslation();
@@ -48,9 +56,13 @@ export const FolderTile = memo(function FolderTile({
   return (
     <View style={[s.wrap, { width }]}>
       <TouchableOpacity
-        style={[s.tile, tone ? { backgroundColor: tone.tint, borderColor: tone.accent } : null]}
-        onPress={() => onOpen(group.id)}
-        onLongPress={() => onMore?.(group)}
+        style={[
+          s.tile,
+          tone ? { backgroundColor: tone.tint, borderColor: tone.accent } : null,
+          selected ? { borderWidth: 2, borderColor: colors.primary } : null,
+        ]}
+        onPress={() => selectionMode ? onSelect?.(group) : onOpen(group.id)}
+        onLongPress={() => selectionMode ? onSelect?.(group) : onLongPress?.(group)}
         delayLongPress={450}
         activeOpacity={0.76}
         accessibilityRole="button"
@@ -60,6 +72,11 @@ export const FolderTile = memo(function FolderTile({
           defaultValue: "Open folder {{name}}, {{count}} books",
         })}
       >
+        {selectionMode ? (
+          <View style={[s.selectionMark, { borderColor: colors.primary, backgroundColor: selected ? colors.primary : colors.background }]}>
+            {selected ? <CheckIcon size={13} color={colors.primaryForeground} /> : null}
+          </View>
+        ) : null}
         <BooksSvg width={MARK_SIZE} height={MARK_SIZE} />
         <Text style={s.name} numberOfLines={2}>
           {group.name}
@@ -71,7 +88,7 @@ export const FolderTile = memo(function FolderTile({
 
       {/* A sibling of the tile, never a child: a touchable inside a touchable
           is a coin toss on Android, and this one opens a destructive menu. */}
-      {onMore ? (
+      {onMore && !selectionMode ? (
         <TouchableOpacity
           style={s.moreTouch}
           onPress={() => onMore(group)}
@@ -124,5 +141,17 @@ const makeStyles = (colors: ThemeColors) =>
       height: 34,
       alignItems: "center",
       justifyContent: "center",
+    },
+    selectionMark: {
+      position: "absolute",
+      top: 7,
+      left: 7,
+      width: 21,
+      height: 21,
+      borderRadius: 11,
+      borderWidth: 1.5,
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 3,
     },
   });

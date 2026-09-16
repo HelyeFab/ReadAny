@@ -17,4 +17,27 @@ describe("Markdown book conversion", () => {
     expect(chapter).toContain("&lt;script&gt;");
     expect(chapter).not.toContain("<script>");
   });
+
+  it("renders inline and display LaTeX as self-contained MathML", async () => {
+    const text = "# Mathematics\n\nEuler wrote $e^{i\\pi}+1=0$.\n\n$$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$\n";
+    const result = await markdownToEpubBytes(new TextEncoder().encode(text), "math.md");
+    const chapter = await withEpubPackageResourceReader(result.epubBytes, ({ readTextEntry }) =>
+      readTextEntry("OEBPS/chapter.xhtml"),
+    );
+    expect(chapter).toContain("<math");
+    expect(chapter).toContain("e^{i\\pi}+1=0");
+    expect(chapter).toContain('class="katex-block"');
+    expect(chapter).toContain("b^2-4ac");
+  });
+
+  it("keeps currency dollar signs as ordinary text", async () => {
+    const text = "The first edition costs $20, and the bundle costs $30.";
+    const result = await markdownToEpubBytes(new TextEncoder().encode(text), "prices.md");
+    const chapter = await withEpubPackageResourceReader(result.epubBytes, ({ readTextEntry }) =>
+      readTextEntry("OEBPS/chapter.xhtml"),
+    );
+    expect(chapter).toContain("$20");
+    expect(chapter).toContain("$30");
+    expect(chapter).not.toContain("<math");
+  });
 });

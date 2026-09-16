@@ -280,6 +280,7 @@ export function LibraryScreen() {
     suggestedName?: string;
   } | null>(null);
   const [selectedBookIds, setSelectedBookIds] = useState<Set<string>>(new Set());
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
   const [showGroupPicker, setShowGroupPicker] = useState(false);
   const [showLibraryMenu, setShowLibraryMenu] = useState(false);
   const [colorPickerGroup, setColorPickerGroup] = useState<BookGroup | null>(null);
@@ -323,6 +324,7 @@ export function LibraryScreen() {
     viewMode,
     setViewMode,
     renameGroup,
+    moveGroup,
     removeGroup,
     moveBooksToGroup,
     addTagToBook,
@@ -1235,50 +1237,111 @@ export function LibraryScreen() {
   const enterSelectionMode = useCallback((book: Book) => {
     setSelectionMode(true);
     setSelectedBookIds(new Set([book.id]));
+    setSelectedGroupIds(new Set());
+  }, []);
+
+  const toggleGroupSelection = useCallback((group: BookGroup) => {
+    setSelectedGroupIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(group.id)) next.delete(group.id); else next.add(group.id);
+      return next;
+    });
+  }, []);
+
+  const enterGroupSelectionMode = useCallback((group: BookGroup) => {
+    setSelectionMode(true);
+    setSelectedBookIds(new Set());
+    setSelectedGroupIds(new Set([group.id]));
   }, []);
 
   const exitSelectionMode = useCallback(() => {
     setSelectionMode(false);
     setSelectedBookIds(new Set());
+    setSelectedGroupIds(new Set());
   }, []);
 
   const selectableBooks = isShelfView ? shelfBooks : visibleBooks;
-  const isAllSelected = selectableBooks.length > 0 && selectableBooks.every((book) => selectedBookIds.has(book.id));
+  const selectableGroups = bandFolders.map(({ group }) => group);
+  const moveDestinationGroups = useMemo(() => {
+    if (selectedGroupIds.size === 0) return groups;
+    const blocked = new Set(selectedGroupIds);
+    let expanded = true;
+    while (expanded) {
+      expanded = false;
+      for (const group of groups) {
+        if (group.parentId && blocked.has(group.parentId) && !blocked.has(group.id)) {
+          blocked.add(group.id);
+          expanded = true;
+        }
+      }
+    }
+    return groups.filter((group) => !blocked.has(group.id));
+  }, [groups, selectedGroupIds]);
+  const isAllSelected = (selectableBooks.length + selectableGroups.length) > 0 &&
+    selectableBooks.every((book) => selectedBookIds.has(book.id)) &&
+    selectableGroups.every((group) => selectedGroupIds.has(group.id));
 
   const toggleSelectAll = useCallback(() => {
     if (isAllSelected) {
       setSelectedBookIds(new Set());
+      setSelectedGroupIds(new Set());
     } else {
       setSelectedBookIds(new Set(selectableBooks.map((b) => b.id)));
+      setSelectedGroupIds(new Set(selectableGroups.map((group) => group.id)));
     }
-  }, [selectableBooks, isAllSelected]);
+  }, [selectableBooks, selectableGroups, isAllSelected]);
 
   const handleBatchDelete = useCallback(() => {
-    if (selectedBookIds.size === 0) return;
+    if (selectedBookIds.size === 0 && selectedGroupIds.size === 0) return;
+    const groupsToDelete = new Set(selectedGroupIds);
+    let expanded = true;
+    while (expanded) {
+      expanded = false;
+      for (const group of groups) {
+        if (group.parentId && groupsToDelete.has(group.parentId) && !groupsToDelete.has(group.id)) {
+          groupsToDelete.add(group.id);
+          expanded = true;
+        }
+      }
+    }
+    const booksToDelete = new Set(selectedBookIds);
+    for (const book of books) {
+      if (book.groupId && groupsToDelete.has(book.groupId)) booksToDelete.add(book.id);
+    }
     Alert.alert(
       t("common.confirm", "确认"),
-      // Every locale writes this one with a {{count}} placeholder, so the count
-      // has to arrive as an option. Passed as a bare default string it printed
-      // the placeholder verbatim.
-      t("library.batchDeleteConfirm", {
-        count: selectedBookIds.size,
-        defaultValue: `确定要删除选中的 ${selectedBookIds.size} 本书吗？`,
-      }),
+      selectedGroupIds.size > 0
+        ? t("library.batchDeleteFoldersConfirm", {
+            folderCount: selectedGroupIds.size,
+            bookCount: booksToDelete.size,
+            defaultValue: `Delete ${selectedGroupIds.size} selected folder(s), their subfolders, and ${booksToDelete.size} book(s)?`,
+          })
+        : t("library.batchDeleteConfirm", {
+            count: selectedBookIds.size,
+            defaultValue: `确定要删除选中的 ${selectedBookIds.size} 本书吗？`,
+          }),
       [
         { text: t("common.cancel", "取消"), style: "cancel" },
         {
           text: t("common.delete", "删除"),
           style: "destructive",
           onPress: async () => {
-            for (const id of selectedBookIds) {
+            for (const id of booksToDelete) {
               await removeBook(id);
+            }
+            const depth = (id: string): number => {
+              const group = groups.find((candidate) => candidate.id === id);
+              return group?.parentId && groupsToDelete.has(group.parentId) ? 1 + depth(group.parentId) : 0;
+            };
+            for (const id of [...groupsToDelete].sort((a, b) => depth(b) - depth(a))) {
+              await removeGroup(id);
             }
             exitSelectionMode();
           },
         },
       ],
     );
-  }, [selectedBookIds, removeBook, exitSelectionMode, t]);
+  }, [selectedBookIds, selectedGroupIds, books, groups, removeBook, removeGroup, exitSelectionMode, t]);
 
   const handleBatchTag = useCallback(() => {
     if (selectedBookIds.size === 0) return;
@@ -1419,6 +1482,10 @@ export function LibraryScreen() {
           contentWidth={contentWidth}
           onOpen={setActiveGroupId}
           onMore={handleGroupLongPress}
+          selectionMode={selectionMode}
+          selectedIds={selectedGroupIds}
+          onSelect={toggleGroupSelection}
+          onLongPress={enterGroupSelectionMode}
         />
       </View>
     );
@@ -1441,19 +1508,31 @@ export function LibraryScreen() {
     contentWidth,
     setActiveGroupId,
     handleGroupLongPress,
+    selectedGroupIds,
+    toggleGroupSelection,
+    enterGroupSelectionMode,
   ]);
 
   const handleBatchMoveGroup = useCallback(() => {
-    if (selectedBookIds.size === 0) return;
+    if (selectedBookIds.size === 0 && selectedGroupIds.size === 0) return;
     setShowGroupPicker(true);
-  }, [selectedBookIds]);
+  }, [selectedBookIds, selectedGroupIds]);
 
   const handleGroupPickerSelect = useCallback(
-    (groupId: string | undefined) => {
+    async (groupId: string | undefined) => {
       moveBooksToGroup([...selectedBookIds], groupId);
+      const selectedRoots = [...selectedGroupIds].filter((id) => {
+        let parentId = groups.find((group) => group.id === id)?.parentId;
+        while (parentId) {
+          if (selectedGroupIds.has(parentId)) return false;
+          parentId = groups.find((group) => group.id === parentId)?.parentId;
+        }
+        return true;
+      });
+      for (const id of selectedRoots) await moveGroup(id, groupId);
       exitSelectionMode();
     },
-    [exitSelectionMode, moveBooksToGroup, selectedBookIds],
+    [exitSelectionMode, groups, moveBooksToGroup, moveGroup, selectedBookIds, selectedGroupIds],
   );
 
   const handleGroupPickerCreate = useCallback(
@@ -1461,10 +1540,11 @@ export function LibraryScreen() {
       const group = await addGroup(name);
       if (group) {
         moveBooksToGroup([...selectedBookIds], group.id);
+        for (const id of selectedGroupIds) await moveGroup(id, group.id);
         exitSelectionMode();
       }
     },
-    [addGroup, exitSelectionMode, moveBooksToGroup, selectedBookIds],
+    [addGroup, exitSelectionMode, moveBooksToGroup, moveGroup, selectedBookIds, selectedGroupIds],
   );
 
   const handleBatchRemoveFromGroup = useCallback(() => {
@@ -1618,8 +1698,8 @@ export function LibraryScreen() {
                 </TouchableOpacity>
                 <Text style={s.selectionCount} numberOfLines={1}>
                   {t("library.selectedCount", {
-                    count: selectedBookIds.size,
-                    defaultValue: `已选 ${selectedBookIds.size} 本`,
+                    count: selectedBookIds.size + selectedGroupIds.size,
+                    defaultValue: `${selectedBookIds.size + selectedGroupIds.size} selected`,
                   })}
                 </Text>
               </View>
@@ -1630,20 +1710,24 @@ export function LibraryScreen() {
                     color={isAllSelected ? colors.primary : colors.mutedForeground}
                   />
                 </TouchableOpacity>
-                <TouchableOpacity style={s.headerBtnTight} onPress={handleBatchTag}>
-                  <HashIcon size={18} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                {selectedGroupIds.size === 0 ? (
+                  <TouchableOpacity style={s.headerBtnTight} onPress={handleBatchTag}>
+                    <HashIcon size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                ) : null}
                 <TouchableOpacity style={s.headerBtnTight} onPress={handleBatchMoveGroup}>
                   <FolderInputIcon size={18} color={colors.mutedForeground} />
                 </TouchableOpacity>
-                {activeGroupId ? (
+                {activeGroupId && selectedGroupIds.size === 0 ? (
                   <TouchableOpacity style={s.headerBtnTight} onPress={handleBatchRemoveFromGroup}>
                     <FolderMinusIcon size={18} color={colors.mutedForeground} />
                   </TouchableOpacity>
                 ) : null}
-                <TouchableOpacity style={s.headerBtnTight} onPress={handleBatchVectorize}>
-                  <DatabaseIcon size={18} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                {selectedGroupIds.size === 0 ? (
+                  <TouchableOpacity style={s.headerBtnTight} onPress={handleBatchVectorize}>
+                    <DatabaseIcon size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                ) : null}
                 <TouchableOpacity style={s.headerBtnTight} onPress={handleBatchDelete}>
                   <Trash2Icon size={18} color={colors.destructive} />
                 </TouchableOpacity>
@@ -2078,7 +2162,7 @@ export function LibraryScreen() {
       />
       <GroupPickerSheet
         visible={showGroupPicker}
-        groups={groups}
+        groups={moveDestinationGroups}
         onSelect={handleGroupPickerSelect}
         onCreateGroup={handleGroupPickerCreate}
         onClose={() => setShowGroupPicker(false)}

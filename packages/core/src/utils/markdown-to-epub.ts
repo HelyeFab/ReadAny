@@ -1,4 +1,5 @@
 import MarkdownIt from "markdown-it";
+import markdownItKatex from "@vscode/markdown-it-katex";
 import { buildStoreOnlyZip } from "./store-only-zip";
 
 const escapeXml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -7,6 +8,13 @@ const escapeXml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, 
 export async function markdownToEpubBytes(bytes: Uint8Array, fileName: string): Promise<{ epubBytes: Uint8Array; bookTitle: string }> {
   const source = new TextDecoder("utf-8").decode(bytes).replace(/^\uFEFF/, "");
   const markdown = new MarkdownIt({ html: false, xhtmlOut: true, linkify: true, typographer: true });
+  markdown.use(markdownItKatex, {
+    throwOnError: false,
+    strict: false,
+    // MathML is self-contained inside the generated EPUB. KaTeX's HTML output
+    // depends on a stylesheet and font bundle that a local book cannot fetch.
+    output: "mathml",
+  });
   const tokens = markdown.parse(source, {});
   const headings: { title: string; id: string }[] = [];
   let firstHeading = "";
@@ -25,7 +33,7 @@ export async function markdownToEpubBytes(bytes: Uint8Array, fileName: string): 
   const toc = (headings.length ? headings : [{ title: bookTitle, id: "top" }])
     .map((heading, i) => `<navPoint id="nav-${i + 1}" playOrder="${i + 1}"><navLabel><text>${escapeXml(heading.title)}</text></navLabel><content src="OEBPS/chapter.xhtml#${heading.id}"/></navPoint>`)
     .join("\n");
-  const css = `body { line-height: 1.55; overflow-wrap: break-word; } pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: .5em; background: #eee; } code { font-family: monospace; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #888; padding: .3em; } blockquote { border-left: 3px solid #888; margin-left: 0; padding-left: 1em; } img { max-width: 100%; height: auto; }`;
+  const css = `body { line-height: 1.55; overflow-wrap: break-word; } pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: .5em; background: #eee; } code { font-family: monospace; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #888; padding: .3em; } blockquote { border-left: 3px solid #888; margin-left: 0; padding-left: 1em; } img { max-width: 100%; height: auto; } .katex-block { display: block; max-width: 100%; margin: 1em 0; overflow-x: auto; text-align: center; } math { font-size: 1.05em; }`;
   const identifier = `readany-markdown-${bytes.length}-${fileName}`;
   const entries = [
     { name: "mimetype", data: encoder.encode("application/epub+zip") },

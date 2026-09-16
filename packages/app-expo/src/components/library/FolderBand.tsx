@@ -39,6 +39,10 @@ interface FolderBandProps {
   contentWidth: number;
   onOpen: (groupId: string) => void;
   onMore?: (group: BookGroup) => void;
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onSelect?: (group: BookGroup) => void;
+  onLongPress?: (group: BookGroup) => void;
 }
 
 export const FolderBand = memo(function FolderBand({
@@ -46,6 +50,10 @@ export const FolderBand = memo(function FolderBand({
   contentWidth,
   onOpen,
   onMore,
+  selectionMode,
+  selectedIds,
+  onSelect,
+  onLongPress,
 }: FolderBandProps) {
   const colors = useColors();
   const { t } = useTranslation();
@@ -72,6 +80,10 @@ export const FolderBand = memo(function FolderBand({
             width={tileWidth}
             onOpen={onOpen}
             onMore={onMore}
+            selectionMode={selectionMode}
+            selected={selectedIds?.has(group.id)}
+            onSelect={onSelect}
+            onLongPress={onLongPress}
           />
         ))}
       </View>

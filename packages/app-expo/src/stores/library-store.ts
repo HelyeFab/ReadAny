@@ -110,6 +110,7 @@ export interface LibraryState {
   renameGroup: (groupId: string, name: string) => void;
   setGroupColor: (groupId: string, color?: string) => Promise<void>;
   setGroupViewPrefs: (groupId: string, prefs: GroupViewPrefs) => void;
+  moveGroup: (groupId: string, parentId?: string) => Promise<void>;
   removeGroup: (groupId: string) => Promise<void>;
   moveBookToGroup: (bookId: string, groupId?: string) => void;
   moveBooksToGroup: (bookIds: string[], groupId?: string) => void;
@@ -1435,6 +1436,31 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     db.updateGroup(groupId, { viewPrefs: merged }).catch((err) =>
       console.error("Failed to save folder view:", err),
     );
+  },
+
+  moveGroup: async (groupId, parentId) => {
+    const { groups } = get();
+    if (groupId === parentId) return;
+    const descendants = new Set<string>();
+    const queue = [groupId];
+    while (queue.length) {
+      const current = queue.shift()!;
+      for (const group of groups) {
+        if (group.parentId === current && !descendants.has(group.id)) {
+          descendants.add(group.id);
+          queue.push(group.id);
+        }
+      }
+    }
+    if (parentId && descendants.has(parentId)) return;
+    set((state) => {
+      const next = state.groups.map((group) =>
+        group.id === groupId ? { ...group, parentId, updatedAt: Date.now() } : group,
+      );
+      debouncedSave("library-groups", next);
+      return { groups: next };
+    });
+    await db.updateGroup(groupId, { parentId: parentId ?? "" });
   },
 
   removeGroup: async (groupId) => {
