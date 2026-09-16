@@ -1,5 +1,7 @@
 import { BookCard } from "@/components/library/BookCard";
 import { ContinueReadingCard } from "@/components/library/ContinueReadingCard";
+import { FolderBand } from "@/components/library/FolderBand";
+import type { FolderBandEntry } from "@/components/library/FolderBand";
 import { FolderColorSheet } from "@/components/library/FolderColorSheet";
 import { GroupCard } from "@/components/library/GroupCard";
 import { GroupPickerSheet } from "@/components/library/GroupPickerSheet";
@@ -593,6 +595,14 @@ export function LibraryScreen() {
   const toggleShelfFolder = useShelfStore((st) => st.toggleFolder);
   const [scopeSheetOpen, setScopeSheetOpen] = useState(false);
 
+  const isListView = useMemo(() => {
+    if (activeGroupId) {
+      const prefs = groups.find((g) => g.id === activeGroupId)?.viewPrefs;
+      if (prefs?.viewMode) return prefs.viewMode === "list";
+    }
+    return viewMode === "list";
+  }, [activeGroupId, groups, viewMode]);
+
   const isShelfView = viewMode === "shelf" && !activeGroupId;
 
   /**
@@ -607,13 +617,29 @@ export function LibraryScreen() {
     return filteredBooks.filter((book) => book.groupId && wanted.has(book.groupId));
   }, [isShelfView, shelfMode, shelfGroupIds, filteredBooks, groups]);
 
+  /**
+   * Folders shown above the grid rather than in it — grid view only.
+   *
+   * List view already draws a folder as a compact row, which was never the
+   * problem; it was the grid, where a folder claimed a whole book-cover cell.
+   */
+  const bandFolders = useMemo<FolderBandEntry[]>(() => {
+    if (isShelfView || isListView) return [];
+    return groupedEntries.map((entry) => ({
+      group: entry.group,
+      count: entry.totalCount ?? entry.books.length,
+    }));
+  }, [groupedEntries, isShelfView, isListView]);
+
   const gridItems = useMemo<LibraryGridItem[]>(() => {
     // The shelf is a flat wall of covers; folders filter it rather than appear in it.
     if (isShelfView) return shelfBooks.map((book) => ({ type: "book" as const, book }));
-    return isGroupView && !hasSearch
-      ? [...groupedEntries, ...visibleBooks.map((book) => ({ type: "book" as const, book }))]
-      : visibleBooks.map((book) => ({ type: "book" as const, book }));
-  }, [groupedEntries, isGroupView, visibleBooks, hasSearch, isShelfView, shelfBooks]);
+    const books = visibleBooks.map((book) => ({ type: "book" as const, book }));
+    if (!isGroupView || hasSearch) return books;
+    // In grid view the folders have moved to the band above; in list view they
+    // stay inline, where a row is already the right size for one.
+    return isListView ? [...groupedEntries, ...books] : books;
+  }, [groupedEntries, isGroupView, visibleBooks, hasSearch, isShelfView, isListView, shelfBooks]);
 
   /**
    * Import the staged files and file them where the sheet said. The folder is
@@ -1138,14 +1164,6 @@ export function LibraryScreen() {
     return t("library.shelfFolderCount", { count: names.length });
   }, [shelfMode, shelfGroupIds, groups, t]);
 
-  const isListView = useMemo(() => {
-    if (activeGroupId) {
-      const prefs = groups.find((g) => g.id === activeGroupId)?.viewPrefs;
-      if (prefs?.viewMode) return prefs.viewMode === "list";
-    }
-    return viewMode === "list";
-  }, [activeGroupId, groups, viewMode]);
-
   const toggleListView = useCallback(() => {
     // Inside a folder there is no shelf — the shelf IS the way to see across
     // folders, so offering it here would just be a grid with extra steps.
@@ -1159,55 +1177,6 @@ export function LibraryScreen() {
 
   const isEmpty = gridItems.length === 0;
   const hasBooks = books.length > 0;
-
-  /**
-   * What sits above the shelf: the drawing, a line of welcome, and the book
-   * you were last in the middle of.
-   *
-   * It rides inside the list rather than above it so that it scrolls away.
-   * A greeting is worth the space the first time you look at the screen and
-   * worth none of it once you are hunting for a particular cover, and pinning
-   * it would charge you that space on every scroll.
-   *
-   * It stands down entirely while searching or selecting, when the screen is
-   * being used as a tool rather than entered as a room.
-   */
-  const shelfHeader = useMemo(() => {
-    if (selectionMode || filter.search) return null;
-    return (
-      <View>
-        <View style={s.hero}>
-          <Image source={cafeIllustration()} style={s.heroArt} resizeMode="contain" />
-          <Text style={s.heroTitle}>{t("library.heroTitle", "What will you read next?")}</Text>
-          <Text style={s.heroSubtitle}>
-            {t("library.heroSubtitle", {
-              count: books.length,
-              defaultValue: "{{count}} books on your shelf",
-            })}
-          </Text>
-        </View>
-        {continueBook ? (
-          <ContinueReadingCard
-            book={continueBook}
-            onOpen={handleOpen}
-            onDismiss={handleDismissRecent}
-          />
-        ) : null}
-        <RecentReadsStrip books={stripBooks} onOpen={handleOpen} onDismiss={handleDismissRecent} />
-      </View>
-    );
-  }, [
-    selectionMode,
-    filter.search,
-    s,
-    colors,
-    t,
-    books.length,
-    continueBook,
-    stripBooks,
-    handleOpen,
-    handleDismissRecent,
-  ]);
 
   const toggleBookSelection = useCallback((book: Book) => {
     setSelectedBookIds((prev) => {
@@ -1342,6 +1311,77 @@ export function LibraryScreen() {
     },
     [openGroupNameModal, removeGroup, t],
   );
+
+  /**
+   * What sits above the shelf: the drawing, a line of welcome, and the book
+   * you were last in the middle of.
+   *
+   * It rides inside the list rather than above it so that it scrolls away.
+   * A greeting is worth the space the first time you look at the screen and
+   * worth none of it once you are hunting for a particular cover, and pinning
+   * it would charge you that space on every scroll.
+   *
+   * It stands down entirely while searching or selecting, when the screen is
+   * being used as a tool rather than entered as a room.
+   */
+  const shelfHeader = useMemo(() => {
+    // The welcome stands down when the screen is a tool rather than a room.
+    // The folders do not: they are how you get anywhere from here, and they
+    // were visible while selecting before they moved out of the grid.
+    const quiet = selectionMode || Boolean(filter.search);
+    if (quiet && bandFolders.length === 0) return null;
+    return (
+      <View>
+        {quiet ? null : (
+          <>
+            <View style={s.hero}>
+              <Image source={cafeIllustration()} style={s.heroArt} resizeMode="contain" />
+              <Text style={s.heroTitle}>{t("library.heroTitle", "What will you read next?")}</Text>
+              <Text style={s.heroSubtitle}>
+                {t("library.heroSubtitle", {
+                  count: books.length,
+                  defaultValue: "{{count}} books on your shelf",
+                })}
+              </Text>
+            </View>
+            {continueBook ? (
+              <ContinueReadingCard
+                book={continueBook}
+                onOpen={handleOpen}
+                onDismiss={handleDismissRecent}
+              />
+            ) : null}
+            <RecentReadsStrip
+              books={stripBooks}
+              onOpen={handleOpen}
+              onDismiss={handleDismissRecent}
+            />
+          </>
+        )}
+        <FolderBand
+          folders={bandFolders}
+          contentWidth={contentWidth}
+          onOpen={setActiveGroupId}
+          onMore={handleGroupLongPress}
+        />
+      </View>
+    );
+  }, [
+    selectionMode,
+    filter.search,
+    s,
+    colors,
+    t,
+    books.length,
+    continueBook,
+    stripBooks,
+    handleOpen,
+    handleDismissRecent,
+    bandFolders,
+    contentWidth,
+    setActiveGroupId,
+    handleGroupLongPress,
+  ]);
 
   const handleBatchMoveGroup = useCallback(() => {
     if (selectedBookIds.size === 0) return;
