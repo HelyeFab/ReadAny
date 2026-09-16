@@ -1175,7 +1175,13 @@ export function LibraryScreen() {
     setViewMode(next);
   }, [activeGroupId, isListView, viewMode, setGroupViewPrefs, setViewMode]);
 
-  const isEmpty = gridItems.length === 0;
+  /**
+   * Folders count as content. They used to BE grid items, so a library whose
+   * books all live in folders still had a non-empty grid at the top level;
+   * now that they sit in the header band, counting only the grid reports an
+   * empty library and hides the list — taking the band down with it.
+   */
+  const isEmpty = gridItems.length === 0 && bandFolders.length === 0;
   const hasBooks = books.length > 0;
 
   const toggleBookSelection = useCallback((book: Book) => {
