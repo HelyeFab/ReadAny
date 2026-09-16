@@ -18,6 +18,7 @@ import { getPlatformService } from "../services/platform";
 import type { Book } from "../types/book";
 
 export const RECENT_READS_DISMISSED_KEY = "recent_reads_dismissed";
+export const RECENT_READS_COLLAPSED_KEY = "recent_reads_collapsed";
 
 /** Books past this are finished; handing them back is noise, not a service. */
 const FINISHED_THRESHOLD = 0.995;
@@ -139,4 +140,29 @@ export function pruneDismissedRecents(
     result[id] = at;
   }
   return result;
+}
+
+/**
+ * Whether the row is folded away.
+ *
+ * Kept on disk rather than in component state because the answer is a
+ * standing preference, not a detail of this visit: someone who does not want
+ * the row does not want it tomorrow either, and re-folding it on every launch
+ * would make the control feel like it had not worked.
+ */
+export async function loadRecentReadsCollapsed(): Promise<boolean> {
+  try {
+    return (await getPlatformService().kvGetItem(RECENT_READS_COLLAPSED_KEY)) === "1";
+  } catch (error) {
+    console.warn("[Library] Ignoring unreadable recent-reads fold state:", error);
+    return false;
+  }
+}
+
+export async function saveRecentReadsCollapsed(collapsed: boolean): Promise<void> {
+  try {
+    await getPlatformService().kvSetItem(RECENT_READS_COLLAPSED_KEY, collapsed ? "1" : "0");
+  } catch (error) {
+    console.warn("[Library] Failed to remember recent-reads fold state:", error);
+  }
 }

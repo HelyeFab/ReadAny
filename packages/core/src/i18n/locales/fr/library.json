@@ -9,6 +9,7 @@
     "continueReading": "Reprendre la lecture",
     "startReading": "Commencer la lecture",
     "recentlyRead": "Lectures récentes",
+    "recentlyReadCount": "{{count}} livres",
     "recentOpenA11y": "Ouvrir {{title}}, à {{percent}} pour cent",
     "recentDismissA11y": "Retirer {{title}} des lectures récentes",
     "continueReadingA11y": "Reprendre la lecture de {{title}}, {{percent}} pour cent lu",
