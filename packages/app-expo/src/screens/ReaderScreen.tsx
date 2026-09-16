@@ -977,35 +977,51 @@ export function ReaderScreen({ route, navigation }: Props) {
     },
     onPageTurnRequest: (direction) => {
       const turn = () => direction === "next" ? bridge.goNext() : bridge.goPrev();
-      const uri = pageImageRef.current;
       if (pageCurlActiveRef.current) {
         pageCurlPendingDirectionRef.current = direction;
         return;
       }
-      if (!AndroidPageCurl || !uri || loading) {
-        console.log("[PageCurl] ordinary tap turn; image ready:", !!uri);
+      if (!AndroidPageCurl || loading) {
         turn();
         return;
       }
+      const beginCurl = (uri: string) => {
+        pageCurlActiveRef.current = true;
+        pageImageRef.current = null;
+        pageCurlGestureRef.current = false;
+        pageCurlAbortRef.current = false;
+        pageCurlDestinationReadyRef.current = false;
+        pageCurlFinishPendingRef.current = false;
+        pageCurlNavigatedRef.current = false;
+        pageCurlRestoreAttemptsRef.current = 0;
+        setPageCurl({
+          uri, direction, progress: 0,
+          title: currentChapter || bookTitle,
+          pageText: currentPage > 0 && totalPages > 0
+            ? `${currentPage}/${totalPages}` : `${Math.round(progress * 100)}%`,
+        });
+        // If an EPUB section cannot relocate, restore input promptly.
+        pageCurlTimeoutRef.current = setTimeout(() => {
+          pageCurlActiveRef.current = false;
+          setPageCurl(null);
+        }, 3000);
+      };
+      const uri = pageImageRef.current;
+      if (uri) {
+        beginCurl(uri);
+        return;
+      }
+      // Relocation can finish before the next screenshot is available,
+      // especially on e-ink. Capture on demand instead of silently turning
+      // without the effect.
       pageCurlActiveRef.current = true;
-      pageImageRef.current = null;
-      pageCurlGestureRef.current = false;
-      pageCurlAbortRef.current = false;
-      pageCurlDestinationReadyRef.current = false;
-      pageCurlFinishPendingRef.current = false;
-      pageCurlNavigatedRef.current = false;
-      pageCurlRestoreAttemptsRef.current = 0;
-      setPageCurl({
-        uri, direction, progress: 0,
-        title: currentChapter || bookTitle,
-        pageText: currentPage > 0 && totalPages > 0
-          ? `${currentPage}/${totalPages}` : `${Math.round(progress * 100)}%`,
-      });
-      // If an EPUB section cannot relocate, restore input promptly.
-      pageCurlTimeoutRef.current = setTimeout(() => {
-        pageCurlActiveRef.current = false;
-        setPageCurl(null);
-      }, 2000);
+      void captureRef(pageCaptureRef, { format: "jpg", quality: 0.9, result: "tmpfile" })
+        .then((freshUri) => beginCurl(freshUri))
+        .catch((error) => {
+          pageCurlActiveRef.current = false;
+          console.warn("[PageCurl] on-demand capture failed", error);
+          turn();
+        });
     },
     onTap: () => {
       if (noteTooltipVisibleRef.current || Date.now() < suppressReaderTapUntilRef.current) {
@@ -1835,7 +1851,53 @@ export function ReaderScreen({ route, navigation }: Props) {
                 const pending = pageCurlPendingDirectionRef.current;
                 pageCurlPendingDirectionRef.current = null;
                 if (pending && !pageCurlAbortRef.current) {
-                  setTimeout(() => pending === "next" ? bridge.goNext() : bridge.goPrev(), 60);
+                  // A tap received during the previous curl must enter another
+                  // curl cycle; direct navigation here made rapid reading look
+                  // as if the effect randomly skipped pages.
+                  pageCurlActiveRef.current = true;
+                  setTimeout(() => {
+                    void captureRef(pageCaptureRef, { format: "jpg", quality: 0.9, result: "tmpfile" })
+                      .then((uri) => {
+                        pageImageRef.current = null;
+                        pageCurlGestureRef.current = false;
+                        pageCurlAbortRef.current = false;
+                        pageCurlDestinationReadyRef.current = false;
+                        pageCurlFinishPendingRef.current = false;
+                        pageCurlNavigatedRef.current = false;
+                        pageCurlRestoreAttemptsRef.current = 0;
+                        setPageCurl({
+                          uri, direction: pending, progress: 0,
+                          title: currentChapter || bookTitle,
+                          pageText: currentPage > 0 && totalPages > 0
+                            ? `${currentPage}/${totalPages}` : `${Math.round(progress * 100)}%`,
+                        });
+                        pageCurlTimeoutRef.current = setTimeout(() => {
+                          pageCurlActiveRef.current = false;
+                          setPageCurl(null);
+                        }, 3000);
+                      })
+                      .catch((error) => {
+                        pageCurlActiveRef.current = false;
+                        console.warn("[PageCurl] queued capture failed", error);
+                        if (pending === "next") bridge.goNext(); else bridge.goPrev();
+                      });
+                  }, 120);
+                } else if (!pageCurlAbortRef.current) {
+                  // Prewarm the next snapshot after the overlay is gone. The
+                  // relocation callback often fires while the curl is active,
+                  // when capturing would include or race the overlay.
+                  const captureGeneration = ++pageCaptureGenerationRef.current;
+                  setTimeout(() => {
+                    if (captureGeneration !== pageCaptureGenerationRef.current || pageCurlActiveRef.current || !pageCaptureRef.current) return;
+                    void captureRef(pageCaptureRef, { format: "jpg", quality: 0.9, result: "tmpfile" })
+                      .then((uri) => {
+                        if (captureGeneration === pageCaptureGenerationRef.current) pageImageRef.current = uri;
+                      })
+                      .catch((error) => {
+                        pageImageRef.current = null;
+                        console.warn("[PageCurl] post-turn capture failed", error);
+                      });
+                  }, 120);
                 }
               }}
             />
