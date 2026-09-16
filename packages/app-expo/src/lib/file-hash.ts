@@ -36,13 +36,23 @@ function toHex(buffer: ArrayBuffer): string {
   return out;
 }
 
-/** SHA-256 over bytes already in memory, computed natively. */
+/**
+ * SHA-256 over bytes already in memory, computed natively.
+ *
+ * ⚠️ The argument must be the TYPED ARRAY, never its `.buffer`. expo-crypto
+ * types this parameter as `BufferSource`, so an `ArrayBuffer` compiles — but
+ * the Android binding is `digest(algorithm, output: TypedArray, data:
+ * TypedArray)`, and a raw buffer dies at the bridge with "Cannot convert
+ * '[object ArrayBuffer]' to a Kotlin type". Nothing catches it until runtime,
+ * and `hashFileAtPath` is called for every cover during sync, so the failure
+ * arrives a few hundred times at once and only in a warning.
+ */
 async function digestBytes(bytes: Uint8Array): Promise<string> {
-  // Copy into a plain ArrayBuffer: expo-crypto types the input as BufferSource,
-  // which excludes a view backed by a SharedArrayBuffer.
+  // Copy into a view over a plain ArrayBuffer: the parameter type excludes a
+  // view backed by a SharedArrayBuffer.
   const view = new Uint8Array(bytes.byteLength);
   view.set(bytes);
-  return toHex(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, view.buffer));
+  return toHex(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, view));
 }
 
 /** A reader over a file on disk. The handle stays open for the walk. */

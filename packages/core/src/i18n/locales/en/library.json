@@ -10,6 +10,7 @@
     "startReading": "Start reading",
     "recentlyRead": "Recently read",
     "recentlyReadCount": "{{count}} books",
+    "heroSubtitleFolder": "{{count}} books in this folder",
     "recentOpenA11y": "Open {{title}}, {{percent}} percent through",
     "recentDismissA11y": "Remove {{title}} from recently read",
     "continueReadingA11y": "Continue reading {{title}}, {{percent}} percent through",

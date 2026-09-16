@@ -594,15 +594,20 @@ export function LibraryScreen() {
    * you could make a folder, see nothing change, and conclude it had not
    * worked.
    */
-  const groupedEntries = useMemo(() => {
-    if (hasSearch || !isGroupView) return [];
-    const childBookCount = (groupId: string): number => {
+  /** Books anywhere beneath a folder, subfolders included. */
+  const childBookCount = useCallback(
+    (groupId: string): number => {
       const direct = searchableBooks.filter((book) => book.groupId === groupId).length;
       const nested = groups
         .filter((g) => g.parentId === groupId)
         .reduce((sum, g) => sum + childBookCount(g.id), 0);
       return direct + nested;
-    };
+    },
+    [searchableBooks, groups],
+  );
+
+  const groupedEntries = useMemo(() => {
+    if (hasSearch || !isGroupView) return [];
     return groups
       .filter((group) => (group.parentId ?? null) === (activeGroupId || null))
       .map((group) => ({
@@ -613,7 +618,7 @@ export function LibraryScreen() {
         books: searchableBooks.filter((book) => book.groupId === group.id),
         totalCount: childBookCount(group.id),
       }));
-  }, [activeGroupId, searchableBooks, groups, hasSearch, isGroupView]);
+  }, [activeGroupId, searchableBooks, groups, hasSearch, isGroupView, childBookCount]);
 
   const visibleBooks = useMemo(
     () =>
@@ -1378,10 +1383,19 @@ export function LibraryScreen() {
               <Image source={cafeIllustration()} style={s.heroArt} resizeMode="contain" />
               <Text style={s.heroTitle}>{t("library.heroTitle", "What will you read next?")}</Text>
               <Text style={s.heroSubtitle}>
-                {t("library.heroSubtitle", {
-                  count: books.length,
-                  defaultValue: "{{count}} books on your shelf",
-                })}
+                {/* Inside a folder the shelf is the folder. Counting the whole
+                    library here told you there were 441 books on a screen
+                    showing five, which reads as a bug in the count rather than
+                    a greeting. */}
+                {activeGroupId
+                  ? t("library.heroSubtitleFolder", {
+                      count: childBookCount(activeGroupId),
+                      defaultValue: "{{count}} books in this folder",
+                    })
+                  : t("library.heroSubtitle", {
+                      count: books.length,
+                      defaultValue: "{{count}} books on your shelf",
+                    })}
               </Text>
             </View>
             {continueBook ? (
@@ -1415,6 +1429,8 @@ export function LibraryScreen() {
     colors,
     t,
     books.length,
+    activeGroupId,
+    childBookCount,
     continueBook,
     stripBooks,
     handleOpen,

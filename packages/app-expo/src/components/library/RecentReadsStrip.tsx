@@ -40,11 +40,16 @@ const COVER_WIDTH = 64;
 const COVER_HEIGHT = Math.round(COVER_WIDTH * (41 / 28));
 
 /**
- * The dismiss badge is drawn smaller than it is touched: 18pt of ink inside a
- * 34pt target that overhangs the cover's corner. A badge big enough to hit
- * comfortably would sit on a sixth of the artwork.
+ * The dismiss badge is drawn smaller than it is touched: a small disc of ink
+ * inside a 34pt target that overhangs the cover's corner. A badge big enough
+ * to hit comfortably would sit on a sixth of the artwork.
+ *
+ * It is deliberately quiet. This is a control used rarely, on top of artwork
+ * that is the actual point of the row, so it reads as a scrim over the cover
+ * rather than a solid button parked on it — an opaque disc with a ring around
+ * it became the loudest thing on the page.
  */
-const BADGE_INK = 18;
+const BADGE_INK = 13;
 const BADGE_TOUCH = 34;
 
 interface RecentReadsStripProps {
@@ -190,7 +195,7 @@ const RecentReadTile = memo(function RecentReadTile({
         })}
       >
         <View style={s.badge}>
-          <XIcon size={11} color={colors.card} />
+          <XIcon size={9} color={colors.card} strokeWidth={2.5} />
         </View>
       </TouchableOpacity>
     </View>
@@ -274,8 +279,6 @@ const makeStyles = (colors: ThemeColors) =>
       borderRadius: BADGE_INK / 2,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: colors.foreground,
-      borderWidth: 1.5,
-      borderColor: colors.card,
+      backgroundColor: withOpacity(colors.foreground, 0.55),
     },
   });
