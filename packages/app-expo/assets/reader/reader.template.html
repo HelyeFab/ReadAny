@@ -3107,7 +3107,21 @@ html, body {
       try {
         const rect = range.getBoundingClientRect();
         if (!rect || !isFinite(rect.width)) return false;
-        return rect.width > size;
+        if (rect.width > size) return true;
+
+        // getBoundingClientRect() is not sufficient for a multi-column range:
+        // Chromium can report a page-wide union even when the individual text
+        // rects live in several distant columns. This is the shape seen on the
+        // Note Air when a short pen sweep produced a CFI spanning several
+        // pages. Every range made by a gesture on one visible page must have
+        // all of its text rect centres in the same CSS column.
+        const rects = Array.from(range.getClientRects ? range.getClientRects() : [])
+          .filter((item) => item && item.width > 0 && item.height > 0 && isFinite(item.left));
+        if (rects.length < 2) return false;
+        const firstColumn = Math.floor((rects[0].left + rects[0].width / 2) / size);
+        return rects.some((item) =>
+          Math.floor((item.left + item.width / 2) / size) !== firstColumn
+        );
       } catch (e) {
         return false;
       }
@@ -3308,6 +3322,9 @@ html, body {
         if (!e.touches || e.touches.length !== 1) { endGesture(); return; }
         const point = pointFromTouch(e);
         if (!point) return;
+        // Keep the stable pre-selection location. Android may scroll the
+        // paginator while resolving caret coordinates in its column strip.
+        if (lastRelocateCfi) cfiBeforeSelection = lastRelocateCfi;
         clearPreview();
         gesture = PS.onPointerDown(point, Date.now());
         if (holdTimer) clearTimeout(holdTimer);
@@ -3353,6 +3370,27 @@ html, body {
     }
 
     function emitSelection(doc, sel, range) {
+      // Both the native-selection and our pen-selection paths end here. Keep
+      // this final invariant at their shared boundary so a WebView coordinate
+      // error can never be persisted as a whole-page highlight.
+      if (selectionEscapedVisiblePage(range)) {
+        postToRN('debug', {
+          message: '[SelGuard] refused a selection spanning CSS columns',
+        });
+        try {
+          const nativeSelection = doc.getSelection && doc.getSelection();
+          if (nativeSelection) nativeSelection.removeAllRanges();
+        } catch (e) {}
+        try {
+          const entry = getRendererContents().find((content) => content.doc === doc);
+          if (entry && entry.overlayer) entry.overlayer.remove(PEN_PREVIEW_KEY);
+        } catch (e) {}
+        doc.__readany_selection_interaction = false;
+        postToRN('selectionCleared', {});
+        restoreReadingPosition();
+        return;
+      }
+
       const text = getRangeTextWithoutRuby(range, sel.toString());
       if (!text) return;
       // iOS may emit one synthetic tap 100-200ms after the selection handle is
