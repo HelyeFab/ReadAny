@@ -9,6 +9,7 @@ import { LibraryListRow } from "@/components/library/LibraryListRow";
 import { LibraryMenuSheet } from "@/components/library/LibraryMenuSheet";
 import { PdfCoverWebView } from "@/components/library/PdfCoverWebView";
 import type { PdfCoverWebViewHandle } from "@/components/library/PdfCoverWebView";
+import { RecentReadsStrip } from "@/components/library/RecentReadsStrip";
 import { ShelfScopeSheet } from "@/components/library/ShelfScopeSheet";
 import { ShelfTile } from "@/components/library/ShelfTile";
 import { type ExtractorRef, ExtractorWebView } from "@/components/rag/ExtractorWebView";
@@ -72,6 +73,14 @@ import { onLibraryChanged } from "@readany/core/events/library-events";
 import { useSyncStore } from "@readany/core/stores";
 import { SYNC_SECRET_KEYS } from "@readany/core/sync/sync-backend";
 import type { Book, BookGroup, SortField, SortOrder } from "@readany/core/types";
+import {
+  type DismissedRecents,
+  RECENT_READS_LIMIT,
+  loadDismissedRecents,
+  pruneDismissedRecents,
+  saveDismissedRecents,
+  selectRecentReads,
+} from "@readany/core/utils/recent-reads";
 import * as DocumentPicker from "expo-document-picker";
 import { File as ExpoFile } from "expo-file-system";
 /**
@@ -457,34 +466,67 @@ export function LibraryScreen() {
   }, [books, filter, activeTag, activeGroupId]);
 
   /**
-   * The book to hand straight back. Most visits to a shelf are not a browse —
-   * they are the middle of something — so the most recently opened unfinished
-   * book gets a card of its own above the covers. Only at the top of the
-   * library, and only when nothing is being searched or filtered: inside a
-   * folder or a search the shelf is already an answer to a question, and a
-   * card about a different book would be answering a question nobody asked.
+   * What the shelf offers back, and what has been waved away.
+   *
+   * Most visits to a library are not a browse — they are the middle of
+   * something — so the books most recently opened sit above the covers: the
+   * first as a card of its own, the rest as a strip of small covers. Only at
+   * the top of the library, and only when nothing is being searched or
+   * filtered: inside a folder or a search the shelf is already an answer to a
+   * question, and a row about other books would be answering one nobody asked.
+   *
+   * Dismissals are kept per book and outlive the app, so a book waved away
+   * stays away until it is opened again. They are loaded once; until they
+   * arrive the row is drawn from an empty set, which can briefly show a book
+   * that was dismissed on a previous run. Blocking the whole header on a disk
+   * read to avoid a single frame of that would be the worse trade.
    */
-  const continueBook = useMemo(() => {
-    if (activeGroupId || activeTag || filter.search.trim()) return null;
-    // An import stamps lastOpenedAt too, so a book dropped on the shelf a
-    // minute ago would otherwise shove aside the one actually being read.
-    // Anything started wins; an untouched book is only the answer when
-    // nothing is in progress at all.
-    let started: Book | null = null;
-    let untouched: Book | null = null;
-    for (const book of books) {
-      if (book.deletedAt) continue;
-      if (!book.lastOpenedAt) continue;
-      if (book.progress >= 0.995) continue; // finished — offering it back is noise
-      if (book.syncStatus === "downloading") continue;
-      const slot = book.progress > 0 ? started : untouched;
-      if (!slot || (book.lastOpenedAt || 0) > (slot.lastOpenedAt || 0)) {
-        if (book.progress > 0) started = book;
-        else untouched = book;
-      }
-    }
-    return started ?? untouched;
-  }, [books, activeGroupId, activeTag, filter.search]);
+  const [dismissedRecents, setDismissedRecents] = useState<DismissedRecents>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    loadDismissedRecents().then((loaded) => {
+      if (!cancelled) setDismissedRecents(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const recentReads = useMemo(() => {
+    if (activeGroupId || activeTag || filter.search.trim()) return [];
+    return selectRecentReads({
+      books,
+      dismissed: dismissedRecents,
+      limit: RECENT_READS_LIMIT + 1,
+    });
+  }, [books, activeGroupId, activeTag, filter.search, dismissedRecents]);
+
+  const continueBook = recentReads[0] ?? null;
+  const stripBooks = useMemo(() => recentReads.slice(1), [recentReads]);
+
+  /**
+   * Take a book out of the row.
+   *
+   * The dismissal is recorded as the moment it happened rather than as a
+   * flag, so opening the book later moves its `lastOpenedAt` past it and it
+   * returns on its own — there is no un-dismiss to go looking for. Stale
+   * entries are pruned on the way out, so the record cannot outgrow the
+   * library it describes.
+   */
+  const handleDismissRecent = useCallback(
+    (book: Book) => {
+      setDismissedRecents((prev) => {
+        const next = pruneDismissedRecents(
+          { ...prev, [book.id]: Math.max(Date.now(), book.lastOpenedAt ?? 0) },
+          books,
+        );
+        void saveDismissedRecents(next);
+        return next;
+      });
+    },
+    [books],
+  );
 
   const activeGroup = useMemo(
     () => groups.find((group) => group.id === activeGroupId) ?? null,
@@ -1144,10 +1186,28 @@ export function LibraryScreen() {
             })}
           </Text>
         </View>
-        {continueBook ? <ContinueReadingCard book={continueBook} onOpen={handleOpen} /> : null}
+        {continueBook ? (
+          <ContinueReadingCard
+            book={continueBook}
+            onOpen={handleOpen}
+            onDismiss={handleDismissRecent}
+          />
+        ) : null}
+        <RecentReadsStrip books={stripBooks} onOpen={handleOpen} onDismiss={handleDismissRecent} />
       </View>
     );
-  }, [selectionMode, filter.search, s, colors, t, books.length, continueBook, handleOpen]);
+  }, [
+    selectionMode,
+    filter.search,
+    s,
+    colors,
+    t,
+    books.length,
+    continueBook,
+    stripBooks,
+    handleOpen,
+    handleDismissRecent,
+  ]);
 
   const toggleBookSelection = useCallback((book: Book) => {
     setSelectedBookIds((prev) => {
