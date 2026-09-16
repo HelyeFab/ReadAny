@@ -1,5 +1,51 @@
 const createSVGElement = (tag) => document.createElementNS("http://www.w3.org/2000/svg", tag);
 
+/**
+ * Read a CSS custom property and return a CONCRETE value.
+ *
+ * These used to be written straight onto the element as `var(--x, fallback)`.
+ * That silently does two different things depending on the engine: Chromium 153
+ * resolves the variable, Chromium 151 does not and quietly uses the fallback.
+ * The same build therefore rendered highlights at full strength on one device
+ * and at 0.3 x the colour's own alpha on another — which is why the phone and
+ * the e-ink reader disagreed about what a highlight looks like, with no setting
+ * to explain it. Resolving the value here means every engine paints the same.
+ */
+const cssVar = (name, fallback) => {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+/**
+ * Drop the enclosing rectangles a multi-block range brings with it.
+ *
+ * `Range.getClientRects()` returns one rect per line box — except when the
+ * range starts in one block element and ends in another, where engines may
+ * also hand back a rect for the block itself. Painting that is a solid slab
+ * over the whole column, blank space between paragraphs included, with the
+ * real line highlights on top of it. It is engine-dependent (Chromium 153
+ * returns it, 151 does not), which is why one highlight made a whole section
+ * unreadable on a phone while the same book on an e-ink reader looked fine.
+ *
+ * A rect that strictly contains another rect from the same range is never a
+ * line box, so it is the enclosure and not the content.
+ */
+const dropEnclosingRects = (rects) => {
+  const list = Array.from(rects);
+  if (list.length < 2) return list;
+  const contains = (a, b) =>
+    a.left <= b.left && a.top <= b.top && a.right >= b.right && a.bottom >= b.bottom;
+  const kept = list.filter((a) =>
+    !list.some((b) => b !== a && contains(a, b) && (a.width > b.width || a.height > b.height)),
+  );
+  // Never paint nothing: if every rect looked like an enclosure, keep them all.
+  return kept.length ? kept : list;
+};
+
 export class Overlayer {
   #svg = createSVGElement("svg");
   #defs = createSVGElement("defs");
@@ -175,9 +221,9 @@ export class Overlayer {
     const { color = "red" } = options;
     const g = createSVGElement("g");
     g.setAttribute("fill", color);
-    g.style.opacity = "var(--overlayer-highlight-opacity, .3)";
-    g.style.mixBlendMode = "var(--overlayer-highlight-blend-mode, normal)";
-    for (const { left, top, height, width } of rects) {
+    g.style.opacity = cssVar("--overlayer-highlight-opacity", ".3");
+    g.style.mixBlendMode = cssVar("--overlayer-highlight-blend-mode", "normal");
+    for (const { left, top, height, width } of dropEnclosingRects(rects)) {
       const el = createSVGElement("rect");
       el.setAttribute("x", left);
       el.setAttribute("y", top);

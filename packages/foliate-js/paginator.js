@@ -779,6 +779,14 @@ class View {
         this.onExpand()
     }
     set overlayer(overlayer) {
+        // Drop the outgoing overlay before adopting the new one. Without this
+        // the old SVG stays in the DOM holding its highlight rects at the
+        // coordinates of the layout that produced them, and every relayout —
+        // unfolding a foldable, changing the font, repaginating — stacks
+        // another sheet of stale highlights on top. After a few the whole
+        // column reads as highlighted, including text that never was, and only
+        // reopening the book clears it.
+        this.#overlayer?.element?.remove()
         this.#overlayer = overlayer
         this.#element.append(overlayer.element)
     }

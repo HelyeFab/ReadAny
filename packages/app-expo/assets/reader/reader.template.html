@@ -21,7 +21,7 @@
      * highlights did not.
      */
     :root {
-      --overlayer-highlight-opacity: 1;
+      --overlayer-highlight-opacity: .3;
       /*
        * A highlight drawn ON TOP of the text mixes with it: black under a half
        * opaque colour comes out brown, which is what "the text goes brown"
@@ -29,7 +29,7 @@
        * the colour is the colour, black text times the colour is still black —
        * so the paper takes the ink and the letters stay as dark as they were.
        */
-      --overlayer-highlight-blend-mode: multiply;
+      --overlayer-highlight-blend-mode: normal;
     }
 
     * {
@@ -196,6 +196,24 @@
     // ReadAny WebView Reader Bridge
     // Communicates with React Native via postMessage
     // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Read a CSS custom property and return a CONCRETE value.
+     *
+     * Writing `var(--x, fallback)` into an inline style property is silently
+     * engine-dependent: Chromium 153 resolves it, 151 quietly keeps the
+     * fallback. The same build therefore painted highlights at two different
+     * strengths on the phone and on the e-ink reader, with nothing in the
+     * settings to explain the difference.
+     */
+    function readerCssVar(name, fallback) {
+      try {
+        var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return v || fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
 
     const RN = window.ReactNativeWebView;
     function postToRN(type, data) {
@@ -768,8 +786,8 @@
       const svgNS = 'http://www.w3.org/2000/svg';
       const g = document.createElementNS(svgNS, 'g');
       g.setAttribute('fill', color);
-      g.style.opacity = 'var(--overlayer-highlight-opacity, 1)';
-      g.style.mixBlendMode = 'var(--overlayer-highlight-blend-mode, normal)';
+      g.style.opacity = readerCssVar('--overlayer-highlight-opacity', '.3');
+      g.style.mixBlendMode = readerCssVar('--overlayer-highlight-blend-mode', 'normal');
 
       for (let index = 0; index < rects.length; index++) {
         const { left, top, width, height } = rects[index];
