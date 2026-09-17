@@ -2280,6 +2280,10 @@
         }
 
         if (readingPosition) {
+          // Font-weight changes repaginate on the renderer's next layout pass.
+          // Navigating before that pass uses the old column geometry and lands
+          // one page early when the new geometry replaces it.
+          await new Promise((resolve) => setTimeout(resolve, 250));
           try { await view.goTo(readingPosition); } catch (e) {}
         }
       }).catch(() => {});
