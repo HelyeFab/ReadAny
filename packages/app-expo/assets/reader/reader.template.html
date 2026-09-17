@@ -1389,6 +1389,7 @@
               !(msg.annotation.value && msg.annotation.value.startsWith(TTS_ANNOTATION_PREFIX))
             ) {
               userAnnotations.set(msg.annotation.value, msg.annotation);
+              clearPenSelectionPreviewLayers();
             }
             await view.addAnnotation(msg.annotation);
           }
@@ -3206,6 +3207,13 @@ html, body {
     }
 
     const PEN_PREVIEW_KEY = 'readany-pen-selection-preview';
+
+    function clearPenSelectionPreviewLayers() {
+      for (const content of getRendererContents()) {
+        if (!content || !content.overlayer) continue;
+        try { content.overlayer.remove(PEN_PREVIEW_KEY); } catch (e) {}
+      }
+    }
 
     function attachPenSelection(doc) {
       if (doc.__readany_pen_selection) return;
