@@ -110,6 +110,10 @@ export function hasBionicCandidates(text: string): boolean {
  * with a bold that cannot be told apart from its body text.
  */
 export const BIONIC_CSS = `
+[${BIONIC_PROCESSED_ATTR}],
+[${BIONIC_PROCESSED_ATTR}] b {
+  display: contents;
+}
 [${BIONIC_PROCESSED_ATTR}] b {
   font-weight: inherit;
   -webkit-text-stroke: 0.35px currentColor;
@@ -216,7 +220,16 @@ export function applyBionicReading(doc: Document): number {
 export function removeBionicReading(doc: Document): void {
   if (!doc) return;
   const style = doc.getElementById(BIONIC_STYLE_ID);
-  if (style) style.textContent = `[${BIONIC_PROCESSED_ATTR}] b { font-weight: inherit; }`;
+  if (style) {
+    style.textContent = `
+[${BIONIC_PROCESSED_ATTR}],
+[${BIONIC_PROCESSED_ATTR}] b {
+  display: contents;
+}
+[${BIONIC_PROCESSED_ATTR}] b {
+  font-weight: inherit;
+}`;
+  }
 }
 
 /** Install on the reader webview's global, the way the justified-text engine is. */

@@ -409,6 +409,10 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
     return HAS_LETTER_RE.test(text);
   }
   var BIONIC_CSS = `
+[${BIONIC_PROCESSED_ATTR}],
+[${BIONIC_PROCESSED_ATTR}] b {
+  display: contents;
+}
 [${BIONIC_PROCESSED_ATTR}] b {
   font-weight: inherit;
   -webkit-text-stroke: 0.35px currentColor;
@@ -480,7 +484,16 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
   function removeBionicReading(doc) {
     if (!doc) return;
     const style = doc.getElementById(BIONIC_STYLE_ID);
-    if (style) style.textContent = `[${BIONIC_PROCESSED_ATTR}] b { font-weight: inherit; }`;
+    if (style) {
+      style.textContent = `
+[${BIONIC_PROCESSED_ATTR}],
+[${BIONIC_PROCESSED_ATTR}] b {
+  display: contents;
+}
+[${BIONIC_PROCESSED_ATTR}] b {
+  font-weight: inherit;
+}`;
+    }
   }
   function installReadAnyBionicReading(root) {
     const target = root ?? {};
