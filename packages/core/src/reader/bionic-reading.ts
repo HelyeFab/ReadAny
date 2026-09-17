@@ -111,7 +111,9 @@ export function hasBionicCandidates(text: string): boolean {
  */
 export const BIONIC_CSS = `
 [${BIONIC_PROCESSED_ATTR}] b {
-  font-weight: 700;
+  font-weight: inherit;
+  -webkit-text-stroke: 0.35px currentColor;
+  text-shadow: 0.2px 0 currentColor;
 }
 `;
 

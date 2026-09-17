@@ -410,7 +410,9 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
   }
   var BIONIC_CSS = `
 [${BIONIC_PROCESSED_ATTR}] b {
-  font-weight: 700;
+  font-weight: inherit;
+  -webkit-text-stroke: 0.35px currentColor;
+  text-shadow: 0.2px 0 currentColor;
 }
 `;
   var SKIP_SELECTOR = `.readany-translation, ruby, rt, rp, script, style, code, pre, kbd, samp, b, strong, [${BIONIC_PROCESSED_ATTR}]`;
@@ -2624,7 +2626,6 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
         if (!view) return;
 
         const annotations = Array.from(userAnnotations.values());
-        const readingPosition = lastRelocateCfi;
         for (const annotation of annotations) {
           try { await view.deleteAnnotation(annotation); } catch (e) {}
         }
@@ -2644,13 +2645,6 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
           try { await view.addAnnotation(annotation); } catch (e) {}
         }
 
-        if (readingPosition) {
-          // Font-weight changes repaginate on the renderer's next layout pass.
-          // Navigating before that pass uses the old column geometry and lands
-          // one page early when the new geometry replaces it.
-          await new Promise((resolve) => setTimeout(resolve, 250));
-          try { await view.goTo(readingPosition); } catch (e) {}
-        }
       }).catch(() => {});
     }
 
