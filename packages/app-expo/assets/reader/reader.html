@@ -3581,6 +3581,17 @@ html, body {
       let gesture = PS.idleGesture();
       let holdTimer = null;
       let previewRange = null;
+      let selectionNavigationLocked = false;
+
+      function lockSelectionNavigation(locked) {
+        if (selectionNavigationLocked === locked) return;
+        selectionNavigationLocked = locked;
+        try {
+          if (typeof window.setNavigationLocked === 'function') {
+            window.setNavigationLocked(locked);
+          }
+        } catch (e) {}
+      }
 
       function contentEntry() {
         try {
@@ -3656,6 +3667,7 @@ html, body {
 
       function endGesture() {
         if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+        lockSelectionNavigation(false);
         gesture = PS.onPointerUp();
         doc.__readany_selection_interaction = false;
       }
@@ -3699,6 +3711,11 @@ html, body {
         if (lastRelocateCfi) cfiBeforeSelection = lastRelocateCfi;
         clearPreview();
         gesture = PS.onPointerDown(point, Date.now());
+        // Foliate's paginator also watches this touch stream. Hold it still
+        // while the press is undecided, otherwise a pen starting on the first
+        // words near the left edge can turn the page before the 350 ms
+        // selection hold has armed.
+        lockSelectionNavigation(true);
         if (holdTimer) clearTimeout(holdTimer);
         holdTimer = setTimeout(() => {
           holdTimer = null;
@@ -3717,7 +3734,15 @@ html, body {
         const point = pointFromTouch(e);
         if (!point) return;
         gesture = PS.onPointerMove(gesture, point);
-        if (!PS.isSelecting(gesture)) return;
+        if (!PS.isSelecting(gesture)) {
+          // Movement before the hold declares an ordinary swipe. Release the
+          // paginator promptly and prevent the old hold timer claiming it.
+          if (gesture.movedEarly) {
+            if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+            lockSelectionNavigation(false);
+          }
+          return;
+        }
         updateSelectionFromGesture();
       }, { passive: true, capture: true });
 
