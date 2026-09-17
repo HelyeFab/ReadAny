@@ -618,6 +618,7 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
     let bookmarkPullGestureActive = false;
     let pullBookmarkResetTimer = null;
     let refreshAnnotationsTimer = null;
+    let bionicReadingSync = Promise.resolve();
     let activeFootnoteTipKey = null;
     let bookmarkPullStateMeta = {
       bookmarked: false,
@@ -1753,6 +1754,7 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
               !(msg.annotation.value && msg.annotation.value.startsWith(TTS_ANNOTATION_PREFIX))
             ) {
               userAnnotations.set(msg.annotation.value, msg.annotation);
+              clearPenSelectionPreviewLayers();
             }
             await view.addAnnotation(msg.annotation);
           }
@@ -2617,16 +2619,29 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
      * every settings change without checking what state a document is in.
      */
     function syncBionicReadingForAllDocs() {
-      for (const content of getRendererContents()) {
-        if (!content?.doc) continue;
-        try {
-          if (currentBionicReading) {
-            globalThis.ReadAnyBionicReading?.apply(content.doc);
-          } else {
-            globalThis.ReadAnyBionicReading?.remove(content.doc);
-          }
-        } catch (e) {}
-      }
+      bionicReadingSync = bionicReadingSync.then(async () => {
+        if (!view) return;
+
+        const annotations = Array.from(userAnnotations.values());
+        for (const annotation of annotations) {
+          try { await view.deleteAnnotation(annotation); } catch (e) {}
+        }
+
+        for (const content of getRendererContents()) {
+          if (!content?.doc) continue;
+          try {
+            if (currentBionicReading) {
+              globalThis.ReadAnyBionicReading?.apply(content.doc);
+            } else {
+              globalThis.ReadAnyBionicReading?.remove(content.doc);
+            }
+          } catch (e) {}
+        }
+
+        for (const annotation of annotations) {
+          try { await view.addAnnotation(annotation); } catch (e) {}
+        }
+      }).catch(() => {});
     }
 
     function syncJustifiedTextForAllDocs() {
@@ -3570,6 +3585,13 @@ html, body {
     }
 
     const PEN_PREVIEW_KEY = 'readany-pen-selection-preview';
+
+    function clearPenSelectionPreviewLayers() {
+      for (const content of getRendererContents()) {
+        if (!content || !content.overlayer) continue;
+        try { content.overlayer.remove(PEN_PREVIEW_KEY); } catch (e) {}
+      }
+    }
 
     function attachPenSelection(doc) {
       if (doc.__readany_pen_selection) return;
