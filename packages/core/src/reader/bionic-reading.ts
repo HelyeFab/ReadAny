@@ -132,7 +132,11 @@ function shouldSkip(el: Element): boolean {
 }
 
 function injectStyles(doc: Document): void {
-  if (doc.getElementById(BIONIC_STYLE_ID)) return;
+  const existing = doc.getElementById(BIONIC_STYLE_ID);
+  if (existing) {
+    existing.textContent = BIONIC_CSS;
+    return;
+  }
   const style = doc.createElement("style");
   style.id = BIONIC_STYLE_ID;
   style.textContent = BIONIC_CSS;
@@ -202,21 +206,15 @@ export function applyBionicReading(doc: Document): number {
 }
 
 /**
- * Undo it.
+ * Disable the bold fixation points without replacing any nodes.
  *
- * The characters were never changed — only wrapped — so the original text is
- * simply the span's own textContent. That is why this needs no record of what
- * it replaced, unlike the ruby injector, which has to strip the readings it added.
+ * Annotation CFIs and rendered ranges can point inside these wrappers. Keeping
+ * the DOM intact means toggling bionic reading cannot invalidate a highlight.
  */
 export function removeBionicReading(doc: Document): void {
   if (!doc) return;
-
-  doc.getElementById(BIONIC_STYLE_ID)?.remove();
-
-  const processed = doc.querySelectorAll(`[${BIONIC_PROCESSED_ATTR}]`);
-  for (const el of Array.from(processed)) {
-    el.parentNode?.replaceChild(doc.createTextNode(el.textContent || ""), el);
-  }
+  const style = doc.getElementById(BIONIC_STYLE_ID);
+  if (style) style.textContent = `[${BIONIC_PROCESSED_ATTR}] b { font-weight: inherit; }`;
 }
 
 /** Install on the reader webview's global, the way the justified-text engine is. */

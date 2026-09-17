@@ -419,7 +419,11 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
     return typeof el.closest === "function" && el.closest(SKIP_SELECTOR) !== null;
   }
   function injectStyles(doc) {
-    if (doc.getElementById(BIONIC_STYLE_ID)) return;
+    const existing = doc.getElementById(BIONIC_STYLE_ID);
+    if (existing) {
+      existing.textContent = BIONIC_CSS;
+      return;
+    }
     const style = doc.createElement("style");
     style.id = BIONIC_STYLE_ID;
     style.textContent = BIONIC_CSS;
@@ -473,11 +477,8 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
   }
   function removeBionicReading(doc) {
     if (!doc) return;
-    doc.getElementById(BIONIC_STYLE_ID)?.remove();
-    const processed = doc.querySelectorAll(`[${BIONIC_PROCESSED_ATTR}]`);
-    for (const el of Array.from(processed)) {
-      el.parentNode?.replaceChild(doc.createTextNode(el.textContent || ""), el);
-    }
+    const style = doc.getElementById(BIONIC_STYLE_ID);
+    if (style) style.textContent = `[${BIONIC_PROCESSED_ATTR}] b { font-weight: inherit; }`;
   }
   function installReadAnyBionicReading(root) {
     const target = root ?? {};
@@ -2623,6 +2624,7 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
         if (!view) return;
 
         const annotations = Array.from(userAnnotations.values());
+        const readingPosition = lastRelocateCfi;
         for (const annotation of annotations) {
           try { await view.deleteAnnotation(annotation); } catch (e) {}
         }
@@ -2640,6 +2642,10 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
 
         for (const annotation of annotations) {
           try { await view.addAnnotation(annotation); } catch (e) {}
+        }
+
+        if (readingPosition) {
+          try { await view.goTo(readingPosition); } catch (e) {}
         }
       }).catch(() => {});
     }
