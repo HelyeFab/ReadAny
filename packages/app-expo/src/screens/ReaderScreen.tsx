@@ -868,6 +868,32 @@ export function ReaderScreen({ route, navigation }: Props) {
     },
     onSelection: (detail: SelectionEvent) => {
       setSelection(detail);
+      if (detail.cfi && detail.text.trim()) {
+        const annotationState = useAnnotationStore.getState();
+        const existingHighlight = annotationState.highlights.find(
+          (highlight) => highlight.bookId === bookId && highlight.cfi === detail.cfi,
+        );
+
+        if (!existingHighlight) {
+          const color = useSettingsStore.getState().readSettings.defaultHighlightColor ?? "yellow";
+          const now = Date.now();
+          annotationState.addHighlight({
+            id: `hl-${now}-${Math.random().toString(36).slice(2, 6)}`,
+            bookId,
+            cfi: detail.cfi,
+            text: detail.text,
+            color,
+            chapterTitle: currentChapter,
+            createdAt: now,
+            updatedAt: now,
+          });
+          bridgeRef.current?.addAnnotation({
+            value: detail.cfi,
+            type: "highlight",
+            color,
+          });
+        }
+      }
       // Sync selection for AI tools
       if (detail.cfi) {
         readingContextService.updateSelection({
