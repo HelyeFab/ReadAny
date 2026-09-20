@@ -10,7 +10,7 @@ import { useReadingContext } from "@readany/core/ai/reading-context-service";
 import type { AttachedQuote, Book } from "@readany/core/types";
 import type { CitationPart, MessageV2 } from "@readany/core/types/message";
 import { convertToMessageV2, mergeMessagesWithStreaming } from "@readany/core/utils";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -77,9 +77,24 @@ export function ReaderAIChatSheet({
   const getThreadsForContext = useChatStore((state) => state.getThreadsForContext);
   const setBookActiveThread = useChatStore((state) => state.setBookActiveThread);
   const createThread = useChatStore((state) => state.createThread);
+  const [threadsReady, setThreadsReady] = useState(false);
 
   useEffect(() => {
-    if (visible) void loadThreads(bookId);
+    let cancelled = false;
+    if (!visible) {
+      setThreadsReady(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setThreadsReady(false);
+    void loadThreads(bookId).finally(() => {
+      if (!cancelled) setThreadsReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [bookId, loadThreads, visible]);
 
   const activeThreadId = getActiveThreadId(bookId);
@@ -132,12 +147,23 @@ export function ReaderAIChatSheet({
 
   const consumedPromptRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!visible || !autoPrompt || !contextText?.trim()) return;
+    if (!visible || !threadsReady || !autoPrompt || !contextText?.trim()) return;
     if (consumedPromptRef.current === autoPrompt.id) return;
     consumedPromptRef.current = autoPrompt.id;
-    onAutoPromptConsumed?.();
-    void handleSend(autoPrompt.text, false, true);
-  }, [autoPrompt, contextText, handleSend, onAutoPromptConsumed, visible]);
+    console.log(
+      "[ReaderAIChat] auto-prompt-start",
+      JSON.stringify({ id: autoPrompt.id, contextLength: contextText.trim().length }),
+    );
+    void handleSend(autoPrompt.text, false, true)
+      .then(() => {
+        console.log("[ReaderAIChat] auto-prompt-finished", JSON.stringify({ id: autoPrompt.id }));
+        onAutoPromptConsumed?.();
+      })
+      .catch((error) => {
+        consumedPromptRef.current = null;
+        console.error("[ReaderAIChat] auto-prompt-error", error);
+      });
+  }, [autoPrompt, contextText, handleSend, onAutoPromptConsumed, threadsReady, visible]);
 
   const handleNewThread = useCallback(async () => {
     if (activeThread && activeThread.messages.length === 0) return;

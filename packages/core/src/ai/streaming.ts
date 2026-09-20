@@ -145,9 +145,17 @@ export class StreamingChat {
 
       const iterator = stream[Symbol.asyncIterator]();
       let eventResult = await raceNext(iterator);
+      let eventCount = 0;
 
       while (!eventResult.done) {
         const event = eventResult.value as any;
+        eventCount += 1;
+        if (eventCount === 1) {
+          console.log(
+            "[StreamingChat] first-event",
+            JSON.stringify({ type: event?.type ?? "unknown" }),
+          );
+        }
 
         if (signal.aborted) {
           options.onAbort?.(fullText, toolCalls.length > 0 ? toolCalls : undefined);
@@ -197,6 +205,10 @@ export class StreamingChat {
       if (signal.aborted) {
         options.onAbort?.(fullText, toolCalls.length > 0 ? toolCalls : undefined);
       } else {
+        console.log(
+          "[StreamingChat] complete",
+          JSON.stringify({ eventCount, textLength: fullText.length, toolCalls: toolCalls.length }),
+        );
         const incompleteToolCalls = toolCalls.filter((toolCall) => toolCall.result === undefined);
         if (incompleteToolCalls.length > 0) {
           options.onError(
