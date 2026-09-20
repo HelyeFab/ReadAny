@@ -23,65 +23,75 @@ interface MarkdownRendererProps {
   onDefineJapanese?: (text: string) => void;
 }
 
-const JAPANESE_RUN =
-  /([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ヵヶー]+(?:[\s、。！？・「」『』（）]*[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ヵヶー]+)*)/gu;
+function nodeText(node: ASTNode): string {
+  if (typeof node.content === "string") return node.content;
+  return (node.children ?? []).map(nodeText).join("");
+}
 
-function renderJapaneseSpeechRuns(
-  text: string,
-  style: unknown,
-  key: string | number,
-  accentColor: string,
-  onSpeakJapanese?: (text: string) => void,
-  onDefineJapanese?: (text: string) => void,
-) {
-  if ((!onSpeakJapanese && !onDefineJapanese) || !/[\u3040-\u30ff]/.test(text)) return null;
-  const parts = text.split(JAPANESE_RUN);
-  if (parts.length < 2) return null;
-  let textOffset = 0;
+function japaneseFocus(node: ASTNode): string | null {
+  const text = nodeText(node).replace(/[*_`]/g, "").trim();
+  const firstJapanese = text.search(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u);
+  if (firstJapanese < 0) return null;
+  // Controls belong to Japanese source lines. Do not decorate an English
+  // explanation merely because it quotes a Japanese word later in the line.
+  if (/[\p{L}\p{N}]/u.test(text.slice(0, firstJapanese))) return null;
+  const beforeTranslation = text.slice(firstJapanese).split(/[:：]/u, 1)[0].trim();
+  const plain = stripRubyReadings(beforeTranslation).trim();
+  const japaneseCharacters = plain.match(
+    /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu,
+  );
+  return (japaneseCharacters?.length ?? 0) >= 2 ? plain : null;
+}
+
+function JapaneseActions({
+  text,
+  accentColor,
+  onSpeak,
+  onDefine,
+  stacked = false,
+}: {
+  text: string;
+  accentColor: string;
+  onSpeak?: (text: string) => void;
+  onDefine?: (text: string) => void;
+  stacked?: boolean;
+}) {
   return (
-    <Text key={key} style={style as StyleProp<TextStyle>}>
-      {parts.map((part) => {
-        const partOffset = textOffset;
-        textOffset += part.length;
-        const isJapanese =
-          /[\u3040-\u30ff]/.test(part) &&
-          Array.from(part)
-            .filter((char) => /[\p{L}\p{N}]/u.test(char))
-            .every((char) =>
-              /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ヵヶ]/u.test(char),
-            );
-        const plainJapanese = stripRubyReadings(part).trim();
-        return (
-          <Fragment key={`${key}-${partOffset}`}>
-            {hasRubyParens(part)
-              ? renderRubyText(part, style as StyleProp<TextStyle>, `${key}-${partOffset}-ruby`)
-              : part}
-            {isJapanese && onSpeakJapanese ? (
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel={`Speak ${part.trim()}`}
-                onPress={() => onSpeakJapanese(plainJapanese)}
-                style={{ marginLeft: 5, transform: [{ translateY: 3 }] }}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <Volume2Icon color={accentColor} size={15} />
-              </TouchableOpacity>
-            ) : null}
-            {isJapanese && onDefineJapanese ? (
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel={`Break down ${plainJapanese}`}
-                onPress={() => onDefineJapanese(plainJapanese)}
-                style={{ marginLeft: 5, transform: [{ translateY: 3 }] }}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <ListIcon color={accentColor} size={15} />
-              </TouchableOpacity>
-            ) : null}
-          </Fragment>
-        );
-      })}
-    </Text>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        marginLeft: stacked ? 0 : 10,
+        marginTop: stacked ? 6 : 0,
+        alignSelf: "flex-start",
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+        borderRadius: radius.full,
+        backgroundColor: `${accentColor}12`,
+      }}
+    >
+      {onSpeak ? (
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={`Speak ${text}`}
+          onPress={() => onSpeak(text)}
+          style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}
+        >
+          <Volume2Icon color={accentColor} size={16} />
+        </TouchableOpacity>
+      ) : null}
+      {onDefine ? (
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={`Break down ${text}`}
+          onPress={() => onDefine(text)}
+          style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}
+        >
+          <ListIcon color={accentColor} size={16} />
+        </TouchableOpacity>
+      ) : null}
+    </View>
   );
 }
 
@@ -289,15 +299,6 @@ export function MarkdownRenderer({
       text: (node: ASTNode, children: ReactNode[], parentNodes: ASTNode[], style: any) => {
         const text = node.content || "";
         const readableStyle = [style, { color: getReadableTextColor(style, colors.foreground) }];
-        const speechRuns = renderJapaneseSpeechRuns(
-          text,
-          readableStyle,
-          node.key,
-          colors.primary,
-          onSpeakJapanese,
-          onDefineJapanese,
-        );
-        if (speechRuns) return speechRuns;
         if (citations && citations.length > 0 && /\[\d+\]/.test(text)) {
           return (
             <Text key={node.key} style={readableStyle}>
@@ -318,6 +319,57 @@ export function MarkdownRenderer({
           <Text key={node.key} style={readableStyle}>
             {text}
           </Text>
+        );
+      },
+      paragraph: (node: ASTNode, children: ReactNode[], parentNodes: ASTNode[], style: any) => {
+        const focus = japaneseFocus(node);
+        return (
+          <View key={node.key} style={style._VIEW_SAFE_paragraph}>
+            {children}
+            {focus && (onSpeakJapanese || onDefineJapanese) ? (
+              <JapaneseActions
+                text={focus}
+                accentColor={colors.primary}
+                onSpeak={onSpeakJapanese}
+                onDefine={onDefineJapanese}
+              />
+            ) : null}
+          </View>
+        );
+      },
+      list_item: (node: ASTNode, children: ReactNode[], parentNodes: ASTNode[], style: any) => {
+        const focus = japaneseFocus(node);
+        const orderedList = parentNodes.find((parent) => parent.type === "ordered_list");
+        const marker = orderedList
+          ? `${((orderedList.attributes?.start as number | undefined) ?? 1) + (node.index ?? 0)}${node.markup}`
+          : "•";
+        return (
+          <View key={node.key} style={style._VIEW_SAFE_list_item}>
+            <Text
+              style={orderedList ? style.ordered_list_icon : style.bullet_list_icon}
+              accessible={false}
+            >
+              {marker}
+            </Text>
+            <View
+              style={
+                orderedList
+                  ? style._VIEW_SAFE_ordered_list_content
+                  : style._VIEW_SAFE_bullet_list_content
+              }
+            >
+              {children}
+              {focus && (onSpeakJapanese || onDefineJapanese) ? (
+                <JapaneseActions
+                  text={focus}
+                  accentColor={colors.primary}
+                  onSpeak={onSpeakJapanese}
+                  onDefine={onDefineJapanese}
+                  stacked
+                />
+              ) : null}
+            </View>
+          </View>
         );
       },
     }),
