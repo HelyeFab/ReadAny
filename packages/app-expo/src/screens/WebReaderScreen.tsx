@@ -113,6 +113,7 @@ export function WebReaderScreen() {
   const [ocrBusy, setOcrBusy] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [webPageContext, setWebPageContext] = useState("");
+  const [domPageContext, setDomPageContext] = useState("");
 
   const captureWebPageContext = useCallback(() => {
     webRef.current?.injectJavaScript(`
@@ -172,7 +173,7 @@ export function WebReaderScreen() {
       try {
         const contextMessage = JSON.parse(raw) as { type?: string; text?: string };
         if (contextMessage.type === "readany-page-context") {
-          setWebPageContext(contextMessage.text?.trim() || "");
+          setDomPageContext(contextMessage.text?.trim() || "");
           return;
         }
       } catch {
@@ -232,6 +233,56 @@ export function WebReaderScreen() {
     setSelection(null);
     setShowAIChat(true);
   }, [selection]);
+
+  /**
+   * Capture what the reader can actually see before opening Sensei. Image-first
+   * pages (manga, scans, charts) often expose only navigation labels through
+   * document.innerText, which made the assistant confidently discuss the site
+   * controls instead of the page. The visible screenshot is the authoritative
+   * source; DOM text remains a fallback for ordinary articles.
+   */
+  const openContextualChat = useCallback(async () => {
+    setShowAIChat(true);
+    if (!pageRef.current) {
+      setWebPageContext(domPageContext);
+      return;
+    }
+
+    try {
+      const raw = await captureRef(pageRef, { format: "jpg", quality: 0.92, result: "tmpfile" });
+      const uri = raw.startsWith("file://") ? raw : `file://${raw}`;
+      let visibleText = "";
+      const aiConfig = await resolveActiveAIConfig(useSettingsStore.getState());
+      const endpoint = aiConfig?.endpoints.find((e) => e.id === aiConfig.activeEndpointId);
+
+      if (endpoint?.apiKey && supportsVisionOcr(endpoint.baseUrl)) {
+        try {
+          visibleText = await readRegionWithVision(
+            uri,
+            { x: 0, y: 0, width: 1, height: 1 },
+            { baseUrl: endpoint.baseUrl, apiKey: endpoint.apiKey },
+          );
+        } catch (error) {
+          console.warn("[OCR] full-page vision read failed, falling back on-device", error);
+        }
+      }
+      if (!visibleText && isOcrAvailable) {
+        visibleText = (await recognizeRegion({ uri, language: "japanese" })).text;
+      }
+
+      const transcript = visibleText.trim();
+      setWebPageContext(
+        transcript
+          ? `[Visible page transcript — use this as the page content]\n${transcript}`
+          : `[Web page text — it may contain site controls; say when the requested content is not present]\n${domPageContext}`,
+      );
+    } catch (error) {
+      console.warn("[AI] visible web page capture failed", error);
+      setWebPageContext(
+        `[Web page text — it may contain site controls; say when the requested content is not present]\n${domPageContext}`,
+      );
+    }
+  }, [domPageContext]);
 
   /** Freeze the page as an image so a box can be drawn on it without it moving. */
   const startRegionCapture = useCallback(async () => {
@@ -571,10 +622,7 @@ export function WebReaderScreen() {
           accessibilityRole="button"
           accessibilityLabel={t("reader.askAI", "Ask AI")}
           style={[s.aiBubble, { bottom: tabBarHeight + 16 }]}
-          onPress={() => {
-            captureWebPageContext();
-            setShowAIChat(true);
-          }}
+          onPress={() => void openContextualChat()}
         >
           <BotIcon size={22} color="#fff" />
         </TouchableOpacity>
