@@ -181,7 +181,7 @@ export function ReaderAIChatSheet({
       const message = rawMessages[index];
       if (
         message.role !== "user" ||
-        !message.content.startsWith("Give a concise word breakdown for this Japanese expression:")
+        !message.content.includes("Give a concise word breakdown for this Japanese expression:")
       ) {
         continue;
       }
@@ -231,7 +231,7 @@ export function ReaderAIChatSheet({
       if (
         message.role !== "user" ||
         message.createdAt < wordCard.requestedAt ||
-        !message.content.startsWith(promptPrefix)
+        !message.content.includes(promptPrefix)
       ) {
         continue;
       }
