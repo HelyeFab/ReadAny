@@ -2157,6 +2157,13 @@ export class Paginator extends HTMLElement {
             if (selection && !selection.isCollapsed && selection.toString().trim()) return
         }
         const touch = e.changedTouches[0]
+        // A stylus is reserved for selection and annotation. Page turns from
+        // the pen are handled only by the reader's explicit short-tap gate;
+        // pen movement must never enter the paginator's swipe recognizer.
+        if (!touch || touch.touchType === 'stylus') {
+            this.#touchState = null
+            return
+        }
         this.#touchState = {
             x: touch?.screenX, y: touch?.screenY,
             t: e.timeStamp,
@@ -2295,6 +2302,18 @@ export class Paginator extends HTMLElement {
         }
         if (this.#navigationLocked) return
         if (this.hasAttribute('no-swipe')) return
+
+        const { dx = 0, dy = 0, dt = 0 } = this.#touchState ?? {}
+        const primaryDistance = Math.abs(this.#vertical ? dy : dx)
+        const crossDistance = Math.abs(this.#vertical ? dx : dy)
+        const minimumSwipeDistance = Math.max(48, this.size * 0.08)
+        const deliberateHorizontalSwipe = primaryDistance >= minimumSwipeDistance
+            && primaryDistance >= crossDistance * 1.5
+            && dt <= 900
+        if (!deliberateHorizontalSwipe) {
+            this.#touchState = null
+            return
+        }
 
         // XXX: Firefox seems to report scale as 1... sometimes...?
         // at this point I'm basically throwing `requestAnimationFrame` at
