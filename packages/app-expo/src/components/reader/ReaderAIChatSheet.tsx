@@ -1,7 +1,9 @@
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
-import { MessageCirclePlusIcon, XIcon } from "@/components/ui/Icon";
+import { MessageCirclePlusIcon, Volume2Icon, XIcon } from "@/components/ui/Icon";
 import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
+import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
+import { useTTSStore } from "@/stores";
 import { useChatStore } from "@/stores/chat-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { radius, useColors, withOpacity } from "@/styles/theme";
@@ -56,6 +58,48 @@ export function ReaderAIChatSheet({
   const insets = useSafeAreaInsets();
   const s = useMemo(() => makeStyles(colors), [colors]);
   const readingContext = useReadingContext();
+  const ttsConfig = useTTSStore((state) => state.config);
+  const [speakingContext, setSpeakingContext] = useState(false);
+
+  const japaneseContext = useMemo(() => {
+    const text = (contextText ?? "").replace(/^\[[^\]]+\]\s*/u, "").trim();
+    if (!text) return null;
+    const languageChars = Array.from(text).filter((char) => /[\p{L}\p{N}]/u.test(char));
+    if (languageChars.length === 0) return null;
+    const allJapanese = languageChars.every((char) =>
+      /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ヵヶ]/u.test(char),
+    );
+    return allJapanese ? text : null;
+  }, [contextText]);
+
+  const toggleContextSpeech = useCallback(() => {
+    if (!japaneseContext) return;
+    if (speakingContext) {
+      stopTTSPreview();
+      setSpeakingContext(false);
+      return;
+    }
+    setSpeakingContext(true);
+    void previewTTSConfig(japaneseContext, ttsConfig, {
+      onEnd: () => setSpeakingContext(false),
+      onStateChange: (state) => {
+        if (state === "stopped") setSpeakingContext(false);
+      },
+      onError: (error) => {
+        setSpeakingContext(false);
+        Alert.alert(
+          t("tts.previewFailed", "Speech failed"),
+          error instanceof Error ? error.message : String(error),
+        );
+      },
+    }).catch((error) => {
+      setSpeakingContext(false);
+      Alert.alert(
+        t("tts.previewFailed", "Speech failed"),
+        error instanceof Error ? error.message : String(error),
+      );
+    });
+  }, [japaneseContext, speakingContext, t, ttsConfig]);
 
   const semanticContext = useMemo(() => {
     if (!bookId || !readingContext || readingContext.bookId !== bookId) return null;
@@ -224,6 +268,15 @@ export function ReaderAIChatSheet({
                 {contextTitle || semanticContext?.currentChapter || book?.meta.title || ""}
               </Text>
             </View>
+            {japaneseContext ? (
+              <TouchableOpacity
+                style={[s.headerButton, speakingContext && s.headerButtonActive]}
+                onPress={toggleContextSpeech}
+                accessibilityLabel={t("tts.speak", "Speak Japanese text")}
+              >
+                <Volume2Icon size={19} color={colors.foreground} />
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity style={s.headerButton} onPress={handleNewThread}>
               <MessageCirclePlusIcon size={19} color={colors.foreground} />
             </TouchableOpacity>
@@ -314,6 +367,9 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       justifyContent: "center",
       borderRadius: radius.full,
+    },
+    headerButtonActive: {
+      backgroundColor: withOpacity(colors.primary, 0.14),
     },
     messages: { flex: 1 },
     emptyState: {

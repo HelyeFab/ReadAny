@@ -15,10 +15,11 @@
  * the bitmap's true pixel size, so converting here would be guesswork — and
  * guessing wrong crops a different part of the page than the one you drew on.
  */
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ActivityIndicator,
+  Animated,
+  Easing,
   Image,
   Modal,
   PanResponder,
@@ -30,7 +31,7 @@ import {
 import type { LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CheckIcon } from "@/components/ui/Icon";
+import { CheckIcon, RefreshCwIcon } from "@/components/ui/Icon";
 import { fontSize as fs, radius, spacing, useColors } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 
@@ -70,6 +71,35 @@ const HANDLE_SIZE = 22;
 
 type Handle = "tl" | "tm" | "tr" | "ml" | "mr" | "bl" | "bm" | "br";
 type Mode = { kind: "draw"; anchorX: number; anchorY: number } | { kind: "move" } | { kind: "resize"; handle: Handle };
+
+function SpinningLoader() {
+  const rotation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.timing(rotation, {
+        toValue: 1,
+        duration: 850,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [rotation]);
+
+  return (
+    <Animated.View
+      style={{
+        transform: [
+          { rotate: rotation.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] }) },
+        ],
+      }}
+    >
+      <RefreshCwIcon size={20} color="#fff" />
+    </Animated.View>
+  );
+}
 
 export function RegionCaptureOverlay({
   uri,
@@ -333,7 +363,7 @@ export function RegionCaptureOverlay({
         >
           {busy ? (
             <View style={s.busy}>
-              <ActivityIndicator color="#fff" />
+              <SpinningLoader />
               <Text style={s.hint}>{t("web.ocrReading", "Reading the text…")}</Text>
             </View>
           ) : (
