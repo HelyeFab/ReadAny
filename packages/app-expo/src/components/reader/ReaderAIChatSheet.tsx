@@ -10,7 +10,7 @@ import { useReadingContext } from "@readany/core/ai/reading-context-service";
 import type { AttachedQuote, Book } from "@readany/core/types";
 import type { CitationPart, MessageV2 } from "@readany/core/types/message";
 import { convertToMessageV2, mergeMessagesWithStreaming } from "@readany/core/utils";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -32,6 +32,8 @@ interface ReaderAIChatSheetProps {
   book?: Book | null;
   contextTitle?: string;
   contextText?: string | null;
+  autoPrompt?: { id: string; text: string } | null;
+  onAutoPromptConsumed?: () => void;
   onClose: () => void;
   onOpenSettings: () => void;
   onCitation?: (citation: CitationPart) => void;
@@ -43,6 +45,8 @@ export function ReaderAIChatSheet({
   book,
   contextTitle,
   contextText,
+  autoPrompt,
+  onAutoPromptConsumed,
   onClose,
   onOpenSettings,
   onCitation,
@@ -125,6 +129,15 @@ export function ReaderAIChatSheet({
     },
     [bookId, onOpenSettings, sendMessage, t],
   );
+
+  const consumedPromptRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!visible || !autoPrompt || !contextText?.trim()) return;
+    if (consumedPromptRef.current === autoPrompt.id) return;
+    consumedPromptRef.current = autoPrompt.id;
+    onAutoPromptConsumed?.();
+    void handleSend(autoPrompt.text, false, true);
+  }, [autoPrompt, contextText, handleSend, onAutoPromptConsumed, visible]);
 
   const handleNewThread = useCallback(async () => {
     if (activeThread && activeThread.messages.length === 0) return;

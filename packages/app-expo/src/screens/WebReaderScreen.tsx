@@ -113,6 +113,7 @@ export function WebReaderScreen() {
   const [capturePurpose, setCapturePurpose] = useState<"read" | "ai">("read");
   const [ocrBusy, setOcrBusy] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [pendingAIPrompt, setPendingAIPrompt] = useState<{ id: string; text: string } | null>(null);
   const [webPageContext, setWebPageContext] = useState("");
   const [domPageContext, setDomPageContext] = useState("");
 
@@ -347,6 +348,10 @@ export function WebReaderScreen() {
             setWebPageContext(
               `[Web page text — it may contain site controls; say when the requested content is not present]\n${domPageContext}`,
             );
+            setPendingAIPrompt({
+              id: traceId,
+              text: "Help me understand this manga page. Translate the visible Japanese and explain what is happening.",
+            });
             setShowAIChat(true);
             return;
           }
@@ -364,6 +369,13 @@ export function WebReaderScreen() {
           setWebPageContext(
             `[Visible ${scope} transcript — treat this as the authoritative reading context]\n${cleaned}`,
           );
+          setPendingAIPrompt({
+            id: traceId,
+            text:
+              scope === "page"
+                ? "Help me understand this manga page. Translate the visible Japanese and explain what is happening."
+                : "Help me understand this selected manga text. Translate it and explain its meaning and nuance.",
+          });
           setShowAIChat(true);
         } else {
           setSelection(cleaned);
@@ -644,6 +656,8 @@ export function WebReaderScreen() {
         visible={showAIChat}
         contextTitle={pageTitle || hostOf(address)}
         contextText={webPageContext}
+        autoPrompt={pendingAIPrompt}
+        onAutoPromptConsumed={() => setPendingAIPrompt(null)}
         onClose={() => setShowAIChat(false)}
         onOpenSettings={() => {
           setShowAIChat(false);
