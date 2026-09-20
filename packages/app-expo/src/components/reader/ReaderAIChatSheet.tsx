@@ -1,6 +1,5 @@
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
-import { DefinitionSheet } from "@/components/reader/DefinitionSheet";
 import { MessageCirclePlusIcon, Trash2Icon, XIcon } from "@/components/ui/Icon";
 import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
 import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
@@ -61,7 +60,6 @@ export function ReaderAIChatSheet({
   const s = useMemo(() => makeStyles(colors), [colors]);
   const readingContext = useReadingContext();
   const ttsConfig = useTTSStore((state) => state.config);
-  const [definitionText, setDefinitionText] = useState<string | null>(null);
 
   const speakJapaneseSegment = useCallback(
     (text: string) => {
@@ -180,6 +178,11 @@ export function ReaderAIChatSheet({
             .map((part) => (part as { text: string }).text)
             .join("\n")
             .trim();
+          if (
+            visibleText.startsWith("Give a concise word breakdown for this Japanese expression:")
+          ) {
+            return false;
+          }
           return ![
             "Help me understand this selected manga text. Translate it and explain its meaning and nuance.",
             "Explain the selected manga text using the complete page for context. Translate it and explain its meaning and nuance.",
@@ -247,6 +250,19 @@ export function ReaderAIChatSheet({
     if (activeThread && activeThread.messages.length === 0) return;
     await createThread(bookId);
   }, [activeThread, bookId, createThread]);
+
+  const handleDefineJapanese = useCallback(
+    (text: string) => {
+      void handleSend(
+        `Give a concise word breakdown for this Japanese expression: ${text}\nInclude its reading, base form, part of speech, and meaning in this page's context.`,
+        false,
+        true,
+        undefined,
+        true,
+      );
+    },
+    [handleSend],
+  );
 
   const handleClearChat = useCallback(() => {
     if (!activeThread || activeThread.messages.length === 0) return;
@@ -326,7 +342,7 @@ export function ReaderAIChatSheet({
                 currentStep={currentStep}
                 onCitationClick={onCitation}
                 onSpeakJapanese={speakJapaneseSegment}
-                onDefineJapanese={setDefinitionText}
+                onDefineJapanese={handleDefineJapanese}
               />
             ) : (
               <View style={s.emptyState}>
@@ -350,12 +366,6 @@ export function ReaderAIChatSheet({
           />
         </View>
       </KeyboardAvoidingView>
-      <DefinitionSheet
-        visible={definitionText !== null}
-        word={definitionText ?? ""}
-        baseForms={[]}
-        onClose={() => setDefinitionText(null)}
-      />
     </Modal>
   );
 }
