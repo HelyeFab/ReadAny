@@ -1,6 +1,7 @@
 import { ChatInput } from "@/components/chat/ChatInput";
+import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
 import { MessageList } from "@/components/chat/MessageList";
-import { MessageCirclePlusIcon, Trash2Icon, XIcon } from "@/components/ui/Icon";
+import { MessageCirclePlusIcon, Trash2Icon, Volume2Icon, XIcon } from "@/components/ui/Icon";
 import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
 import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
 import { useTTSStore } from "@/stores";
@@ -16,12 +17,14 @@ import { convertToMessageV2, mergeMessagesWithStreaming } from "@readany/core/ut
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  ActivityIndicator,
   Alert,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -166,12 +169,38 @@ export function ReaderAIChatSheet({
     () => convertToMessageV2(activeThread?.messages ?? []),
     [activeThread],
   );
+  const [wordCard, setWordCard] = useState<{
+    term: string;
+    content: string | null;
+    requestedAt: number;
+  } | null>(null);
+  const breakdownAssistantIds = useMemo(() => {
+    const ids = new Set<string>();
+    const rawMessages = activeThread?.messages ?? [];
+    for (let index = 0; index < rawMessages.length; index += 1) {
+      const message = rawMessages[index];
+      if (
+        message.role !== "user" ||
+        !message.content.startsWith("Give a concise word breakdown for this Japanese expression:")
+      ) {
+        continue;
+      }
+      const response = rawMessages
+        .slice(index + 1)
+        .find((candidate) => candidate.role === "assistant");
+      if (response) ids.add(response.id);
+    }
+    return ids;
+  }, [activeThread?.messages]);
   const transientMessage = activeThread?.id === currentMessage?.threadId ? currentMessage : null;
   const messages = useMemo(
     () =>
       mergeMessagesWithStreaming(persistedMessages, transientMessage, isStreaming).filter(
         (message) => {
-          if (message.parts.length === 0) return false;
+          if (message.parts.length === 0 || breakdownAssistantIds.has(message.id)) return false;
+          if (wordCard && message.role === "assistant" && message.id === transientMessage?.id) {
+            return false;
+          }
           if (message.role !== "user") return true;
           const visibleText = message.parts
             .filter((part) => part.type === "text")
@@ -190,8 +219,35 @@ export function ReaderAIChatSheet({
           ].includes(visibleText);
         },
       ),
-    [isStreaming, persistedMessages, transientMessage],
+    [breakdownAssistantIds, isStreaming, persistedMessages, transientMessage, wordCard],
   );
+
+  useEffect(() => {
+    if (!wordCard || wordCard.content || isStreaming) return;
+    const promptPrefix = `Give a concise word breakdown for this Japanese expression: ${wordCard.term}`;
+    const rawMessages = activeThread?.messages ?? [];
+    for (let index = rawMessages.length - 1; index >= 0; index -= 1) {
+      const message = rawMessages[index];
+      if (
+        message.role !== "user" ||
+        message.createdAt < wordCard.requestedAt ||
+        !message.content.startsWith(promptPrefix)
+      ) {
+        continue;
+      }
+      const response = rawMessages
+        .slice(index + 1)
+        .find((candidate) => candidate.role === "assistant");
+      if (response?.content.trim()) {
+        setWordCard((current) =>
+          current?.term === wordCard.term
+            ? { ...current, content: response.content.trim() }
+            : current,
+        );
+      }
+      break;
+    }
+  }, [activeThread?.messages, isStreaming, wordCard]);
 
   const handleSend = useCallback(
     async (
@@ -253,8 +309,9 @@ export function ReaderAIChatSheet({
 
   const handleDefineJapanese = useCallback(
     (text: string) => {
+      setWordCard({ term: text, content: null, requestedAt: Date.now() });
       void handleSend(
-        `Give a concise word breakdown for this Japanese expression: ${text}\nInclude its reading, base form, part of speech, and meaning in this page's context.`,
+        `Give a concise word breakdown for this Japanese expression: ${text}\nReturn only one compact entry with its reading, base form, part of speech, and meaning in this page's context. Do not repeat the expression or add further lists.`,
         false,
         true,
         undefined,
@@ -364,6 +421,42 @@ export function ReaderAIChatSheet({
             placeholder={t("chat.askAboutCurrentPage", "Ask about the current page...")}
             keyboardBottomOffset={insets.bottom}
           />
+
+          {wordCard ? (
+            <View style={s.wordCardBackdrop}>
+              <Pressable style={StyleSheet.absoluteFill} onPress={() => setWordCard(null)} />
+              <View style={s.wordCard}>
+                <View style={s.wordCardHeader}>
+                  <View style={s.wordCardTitleBlock}>
+                    <Text style={s.wordCardTerm}>{wordCard.term}</Text>
+                    <Text style={s.wordCardLabel}>{t("chat.wordBreakdown", "Word breakdown")}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={s.wordCardButton}
+                    onPress={() => speakJapaneseSegment(wordCard.term)}
+                    accessibilityLabel={t("tts.speak", "Speak")}
+                  >
+                    <Volume2Icon size={18} color={colors.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.wordCardButton} onPress={() => setWordCard(null)}>
+                    <XIcon size={19} color={colors.foreground} />
+                  </TouchableOpacity>
+                </View>
+                {wordCard.content ? (
+                  <ScrollView style={s.wordCardBody} showsVerticalScrollIndicator={false}>
+                    <MarkdownRenderer content={wordCard.content} />
+                  </ScrollView>
+                ) : (
+                  <View style={s.wordCardLoading}>
+                    <ActivityIndicator color={colors.primary} />
+                    <Text style={s.wordCardLoadingText}>
+                      {t("chat.analyzingWord", "Analyzing word…")}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -388,6 +481,50 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       borderColor: withOpacity(colors.foreground, 0.15),
       overflow: "hidden",
     },
+    wordCardBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 20,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 24,
+      backgroundColor: withOpacity(colors.background, 0.5),
+    },
+    wordCard: {
+      width: "100%",
+      maxWidth: 440,
+      maxHeight: "58%",
+      padding: 16,
+      borderRadius: 18,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: withOpacity(colors.foreground, 0.18),
+      backgroundColor: colors.card,
+      shadowColor: "#000",
+      shadowOpacity: 0.18,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 8,
+    },
+    wordCardHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+    wordCardTitleBlock: { flex: 1 },
+    wordCardTerm: { color: colors.foreground, fontSize: 21, fontWeight: "700" },
+    wordCardLabel: { color: colors.mutedForeground, fontSize: 12, marginTop: 2 },
+    wordCardButton: {
+      width: 36,
+      height: 36,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: radius.full,
+      backgroundColor: withOpacity(colors.primary, 0.08),
+    },
+    wordCardBody: { marginTop: 14 },
+    wordCardLoading: {
+      minHeight: 92,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+    },
+    wordCardLoadingText: { color: colors.mutedForeground, fontSize: 14 },
     sheetCompact: {
       height: "40%",
       minHeight: 350,
