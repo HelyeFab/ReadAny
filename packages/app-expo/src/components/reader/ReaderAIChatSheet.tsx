@@ -177,10 +177,10 @@ export function ReaderAIChatSheet({
             .map((part) => (part as { text: string }).text)
             .join("\n")
             .trim();
-          return (
-            visibleText !==
-            "Help me understand this selected manga text. Translate it and explain its meaning and nuance."
-          );
+          return ![
+            "Help me understand this selected manga text. Translate it and explain its meaning and nuance.",
+            "Explain the selected manga text using the complete page for context. Translate it and explain its meaning and nuance.",
+          ].includes(visibleText);
         },
       ),
     [isStreaming, persistedMessages, transientMessage],

@@ -120,6 +120,8 @@ export function WebReaderScreen() {
   const [pendingAIPrompt, setPendingAIPrompt] = useState<{ id: string; text: string } | null>(null);
   const [webPageContext, setWebPageContext] = useState("");
   const [domPageContext, setDomPageContext] = useState("");
+  const [fullPageContext, setFullPageContext] = useState("");
+  const backgroundTranscriptRef = useRef<{ uri: string; text: string } | null>(null);
   const [showAIMenu, setShowAIMenu] = useState(false);
   const initialBubblePosition = useMemo(
     () => ({ x: Math.max(8, windowWidth - 68), y: Math.max(80, windowHeight - tabBarHeight - 92) }),
@@ -158,9 +160,7 @@ export function WebReaderScreen() {
         onPanResponderRelease: (_event, gesture) => {
           const moved = Math.hypot(gesture.dx, gesture.dy) > 8;
           const start = bubbleCoordinatesRef.current;
-          const next = moved
-            ? clampBubble(start.x + gesture.dx, start.y + gesture.dy)
-            : start;
+          const next = moved ? clampBubble(start.x + gesture.dx, start.y + gesture.dy) : start;
           bubbleCoordinatesRef.current = next;
           bubblePosition.setValue(next);
           setBubbleCoordinates(next);
@@ -202,12 +202,14 @@ export function WebReaderScreen() {
     setShowAIMenu(false);
     captureWebPageContext();
     setWebPageContext(
-      domPageContext
-        ? `[Current web page text]\n${domPageContext}`
-        : "The user opened chat while viewing the current web page.",
+      fullPageContext
+        ? `[Complete current page transcript]\n${fullPageContext}`
+        : domPageContext
+          ? `[Current web page text]\n${domPageContext}`
+          : "The user opened chat while viewing the current web page.",
     );
     setShowAIChat(true);
-  }, [captureWebPageContext, domPageContext]);
+  }, [captureWebPageContext, domPageContext, fullPageContext]);
 
   // Reopen whatever was being read, but only once the persisted state has
   // actually arrived — reading `lastUrl` before that always looks like "empty".
@@ -305,34 +307,158 @@ export function WebReaderScreen() {
 
   const askSensei = useCallback(() => {
     if (!selection) return;
-    setWebPageContext(selection);
+    setWebPageContext(
+      `${fullPageContext ? `[Complete current page transcript]\n${fullPageContext}\n\n` : ""}[User-selected focus]\n${selection}`,
+    );
     setSelection(null);
     setShowAIChat(true);
-  }, [selection]);
+  }, [fullPageContext, selection]);
+
+  const transcribeCapture = useCallback(
+    async (
+      snapshot: { uri: string; width: number; height: number },
+      region: CaptureRegion,
+      traceId: string,
+      scope: "page" | "selection",
+    ) => {
+      let visionText = "";
+      let deviceText = "";
+      const aiConfig = await resolveActiveAIConfig(useSettingsStore.getState());
+      const endpoint = aiConfig?.endpoints.find((entry) => entry.id === aiConfig.activeEndpointId);
+      const visionPromise = async () => {
+        if (!endpoint?.apiKey || !supportsVisionOcr(endpoint.baseUrl)) return "";
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20_000);
+        try {
+          const result = await readRegionWithVision(
+            snapshot.uri,
+            region,
+            { baseUrl: endpoint.baseUrl, apiKey: endpoint.apiKey },
+            controller.signal,
+          );
+          console.info(
+            "[WebAIRegion] vision-complete",
+            JSON.stringify({ traceId, scope, length: result.length }),
+          );
+          return result;
+        } catch (error) {
+          console.warn("[OCR] vision read failed, falling back on-device", error);
+          return "";
+        } finally {
+          clearTimeout(timeout);
+        }
+      };
+      const devicePromise = async () => {
+        if (!isOcrAvailable) return "";
+        const result = await recognizeRegion({
+          uri: snapshot.uri,
+          x: region.x,
+          y: region.y,
+          width: region.width,
+          height: region.height,
+          language: "japanese",
+        });
+        const orderedText = result.blocks.filter(Boolean).join("\n") || result.text;
+        console.info(
+          "[WebAIRegion] device-complete",
+          JSON.stringify({ traceId, scope, length: orderedText.length, blocks: result.blocks }),
+        );
+        return orderedText;
+      };
+      [visionText, deviceText] = await Promise.all([visionPromise(), devicePromise()]);
+      const contentLength = (value: string) => value.replace(/\s+/g, "").length;
+      const text = contentLength(deviceText) > contentLength(visionText) ? deviceText : visionText;
+      console.info(
+        "[WebAIRegion] ocr",
+        JSON.stringify({
+          traceId,
+          scope,
+          chosen: text === deviceText ? "device" : "vision",
+          visionLength: contentLength(visionText),
+          deviceLength: contentLength(deviceText),
+          visionText: visionText.slice(0, 2000),
+          deviceText: deviceText.slice(0, 2000),
+        }),
+      );
+      return text.trim();
+    },
+    [],
+  );
 
   /** Freeze the page as an image so a box can be drawn on it without it moving. */
-  const startRegionCapture = useCallback(async (purpose: "read" | "ai" = "read") => {
-    if (!pageRef.current) return;
-    setSelection(null);
-    setCapturePurpose(purpose);
-    try {
-      const raw = await captureRef(pageRef, { format: "png", quality: 1, result: "tmpfile" });
-      const uri = raw.startsWith("file://") ? raw : `file://${raw}`;
-      const size = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-        Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
-      });
-      console.info(
-        "[WebAIRegion] capture",
-        JSON.stringify({ purpose, uri, width: size.width, height: size.height, page: address }),
-      );
-      setCapture({ uri, width: size.width, height: size.height });
-    } catch (error) {
-      Alert.alert(
-        t("web.captureFailed", "Could not capture the page"),
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-  }, [address, t]);
+  const startRegionCapture = useCallback(
+    async (purpose: "read" | "ai" = "read") => {
+      if (!pageRef.current) return;
+      setSelection(null);
+      setCapturePurpose(purpose);
+      try {
+        const raw = await captureRef(pageRef, { format: "png", quality: 1, result: "tmpfile" });
+        const uri = raw.startsWith("file://") ? raw : `file://${raw}`;
+        const size = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+          Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
+        });
+        console.info(
+          "[WebAIRegion] capture",
+          JSON.stringify({ purpose, uri, width: size.width, height: size.height, page: address }),
+        );
+        const snapshot = { uri, width: size.width, height: size.height };
+        setCapture(snapshot);
+        if (purpose === "ai") {
+          const traceId = `web-ai-page-${Date.now()}`;
+          void transcribeCapture(snapshot, { x: 0, y: 0, width: 1, height: 1 }, traceId, "page")
+            .then((text) => {
+              if (!text) return;
+              backgroundTranscriptRef.current = { uri, text };
+              setFullPageContext(text);
+            })
+            .catch((error) => console.warn("[WebAIRegion] background page OCR failed", error));
+        }
+      } catch (error) {
+        Alert.alert(
+          t("web.captureFailed", "Could not capture the page"),
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    },
+    [address, t, transcribeCapture],
+  );
+
+  useEffect(() => {
+    if (!url || loading || !pageRef.current) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const raw = await captureRef(pageRef, { format: "png", quality: 1, result: "tmpfile" });
+          const uri = raw.startsWith("file://") ? raw : `file://${raw}`;
+          const size = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+            Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
+          });
+          const snapshot = { uri, width: size.width, height: size.height };
+          const traceId = `web-ai-background-${Date.now()}`;
+          const text = await transcribeCapture(
+            snapshot,
+            { x: 0, y: 0, width: 1, height: 1 },
+            traceId,
+            "page",
+          );
+          if (cancelled || !text) return;
+          backgroundTranscriptRef.current = { uri, text };
+          setFullPageContext(text);
+          console.info(
+            "[WebAIRegion] background-ready",
+            JSON.stringify({ traceId, page: address, length: text.length }),
+          );
+        } catch (error) {
+          if (!cancelled) console.warn("[WebAIRegion] background page OCR failed", error);
+        }
+      })();
+    }, 900);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [address, loading, transcribeCapture, url]);
 
   const handleRegion = useCallback(
     async (region: CaptureRegion) => {
@@ -345,76 +471,39 @@ export function WebReaderScreen() {
         const traceId = `web-ai-${Date.now()}`;
         console.info(
           "[WebAIRegion] selection",
-          JSON.stringify({ traceId, capturePurpose, region, captureSize: [capture.width, capture.height] }),
-        );
-        let visionText = "";
-        let deviceText = "";
-        const aiConfig = await resolveActiveAIConfig(useSettingsStore.getState());
-        const endpoint = aiConfig?.endpoints.find((e) => e.id === aiConfig.activeEndpointId);
-        const visionPromise = async () => {
-          if (!endpoint?.apiKey || !supportsVisionOcr(endpoint.baseUrl)) return "";
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 20_000);
-          try {
-            const result = await readRegionWithVision(
-              capture.uri,
-              region,
-              { baseUrl: endpoint.baseUrl, apiKey: endpoint.apiKey },
-              controller.signal,
-            );
-            console.info("[WebAIRegion] vision-complete", JSON.stringify({ traceId, length: result.length }));
-            return result;
-          } catch (error) {
-            console.warn("[OCR] vision read failed, falling back on-device", error);
-            return "";
-          } finally {
-            clearTimeout(timeout);
-          }
-        };
-        const devicePromise = async () => {
-          if (!isOcrAvailable) return "";
-          const result = await recognizeRegion({
-            uri: capture.uri,
-            x: region.x,
-            y: region.y,
-            width: region.width,
-            height: region.height,
-            language: "japanese",
-          });
-          const orderedText = result.blocks.filter(Boolean).join("\n") || result.text;
-          console.info(
-            "[WebAIRegion] device-complete",
-            JSON.stringify({ traceId, length: orderedText.length, blocks: result.blocks }),
-          );
-          return orderedText;
-        };
-        [visionText, deviceText] = await Promise.all([visionPromise(), devicePromise()]);
-        // Vision is usually much better at handwritten manga, while ML Kit
-        // sometimes sees additional lines that vision omitted. Prefer the
-        // transcript carrying more actual characters instead of blindly
-        // accepting the first non-empty backend result.
-        const contentLength = (value: string) => value.replace(/\s+/g, "").length;
-        const text =
-          contentLength(deviceText) > contentLength(visionText) ? deviceText : visionText;
-        console.info(
-          "[WebAIRegion] ocr",
           JSON.stringify({
             traceId,
-            chosen: text === deviceText ? "device" : "vision",
-            visionLength: contentLength(visionText),
-            deviceLength: contentLength(deviceText),
-            visionText: visionText.slice(0, 2000),
-            deviceText: deviceText.slice(0, 2000),
+            capturePurpose,
+            region,
+            captureSize: [capture.width, capture.height],
           }),
         );
-        // Recognised lines arrive newline-separated. Japanese is written without
-        // spaces, so rejoining with one would put a gap in the middle of a word.
-        // Recognised lines arrive newline-separated. Japanese is written
-        // without spaces, so rejoining with one would put a gap mid-word.
-        const cleaned = text.trim();
+        const wholePage = region.width >= 0.99 && region.height >= 0.99;
+        const selectedPromise = transcribeCapture(
+          capture,
+          region,
+          traceId,
+          wholePage ? "page" : "selection",
+        );
+        const cachedPage = backgroundTranscriptRef.current;
+        const pagePromise = wholePage
+          ? selectedPromise
+          : cachedPage?.uri === capture.uri
+            ? Promise.resolve(cachedPage.text)
+            : transcribeCapture(
+                capture,
+                { x: 0, y: 0, width: 1, height: 1 },
+                `${traceId}-page`,
+                "page",
+              );
+        const [cleaned, completePageText] = await Promise.all([selectedPromise, pagePromise]);
         console.info(
           "[WebAIRegion] context",
-          JSON.stringify({ traceId, cleanedLength: cleaned.length, cleaned: cleaned.slice(0, 4000) }),
+          JSON.stringify({
+            traceId,
+            cleanedLength: cleaned.length,
+            cleaned: cleaned.slice(0, 4000),
+          }),
         );
         setCapture(null);
         if (!cleaned) {
@@ -439,16 +528,19 @@ export function WebReaderScreen() {
           return;
         }
         if (capturePurpose === "ai") {
-          const scope = region.width >= 0.99 && region.height >= 0.99 ? "page" : "selected area";
+          const completeContext = completePageText || domPageContext;
+          if (completePageText) {
+            backgroundTranscriptRef.current = { uri: capture.uri, text: completePageText };
+            setFullPageContext(completePageText);
+          }
           setWebPageContext(
-            `[Visible ${scope} transcript — treat this as the authoritative reading context]\n${cleaned}`,
+            `[Complete current page transcript — always use this for surrounding context]\n${completeContext}\n\n${wholePage ? "" : `[User-selected focus — answer specifically about this region]\n${cleaned}`}`,
           );
           setPendingAIPrompt({
             id: traceId,
-            text:
-              scope === "page"
-                ? "Help me understand this manga page. Translate the visible Japanese and explain what is happening."
-                : "Help me understand this selected manga text. Translate it and explain its meaning and nuance.",
+            text: wholePage
+              ? "Help me understand this manga page. Translate the visible Japanese and explain what is happening."
+              : "Explain the selected manga text using the complete page for context. Translate it and explain its meaning and nuance.",
           });
           setShowAIChat(true);
         } else {
@@ -464,7 +556,7 @@ export function WebReaderScreen() {
         setOcrBusy(false);
       }
     },
-    [capture, capturePurpose, domPageContext, t],
+    [capture, capturePurpose, domPageContext, t, transcribeCapture],
   );
 
   const copySelection = useCallback(() => {
@@ -566,6 +658,8 @@ export function WebReaderScreen() {
             onLoadStart={() => {
               setLoading(true);
               setSelection(null);
+              setFullPageContext("");
+              backgroundTranscriptRef.current = null;
             }}
             onLoadEnd={() => {
               setLoading(false);
@@ -792,7 +886,9 @@ export function WebReaderScreen() {
               ? () => void handleRegion({ x: 0, y: 0, width: 1, height: 1 })
               : undefined
           }
-          actionLabel={capturePurpose === "ai" ? t("web.aiAskSelection", "Ask about selection") : undefined}
+          actionLabel={
+            capturePurpose === "ai" ? t("web.aiAskSelection", "Ask about selection") : undefined
+          }
           onCancel={() => setCapture(null)}
         />
       ) : null}

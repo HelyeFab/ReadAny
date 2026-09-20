@@ -1,5 +1,6 @@
 import { renderRubyText } from "@/components/chat/RubyText";
 import { MermaidView } from "@/components/common/MermaidView";
+import { Volume2Icon } from "@/components/ui/Icon";
 import { hasRubyParens } from "@/lib/ruby/parse-ruby-parens";
 import { fontSize as fs, radius, ui, useColors } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
@@ -52,14 +53,15 @@ function renderJapaneseSpeechRuns(
               ? renderRubyText(part, style as StyleProp<TextStyle>, `${key}-${partOffset}-ruby`)
               : part}
             {isJapanese ? (
-              <Text
+              <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel={`Speak ${part.trim()}`}
                 onPress={() => onSpeakJapanese(part.trim())}
-                style={{ color: accentColor, fontSize: fs.sm }}
+                style={{ marginLeft: 5, transform: [{ translateY: 3 }] }}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
-                {"  🔊"}
-              </Text>
+                <Volume2Icon color={accentColor} size={15} />
+              </TouchableOpacity>
             ) : null}
           </Fragment>
         );
