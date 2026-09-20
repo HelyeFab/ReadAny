@@ -146,6 +146,8 @@ export function convertToMessageV2(messages: any[]): MessageV2[] {
               createdAt: m.createdAt,
             });
             break;
+          case "hidden":
+            break;
         }
       }
 

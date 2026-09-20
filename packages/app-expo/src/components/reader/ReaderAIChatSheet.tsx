@@ -122,12 +122,30 @@ export function ReaderAIChatSheet({
   );
   const transientMessage = activeThread?.id === currentMessage?.threadId ? currentMessage : null;
   const messages = useMemo(
-    () => mergeMessagesWithStreaming(persistedMessages, transientMessage, isStreaming),
+    () =>
+      mergeMessagesWithStreaming(persistedMessages, transientMessage, isStreaming).filter(
+        (message) => {
+          if (message.parts.length === 0) return false;
+          if (message.role !== "user") return true;
+          const visibleText = message.parts
+            .filter((part) => part.type === "text")
+            .map((part) => (part as { text: string }).text)
+            .join("\n")
+            .trim();
+          return visibleText !== "Help me understand this selected manga text. Translate it and explain its meaning and nuance.";
+        },
+      ),
     [isStreaming, persistedMessages, transientMessage],
   );
 
   const handleSend = useCallback(
-    async (text: string, deepThinking: boolean, spoilerFree: boolean, quotes?: AttachedQuote[]) => {
+    async (
+      text: string,
+      deepThinking: boolean,
+      spoilerFree: boolean,
+      quotes?: AttachedQuote[],
+      hideUserMessage = false,
+    ) => {
       const resolvedAIConfig = await resolveActiveAIConfig(useSettingsStore.getState());
       if (!resolvedAIConfig) {
         Alert.alert(
@@ -140,7 +158,15 @@ export function ReaderAIChatSheet({
         );
         return;
       }
-      await sendMessage(text, bookId, deepThinking, spoilerFree, quotes, resolvedAIConfig);
+      await sendMessage(
+        text,
+        bookId,
+        deepThinking,
+        spoilerFree,
+        quotes,
+        resolvedAIConfig,
+        hideUserMessage,
+      );
     },
     [bookId, onOpenSettings, sendMessage, t],
   );
@@ -154,7 +180,7 @@ export function ReaderAIChatSheet({
       "[ReaderAIChat] auto-prompt-start",
       JSON.stringify({ id: autoPrompt.id, contextLength: contextText.trim().length }),
     );
-    void handleSend(autoPrompt.text, false, true)
+    void handleSend(autoPrompt.text, false, true, undefined, true)
       .then(() => {
         console.log("[ReaderAIChat] auto-prompt-finished", JSON.stringify({ id: autoPrompt.id }));
         onAutoPromptConsumed?.();

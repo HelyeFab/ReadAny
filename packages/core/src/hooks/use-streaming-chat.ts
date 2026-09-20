@@ -188,6 +188,7 @@ export function useStreamingChat(options?: StreamingChatOptions) {
       spoilerFree = false,
       quotes?: AttachedQuote[],
       aiConfigOverride?: AIConfig,
+      hideUserMessage = false,
     ) => {
       const bookId = overrideBookId ?? options?.bookId;
       const sessionKey = getChatStreamingKey(bookId);
@@ -247,13 +248,17 @@ export function useStreamingChat(options?: StreamingChatOptions) {
           threadId: thread.id,
           role: "user" as const,
           content: aiPrompt,
-          parts: userParts,
-          partsOrder: userParts.map((p) => ({
-            type: p.type as "text" | "quote",
-            id: p.id,
-            ...(p.type === "text" ? { text: (p as TextPart).text } : {}),
-            ...(p.type === "quote" ? { text: (p as any).text, source: (p as any).source } : {}),
-          })),
+          parts: hideUserMessage ? [] : userParts,
+          partsOrder: hideUserMessage
+            ? [{ type: "hidden" as const, id: `hidden-${userMessageId}` }]
+            : userParts.map((p) => ({
+                type: p.type as "text" | "quote",
+                id: p.id,
+                ...(p.type === "text" ? { text: (p as TextPart).text } : {}),
+                ...(p.type === "quote"
+                  ? { text: (p as any).text, source: (p as any).source }
+                  : {}),
+              })),
           createdAt: Date.now(),
         };
 
