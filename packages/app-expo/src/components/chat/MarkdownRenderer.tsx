@@ -24,7 +24,7 @@ interface MarkdownRendererProps {
 }
 
 function nodeText(node: ASTNode): string {
-  if (typeof node.content === "string") return node.content;
+  if (typeof node.content === "string" && node.content.length > 0) return node.content;
   return (node.children ?? []).map(nodeText).join("");
 }
 
