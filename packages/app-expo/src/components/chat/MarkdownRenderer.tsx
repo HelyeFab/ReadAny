@@ -17,6 +17,55 @@ interface MarkdownRendererProps {
   styleOverrides?: Record<string, any>;
   citations?: CitationPart[];
   onCitationClick?: (citation: CitationPart) => void;
+  onSpeakJapanese?: (text: string) => void;
+}
+
+const JAPANESE_RUN =
+  /([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ヵヶー]+(?:[\s、。！？・「」『』（）]*[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ヵヶー]+)*)/gu;
+
+function renderJapaneseSpeechRuns(
+  text: string,
+  style: unknown,
+  key: string | number,
+  accentColor: string,
+  onSpeakJapanese?: (text: string) => void,
+) {
+  if (!onSpeakJapanese || !/[\u3040-\u30ff]/.test(text)) return null;
+  const parts = text.split(JAPANESE_RUN);
+  if (parts.length < 2) return null;
+  let textOffset = 0;
+  return (
+    <Text key={key} style={style as StyleProp<TextStyle>}>
+      {parts.map((part) => {
+        const partOffset = textOffset;
+        textOffset += part.length;
+        const isJapanese =
+          /[\u3040-\u30ff]/.test(part) &&
+          Array.from(part)
+            .filter((char) => /[\p{L}\p{N}]/u.test(char))
+            .every((char) =>
+              /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ヵヶ]/u.test(char),
+            );
+        return (
+          <Fragment key={`${key}-${partOffset}`}>
+            {hasRubyParens(part)
+              ? renderRubyText(part, style as StyleProp<TextStyle>, `${key}-${partOffset}-ruby`)
+              : part}
+            {isJapanese ? (
+              <Text
+                accessibilityRole="button"
+                accessibilityLabel={`Speak ${part.trim()}`}
+                onPress={() => onSpeakJapanese(part.trim())}
+                style={{ color: accentColor, fontSize: fs.sm }}
+              >
+                {"  🔊"}
+              </Text>
+            ) : null}
+          </Fragment>
+        );
+      })}
+    </Text>
+  );
 }
 
 function isUnsafeMarkdownTextColor(color: unknown): boolean {
@@ -187,6 +236,7 @@ export function MarkdownRenderer({
   styleOverrides,
   citations,
   onCitationClick,
+  onSpeakJapanese,
 }: MarkdownRendererProps) {
   const colors = useColors();
   const baseStyles = makeMarkdownStyles(colors);
@@ -221,6 +271,14 @@ export function MarkdownRenderer({
       text: (node: ASTNode, children: ReactNode[], parentNodes: ASTNode[], style: any) => {
         const text = node.content || "";
         const readableStyle = [style, { color: getReadableTextColor(style, colors.foreground) }];
+        const speechRuns = renderJapaneseSpeechRuns(
+          text,
+          readableStyle,
+          node.key,
+          colors.primary,
+          onSpeakJapanese,
+        );
+        if (speechRuns) return speechRuns;
         if (citations && citations.length > 0 && /\[\d+\]/.test(text)) {
           return (
             <Text key={node.key} style={readableStyle}>
@@ -244,7 +302,7 @@ export function MarkdownRenderer({
         );
       },
     }),
-    [colors, citations, onCitationClick],
+    [colors, citations, onCitationClick, onSpeakJapanese],
   );
 
   return (

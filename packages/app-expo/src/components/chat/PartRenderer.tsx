@@ -37,12 +37,20 @@ interface PartProps {
   part: Part;
   citations?: CitationPart[];
   onCitationClick?: (citation: CitationPart) => void;
+  onSpeakJapanese?: (text: string) => void;
 }
 
-export function PartRenderer({ part, citations, onCitationClick }: PartProps) {
+export function PartRenderer({ part, citations, onCitationClick, onSpeakJapanese }: PartProps) {
   switch (part.type) {
     case "text":
-      return <TextPartView part={part} citations={citations} onCitationClick={onCitationClick} />;
+      return (
+        <TextPartView
+          part={part}
+          citations={citations}
+          onCitationClick={onCitationClick}
+          onSpeakJapanese={onSpeakJapanese}
+        />
+      );
     case "reasoning":
       return <ReasoningPartView part={part} />;
     case "tool_call":
@@ -72,10 +80,12 @@ function TextPartView({
   part,
   citations,
   onCitationClick,
+  onSpeakJapanese,
 }: {
   part: TextPart;
   citations?: CitationPart[];
   onCitationClick?: (citation: CitationPart) => void;
+  onSpeakJapanese?: (text: string) => void;
 }) {
   const throttledText = useThrottledValue(part.text, 100);
   const isStreaming = part.status === "running";
@@ -90,6 +100,7 @@ function TextPartView({
       isStreaming={isStreaming}
       citations={citations}
       onCitationClick={onCitationClick}
+      onSpeakJapanese={onSpeakJapanese}
     />
   );
 }

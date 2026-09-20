@@ -150,6 +150,7 @@ function splitIntoChunks(text: string, maxLen: number): string[] {
 
 /** Simple heuristic to guess language from text */
 function guessLanguage(text: string): string {
+  if (/[\u3040-\u30ff]/.test(text)) return "ja-JP";
   const cjk = text.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g);
   if (cjk && cjk.length > text.length * 0.1) return "zh-CN";
   return "en-US";

@@ -31,6 +31,7 @@ interface MessageListProps {
   isStreaming?: boolean;
   currentStep?: "thinking" | "tool_calling" | "responding" | "idle";
   onCitationClick?: (citation: CitationPart) => void;
+  onSpeakJapanese?: (text: string) => void;
 }
 
 const BOTTOM_THRESHOLD = 80;
@@ -54,6 +55,7 @@ export function MessageList({
   isStreaming,
   currentStep,
   onCitationClick,
+  onSpeakJapanese,
 }: MessageListProps) {
   const { t } = useTranslation();
   const colors = useColors();
@@ -146,11 +148,20 @@ export function MessageList({
           isStreaming={isLastMsgStreaming}
           currentStep={currentStep}
           onCitationClick={onCitationClick}
+          onSpeakJapanese={onSpeakJapanese}
           onLongPress={handleBubbleLongPress}
         />
       );
     },
-    [colors, messages.length, isStreaming, currentStep, onCitationClick, handleBubbleLongPress],
+    [
+      colors,
+      messages.length,
+      isStreaming,
+      currentStep,
+      onCitationClick,
+      onSpeakJapanese,
+      handleBubbleLongPress,
+    ],
   );
 
   // Show indicator when streaming but no assistant content yet
@@ -252,6 +263,7 @@ interface MessageBubbleProps {
   isStreaming?: boolean;
   currentStep?: "thinking" | "tool_calling" | "responding" | "idle";
   onCitationClick?: (citation: CitationPart) => void;
+  onSpeakJapanese?: (text: string) => void;
   onLongPress?: (text: string) => void;
 }
 
@@ -278,6 +290,7 @@ function MessageBubble({
   isStreaming,
   currentStep,
   onCitationClick,
+  onSpeakJapanese,
   onLongPress,
 }: MessageBubbleProps) {
   const s = makeStyles(colors);
@@ -358,6 +371,7 @@ function MessageBubble({
             part={part}
             citations={citations}
             onCitationClick={onCitationClick}
+            onSpeakJapanese={onSpeakJapanese}
           />
         ))}
       </Pressable>

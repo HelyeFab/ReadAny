@@ -1,14 +1,15 @@
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
-import { MessageCirclePlusIcon, Volume2Icon, XIcon } from "@/components/ui/Icon";
+import { MessageCirclePlusIcon, XIcon } from "@/components/ui/Icon";
 import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
 import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
 import { useTTSStore } from "@/stores";
 import { useChatStore } from "@/stores/chat-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { radius, useColors, withOpacity } from "@/styles/theme";
-import { useStreamingChat } from "@readany/core/hooks/use-streaming-chat";
 import { useReadingContext } from "@readany/core/ai/reading-context-service";
+import { useStreamingChat } from "@readany/core/hooks/use-streaming-chat";
+import { type TTSConfig, syncConfigFromActiveProfile } from "@readany/core/tts";
 import type { AttachedQuote, Book } from "@readany/core/types";
 import type { CitationPart, MessageV2 } from "@readany/core/types/message";
 import { convertToMessageV2, mergeMessagesWithStreaming } from "@readany/core/utils";
@@ -59,47 +60,47 @@ export function ReaderAIChatSheet({
   const s = useMemo(() => makeStyles(colors), [colors]);
   const readingContext = useReadingContext();
   const ttsConfig = useTTSStore((state) => state.config);
-  const [speakingContext, setSpeakingContext] = useState(false);
 
-  const japaneseContext = useMemo(() => {
-    const text = (contextText ?? "").replace(/^\[[^\]]+\]\s*/u, "").trim();
-    if (!text) return null;
-    const languageChars = Array.from(text).filter((char) => /[\p{L}\p{N}]/u.test(char));
-    if (languageChars.length === 0) return null;
-    const allJapanese = languageChars.every((char) =>
-      /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ヵヶ]/u.test(char),
-    );
-    return allJapanese ? text : null;
-  }, [contextText]);
+  const speakJapaneseSegment = useCallback(
+    (text: string) => {
+      const alvisProfile = ttsConfig.profiles.find((profile) =>
+        [profile.id, profile.name, profile.model, profile.voice].some((value) =>
+          /alvis/i.test(value ?? ""),
+        ),
+      );
+      let japaneseConfig: TTSConfig = alvisProfile
+        ? syncConfigFromActiveProfile({ ...ttsConfig, activeProfileId: alvisProfile.id })
+        : syncConfigFromActiveProfile(ttsConfig);
 
-  const toggleContextSpeech = useCallback(() => {
-    if (!japaneseContext) return;
-    if (speakingContext) {
+      if (japaneseConfig.engine === "edge") {
+        japaneseConfig = { ...japaneseConfig, edgeVoice: "ja-JP-NanamiNeural" };
+      } else if (japaneseConfig.engine === "system") {
+        japaneseConfig = { ...japaneseConfig, voiceName: "", systemVoiceLabel: "" };
+      } else if (japaneseConfig.engine === "openai-compatible") {
+        japaneseConfig = {
+          ...japaneseConfig,
+          openaiTtsStylePrompt:
+            "Read this Japanese text as a native Japanese speaker with natural pitch accent. Do not translate it.",
+        };
+      }
+
       stopTTSPreview();
-      setSpeakingContext(false);
-      return;
-    }
-    setSpeakingContext(true);
-    void previewTTSConfig(japaneseContext, ttsConfig, {
-      onEnd: () => setSpeakingContext(false),
-      onStateChange: (state) => {
-        if (state === "stopped") setSpeakingContext(false);
-      },
-      onError: (error) => {
-        setSpeakingContext(false);
+      void previewTTSConfig(text, japaneseConfig, {
+        onError: (error) => {
+          Alert.alert(
+            t("tts.previewFailed", "Speech failed"),
+            error instanceof Error ? error.message : String(error),
+          );
+        },
+      }).catch((error) => {
         Alert.alert(
           t("tts.previewFailed", "Speech failed"),
           error instanceof Error ? error.message : String(error),
         );
-      },
-    }).catch((error) => {
-      setSpeakingContext(false);
-      Alert.alert(
-        t("tts.previewFailed", "Speech failed"),
-        error instanceof Error ? error.message : String(error),
-      );
-    });
-  }, [japaneseContext, speakingContext, t, ttsConfig]);
+      });
+    },
+    [t, ttsConfig],
+  );
 
   const semanticContext = useMemo(() => {
     if (!bookId || !readingContext || readingContext.bookId !== bookId) return null;
@@ -176,7 +177,10 @@ export function ReaderAIChatSheet({
             .map((part) => (part as { text: string }).text)
             .join("\n")
             .trim();
-          return visibleText !== "Help me understand this selected manga text. Translate it and explain its meaning and nuance.";
+          return (
+            visibleText !==
+            "Help me understand this selected manga text. Translate it and explain its meaning and nuance."
+          );
         },
       ),
     [isStreaming, persistedMessages, transientMessage],
@@ -268,15 +272,6 @@ export function ReaderAIChatSheet({
                 {contextTitle || semanticContext?.currentChapter || book?.meta.title || ""}
               </Text>
             </View>
-            {japaneseContext ? (
-              <TouchableOpacity
-                style={[s.headerButton, speakingContext && s.headerButtonActive]}
-                onPress={toggleContextSpeech}
-                accessibilityLabel={t("tts.speak", "Speak Japanese text")}
-              >
-                <Volume2Icon size={19} color={colors.foreground} />
-              </TouchableOpacity>
-            ) : null}
             <TouchableOpacity style={s.headerButton} onPress={handleNewThread}>
               <MessageCirclePlusIcon size={19} color={colors.foreground} />
             </TouchableOpacity>
@@ -292,6 +287,7 @@ export function ReaderAIChatSheet({
                 isStreaming={isStreaming}
                 currentStep={currentStep}
                 onCitationClick={onCitation}
+                onSpeakJapanese={speakJapaneseSegment}
               />
             ) : (
               <View style={s.emptyState}>
@@ -367,9 +363,6 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       justifyContent: "center",
       borderRadius: radius.full,
-    },
-    headerButtonActive: {
-      backgroundColor: withOpacity(colors.primary, 0.14),
     },
     messages: { flex: 1 },
     emptyState: {
