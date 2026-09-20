@@ -18,14 +18,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
+  Animated,
   Image,
   Keyboard,
+  PanResponder,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -74,6 +77,7 @@ export function WebReaderScreen() {
   const colors = useColors();
   const s = useMemo(() => makeStyles(colors), [colors]);
   const tabBarHeight = useBottomTabBarHeight();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const navigation = useNavigation<BottomTabNavigationProp<TabParamList>>();
 
   const webRef = useRef<WebView>(null);
@@ -116,6 +120,65 @@ export function WebReaderScreen() {
   const [pendingAIPrompt, setPendingAIPrompt] = useState<{ id: string; text: string } | null>(null);
   const [webPageContext, setWebPageContext] = useState("");
   const [domPageContext, setDomPageContext] = useState("");
+  const [showAIMenu, setShowAIMenu] = useState(false);
+  const initialBubblePosition = useMemo(
+    () => ({ x: Math.max(8, windowWidth - 68), y: Math.max(80, windowHeight - tabBarHeight - 92) }),
+    [tabBarHeight, windowHeight, windowWidth],
+  );
+  const bubblePosition = useRef(new Animated.ValueXY(initialBubblePosition)).current;
+  const bubbleCoordinatesRef = useRef(initialBubblePosition);
+  const [bubbleCoordinates, setBubbleCoordinates] = useState(initialBubblePosition);
+
+  const clampBubble = useCallback(
+    (x: number, y: number) => ({
+      x: Math.max(8, Math.min(windowWidth - 60, x)),
+      y: Math.max(8, Math.min(windowHeight - tabBarHeight - 60, y)),
+    }),
+    [tabBarHeight, windowHeight, windowWidth],
+  );
+
+  const aiBubblePanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponder: (_event, gesture) =>
+          Math.abs(gesture.dx) + Math.abs(gesture.dy) > 3,
+        onMoveShouldSetPanResponderCapture: (_event, gesture) =>
+          Math.abs(gesture.dx) + Math.abs(gesture.dy) > 3,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: () => {
+          setShowAIMenu(false);
+        },
+        onPanResponderMove: (_event, gesture) => {
+          const start = bubbleCoordinatesRef.current;
+          const next = clampBubble(start.x + gesture.dx, start.y + gesture.dy);
+          bubblePosition.setValue(next);
+        },
+        onPanResponderRelease: (_event, gesture) => {
+          const moved = Math.hypot(gesture.dx, gesture.dy) > 8;
+          const start = bubbleCoordinatesRef.current;
+          const next = moved
+            ? clampBubble(start.x + gesture.dx, start.y + gesture.dy)
+            : start;
+          bubbleCoordinatesRef.current = next;
+          bubblePosition.setValue(next);
+          setBubbleCoordinates(next);
+          if (!moved) setShowAIMenu((visible) => !visible);
+        },
+        onPanResponderTerminate: () => {
+          bubblePosition.setValue(bubbleCoordinatesRef.current);
+        },
+      }),
+    [bubblePosition, clampBubble],
+  );
+
+  useEffect(() => {
+    const next = clampBubble(bubbleCoordinatesRef.current.x, bubbleCoordinatesRef.current.y);
+    bubbleCoordinatesRef.current = next;
+    bubblePosition.setValue(next);
+    setBubbleCoordinates(next);
+  }, [bubblePosition, clampBubble]);
 
   const captureWebPageContext = useCallback(() => {
     webRef.current?.injectJavaScript(`
@@ -134,6 +197,17 @@ export function WebReaderScreen() {
       true;
     `);
   }, []);
+
+  const openWebChat = useCallback(() => {
+    setShowAIMenu(false);
+    captureWebPageContext();
+    setWebPageContext(
+      domPageContext
+        ? `[Current web page text]\n${domPageContext}`
+        : "The user opened chat while viewing the current web page.",
+    );
+    setShowAIChat(true);
+  }, [captureWebPageContext, domPageContext]);
 
   // Reopen whatever was being read, but only once the persisted state has
   // actually arrived — reading `lastUrl` before that always looks like "empty".
@@ -642,14 +716,42 @@ export function WebReaderScreen() {
       )}
 
       {url ? (
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel={t("reader.askAI", "Ask AI")}
-          style={[s.aiBubble, { bottom: tabBarHeight + 16 }]}
-          onPress={() => void startRegionCapture("ai")}
-        >
-          <BotIcon size={22} color="#fff" />
-        </TouchableOpacity>
+        <>
+          {showAIMenu ? (
+            <View
+              style={[
+                s.aiMenu,
+                {
+                  left: Math.max(8, Math.min(windowWidth - 184, bubbleCoordinates.x - 124)),
+                  top: Math.max(8, bubbleCoordinates.y - 106),
+                },
+              ]}
+            >
+              <TouchableOpacity style={s.aiMenuItem} onPress={openWebChat}>
+                <BotIcon size={19} color={colors.foreground} />
+                <Text style={s.aiMenuText}>{t("chat.title", "Chat")}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.aiMenuItem}
+                onPress={() => {
+                  setShowAIMenu(false);
+                  void startRegionCapture("ai");
+                }}
+              >
+                <ScanTextIcon size={19} color={colors.foreground} />
+                <Text style={s.aiMenuText}>{t("web.selectText", "Select text")}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          <Animated.View
+            accessibilityRole="button"
+            accessibilityLabel={t("reader.askAI", "Ask AI")}
+            style={[s.aiBubble, { transform: bubblePosition.getTranslateTransform() }]}
+            {...aiBubblePanResponder.panHandlers}
+          >
+            <BotIcon size={22} color="#fff" />
+          </Animated.View>
+        </>
       ) : null}
 
       <ReaderAIChatSheet
@@ -780,7 +882,8 @@ const makeStyles = (colors: ThemeColors) =>
     },
     aiBubble: {
       position: "absolute",
-      right: 16,
+      left: 0,
+      top: 0,
       zIndex: 20,
       width: 52,
       height: 52,
@@ -795,6 +898,35 @@ const makeStyles = (colors: ThemeColors) =>
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.2,
       shadowRadius: 4,
+    },
+    aiMenu: {
+      position: "absolute",
+      zIndex: 21,
+      width: 176,
+      padding: 6,
+      gap: 2,
+      borderRadius: radius.lg,
+      backgroundColor: colors.background,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      elevation: 7,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+    },
+    aiMenuItem: {
+      minHeight: 42,
+      paddingHorizontal: spacing.sm,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      borderRadius: radius.md,
+    },
+    aiMenuText: {
+      color: colors.foreground,
+      fontSize: fs.sm,
+      fontWeight: fw.medium,
     },
     home: {
       flex: 1,
