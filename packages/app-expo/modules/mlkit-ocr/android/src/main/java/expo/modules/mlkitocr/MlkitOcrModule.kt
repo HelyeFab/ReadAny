@@ -126,11 +126,18 @@ class MlkitOcrModule : Module() {
       val cropped = crop(source, options)
       if (cropped !== source) source.recycle()
 
-      // Capped so a full-resolution crop does not become a multi-megabyte
-      // upload; well above what the model resolves text at.
+      // Kakomu's measured manga pipeline scales a tight region up before OCR:
+      // a small speech bubble otherwise gives the vision model glyphs far
+      // below the size it was trained on and frequently only the first line
+      // survives. Bring either a small crop or a full page to the same target
+      // long edge, capped at 3x so interpolation cannot explode memory.
       val longest = maxOf(cropped.width, cropped.height)
-      val scaled = if (longest > UPLOAD_MAX_DIM) {
-        val ratio = UPLOAD_MAX_DIM.toFloat() / longest
+      val ratio = when {
+        longest > UPLOAD_MAX_DIM -> UPLOAD_MAX_DIM.toFloat() / longest
+        longest < UPLOAD_MAX_DIM -> (UPLOAD_MAX_DIM.toFloat() / longest).coerceAtMost(3f)
+        else -> 1f
+      }
+      val scaled = if (ratio != 1f) {
         Bitmap.createScaledBitmap(
           cropped,
           (cropped.width * ratio).toInt().coerceAtLeast(1),

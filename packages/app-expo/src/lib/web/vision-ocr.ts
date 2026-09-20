@@ -15,7 +15,12 @@
  * On-device stays as the fallback, so a train with no signal still reads.
  */
 import { cropRegionToBase64 } from "../../../modules/mlkit-ocr";
-import { cachedTranscript, ocrCacheKey, storeTranscript } from "./ocr-cache";
+import {
+  cachedTranscript,
+  ocrCacheKey,
+  storeDiagnosticCrop,
+  storeTranscript,
+} from "./ocr-cache";
 
 export interface VisionOcrConfig {
   baseUrl: string;
@@ -57,6 +62,11 @@ export async function readRegionWithVision(
   let key = "";
   try {
     key = await ocrCacheKey(image);
+    const diagnosticUri = await storeDiagnosticCrop(key, image);
+    console.info(
+      "[WebAIRegion] crop-saved",
+      JSON.stringify({ key: key.slice(0, 12), diagnosticUri, base64Length: image.length }),
+    );
     const remembered = cachedTranscript(key);
     if (remembered) return remembered;
   } catch {

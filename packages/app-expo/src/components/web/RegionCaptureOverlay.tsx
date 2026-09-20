@@ -28,6 +28,7 @@ import {
   View,
 } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CheckIcon } from "@/components/ui/Icon";
 import { fontSize as fs, radius, spacing, useColors } from "@/styles/theme";
@@ -48,6 +49,9 @@ interface Props {
   imageHeight: number;
   busy?: boolean;
   onSelect: (region: CaptureRegion) => void;
+  /** Optional whole-image action, used when the caller can read a full page. */
+  onSelectWholePage?: () => void;
+  actionLabel?: string;
   onCancel: () => void;
 }
 
@@ -64,8 +68,8 @@ const MIN_SIZE = 24;
 const HANDLE_GRAB = 44;
 const HANDLE_SIZE = 22;
 
-type Corner = "tl" | "tr" | "bl" | "br";
-type Mode = { kind: "draw"; anchorX: number; anchorY: number } | { kind: "move" } | { kind: "resize"; corner: Corner };
+type Handle = "tl" | "tm" | "tr" | "ml" | "mr" | "bl" | "bm" | "br";
+type Mode = { kind: "draw"; anchorX: number; anchorY: number } | { kind: "move" } | { kind: "resize"; handle: Handle };
 
 export function RegionCaptureOverlay({
   uri,
@@ -73,10 +77,13 @@ export function RegionCaptureOverlay({
   imageHeight,
   busy,
   onSelect,
+  onSelectWholePage,
+  actionLabel,
   onCancel,
 }: Props) {
   const { t } = useTranslation();
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const s = useMemo(() => makeStyles(colors), [colors]);
 
   const [frame, setFrame] = useState({ width: 0, height: 0 });
@@ -150,15 +157,21 @@ export function RegionCaptureOverlay({
     };
   }, []);
 
-  const cornerAt = useCallback((current: Box, x: number, y: number): Corner | null => {
-    const corners: [Corner, number, number][] = [
+  const handleAt = useCallback((current: Box, x: number, y: number): Handle | null => {
+    const cx = current.left + current.width / 2;
+    const cy = current.top + current.height / 2;
+    const handles: [Handle, number, number][] = [
       ["tl", current.left, current.top],
+      ["tm", cx, current.top],
       ["tr", current.left + current.width, current.top],
+      ["ml", current.left, cy],
+      ["mr", current.left + current.width, cy],
       ["bl", current.left, current.top + current.height],
+      ["bm", cx, current.top + current.height],
       ["br", current.left + current.width, current.top + current.height],
     ];
-    for (const [corner, cx, cy] of corners) {
-      if (Math.abs(x - cx) <= HANDLE_GRAB && Math.abs(y - cy) <= HANDLE_GRAB) return corner;
+    for (const [handle, hx, hy] of handles) {
+      if (Math.abs(x - hx) <= HANDLE_GRAB && Math.abs(y - hy) <= HANDLE_GRAB) return handle;
     }
     return null;
   }, []);
@@ -182,9 +195,9 @@ export function RegionCaptureOverlay({
           const current = boxRef.current;
 
           if (current) {
-            const corner = cornerAt(current, x, y);
-            if (corner) {
-              modeRef.current = { kind: "resize", corner };
+            const handle = handleAt(current, x, y);
+            if (handle) {
+              modeRef.current = { kind: "resize", handle };
               startRef.current = { box: current, pageX: x, pageY: y };
               return;
             }
@@ -232,18 +245,18 @@ export function RegionCaptureOverlay({
             return;
           }
 
-          const { corner } = mode;
+          const { handle } = mode;
           let { left, top, width, height } = start.box;
-          if (corner === "tl" || corner === "bl") {
+          if (handle === "tl" || handle === "ml" || handle === "bl") {
             left = start.box.left + dx;
             width = start.box.width - dx;
-          } else {
+          } else if (handle === "tr" || handle === "mr" || handle === "br") {
             width = start.box.width + dx;
           }
-          if (corner === "tl" || corner === "tr") {
+          if (handle === "tl" || handle === "tm" || handle === "tr") {
             top = start.box.top + dy;
             height = start.box.height - dy;
-          } else {
+          } else if (handle === "bl" || handle === "bm" || handle === "br") {
             height = start.box.height + dy;
           }
           // Dragging a corner past its opposite flips the box rather than
@@ -265,7 +278,7 @@ export function RegionCaptureOverlay({
           }
         },
       }),
-    [clampToImage, cornerAt, inBar],
+    [clampToImage, handleAt, inBar],
   );
 
   const readBox = useCallback(() => {
@@ -300,8 +313,12 @@ export function RegionCaptureOverlay({
             <View style={[s.dim, { left: box.left + box.width, right: 0, top: box.top, height: box.height }]} />
             <View style={[s.box, box]} pointerEvents="none">
               <View style={[s.handle, { left: -HANDLE_SIZE / 2, top: -HANDLE_SIZE / 2 }]} />
+              <View style={[s.handle, { left: box.width / 2 - HANDLE_SIZE / 2, top: -HANDLE_SIZE / 2 }]} />
               <View style={[s.handle, { right: -HANDLE_SIZE / 2, top: -HANDLE_SIZE / 2 }]} />
+              <View style={[s.handle, { left: -HANDLE_SIZE / 2, top: box.height / 2 - HANDLE_SIZE / 2 }]} />
+              <View style={[s.handle, { right: -HANDLE_SIZE / 2, top: box.height / 2 - HANDLE_SIZE / 2 }]} />
               <View style={[s.handle, { left: -HANDLE_SIZE / 2, bottom: -HANDLE_SIZE / 2 }]} />
+              <View style={[s.handle, { left: box.width / 2 - HANDLE_SIZE / 2, bottom: -HANDLE_SIZE / 2 }]} />
               <View style={[s.handle, { right: -HANDLE_SIZE / 2, bottom: -HANDLE_SIZE / 2 }]} />
             </View>
           </>
@@ -309,7 +326,11 @@ export function RegionCaptureOverlay({
           <View style={s.dimAll} pointerEvents="none" />
         )}
 
-        <View style={s.bar} onLayout={onBarLayout} pointerEvents="box-none">
+        <View
+          style={[s.bar, { bottom: Math.max(insets.bottom, spacing.md) }]}
+          onLayout={onBarLayout}
+          pointerEvents="box-none"
+        >
           {busy ? (
             <View style={s.busy}>
               <ActivityIndicator color="#fff" />
@@ -318,21 +339,31 @@ export function RegionCaptureOverlay({
           ) : (
             <Text style={s.hint}>
               {ready
-                ? t("web.ocrAdjust", "Drag to move, or a corner to resize. Then tap Read.")
+                ? t(
+                    "web.ocrAdjustHandles",
+                    "Drag inside to move, or any handle to resize. Then continue.",
+                  )
                 : t("web.ocrHint", "Drag a box around the text you want to read.")}
             </Text>
           )}
-          <TouchableOpacity style={s.cancel} onPress={onCancel} disabled={busy}>
-            <Text style={s.cancelText}>{t("common.cancel", "Cancel")}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.read, !ready || busy ? s.readDisabled : null]}
-            onPress={readBox}
-            disabled={!ready || busy}
-          >
-            <CheckIcon size={16} color={colors.primaryForeground} />
-            <Text style={s.readText}>{t("web.ocrRead", "Read")}</Text>
-          </TouchableOpacity>
+          <View style={s.actions}>
+            <TouchableOpacity style={s.cancel} onPress={onCancel} disabled={busy}>
+              <Text style={s.cancelText}>{t("common.cancel", "Cancel")}</Text>
+            </TouchableOpacity>
+            {onSelectWholePage ? (
+              <TouchableOpacity style={s.cancel} onPress={onSelectWholePage} disabled={busy}>
+                <Text style={s.cancelText}>{t("web.aiWholePage", "Whole page")}</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              style={[s.read, !ready || busy ? s.readDisabled : null]}
+              onPress={readBox}
+              disabled={!ready || busy}
+            >
+              <CheckIcon size={16} color={colors.primaryForeground} />
+              <Text style={s.readText}>{actionLabel || t("web.ocrRead", "Read")}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -372,14 +403,18 @@ const makeStyles = (colors: ThemeColors) =>
       position: "absolute",
       left: spacing.lg,
       right: spacing.lg,
-      bottom: spacing.xl,
-      flexDirection: "row",
-      alignItems: "center",
+      alignItems: "stretch",
       gap: spacing.md,
       backgroundColor: "rgba(0,0,0,0.78)",
       borderRadius: radius.lg,
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.md,
+    },
+    actions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      alignItems: "center",
+      gap: spacing.sm,
     },
     busy: {
       flexDirection: "row",
