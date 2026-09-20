@@ -172,7 +172,7 @@ export function ReaderAIChatSheet({
   const [wordCard, setWordCard] = useState<{
     term: string;
     content: string | null;
-    requestedAt: number;
+    requestedAt: number | null;
   } | null>(null);
   const breakdownAssistantIds = useMemo(() => {
     const ids = new Set<string>();
@@ -198,7 +198,11 @@ export function ReaderAIChatSheet({
       mergeMessagesWithStreaming(persistedMessages, transientMessage, isStreaming).filter(
         (message) => {
           if (message.parts.length === 0 || breakdownAssistantIds.has(message.id)) return false;
-          if (wordCard && message.role === "assistant" && message.id === transientMessage?.id) {
+          if (
+            wordCard?.requestedAt &&
+            message.role === "assistant" &&
+            message.id === transientMessage?.id
+          ) {
             return false;
           }
           if (message.role !== "user") return true;
@@ -223,7 +227,7 @@ export function ReaderAIChatSheet({
   );
 
   useEffect(() => {
-    if (!wordCard || wordCard.content || isStreaming) return;
+    if (!wordCard || wordCard.content || !wordCard.requestedAt) return;
     const promptPrefix = `Give a concise word breakdown for this Japanese expression: ${wordCard.term}`;
     const rawMessages = activeThread?.messages ?? [];
     for (let index = rawMessages.length - 1; index >= 0; index -= 1) {
@@ -247,7 +251,7 @@ export function ReaderAIChatSheet({
       }
       break;
     }
-  }, [activeThread?.messages, isStreaming, wordCard]);
+  }, [activeThread?.messages, wordCard]);
 
   const handleSend = useCallback(
     async (
@@ -282,6 +286,20 @@ export function ReaderAIChatSheet({
     [bookId, onOpenSettings, sendMessage, t],
   );
 
+  useEffect(() => {
+    if (!wordCard || wordCard.content || wordCard.requestedAt || isStreaming) return;
+    const requestedAt = Date.now();
+    const term = wordCard.term;
+    setWordCard((current) => (current?.term === term ? { ...current, requestedAt } : current));
+    void handleSend(
+      `Give a concise word breakdown for this Japanese expression: ${term}\nReturn only one compact entry with its reading, base form, part of speech, and meaning in this page's context. Do not repeat the expression or add further lists.`,
+      false,
+      true,
+      undefined,
+      true,
+    );
+  }, [handleSend, isStreaming, wordCard]);
+
   const consumedPromptRef = useRef<string | null>(null);
   useEffect(() => {
     if (!visible || !threadsReady || !autoPrompt || !contextText?.trim()) return;
@@ -307,19 +325,9 @@ export function ReaderAIChatSheet({
     await createThread(bookId);
   }, [activeThread, bookId, createThread]);
 
-  const handleDefineJapanese = useCallback(
-    (text: string) => {
-      setWordCard({ term: text, content: null, requestedAt: Date.now() });
-      void handleSend(
-        `Give a concise word breakdown for this Japanese expression: ${text}\nReturn only one compact entry with its reading, base form, part of speech, and meaning in this page's context. Do not repeat the expression or add further lists.`,
-        false,
-        true,
-        undefined,
-        true,
-      );
-    },
-    [handleSend],
-  );
+  const handleDefineJapanese = useCallback((text: string) => {
+    setWordCard({ term: text, content: null, requestedAt: null });
+  }, []);
 
   const handleClearChat = useCallback(() => {
     if (!activeThread || activeThread.messages.length === 0) return;
