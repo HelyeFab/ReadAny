@@ -84,6 +84,8 @@ export interface StreamingChatOptions {
   book?: Book | null;
   semanticContext?: SemanticContext | null;
   bookId?: string;
+  /** Extra screen context sent to the model but omitted from the rendered user bubble. */
+  silentContext?: string | null;
 }
 
 export interface StreamingState {
@@ -218,6 +220,15 @@ export function useStreamingChat(options?: StreamingChatOptions) {
           aiPrompt = content.trim()
             ? `关于以下文本：\n${quotesText}\n\n${content.trim()}`
             : `关于以下文本：\n${quotesText}\n\n请帮我分析这段文本。`;
+        }
+        if (options?.silentContext?.trim()) {
+          aiPrompt = [
+            "[Current screen context]",
+            options.silentContext.trim().slice(0, 12000),
+            "[/Current screen context]",
+            "",
+            aiPrompt,
+          ].join("\n");
         }
 
         const userMessageId = createMessageId();
@@ -593,6 +604,7 @@ export function useStreamingChat(options?: StreamingChatOptions) {
       options?.book,
       options?.bookId,
       options?.semanticContext,
+      options?.silentContext,
     ],
   );
 

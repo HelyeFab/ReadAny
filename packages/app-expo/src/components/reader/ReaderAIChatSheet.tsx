@@ -28,17 +28,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface ReaderAIChatSheetProps {
   visible: boolean;
-  bookId: string;
-  book: Book | null;
+  bookId?: string;
+  book?: Book | null;
+  contextTitle?: string;
+  contextText?: string | null;
   onClose: () => void;
   onOpenSettings: () => void;
-  onCitation: (citation: CitationPart) => void;
+  onCitation?: (citation: CitationPart) => void;
 }
 
 export function ReaderAIChatSheet({
   visible,
   bookId,
   book,
+  contextTitle,
+  contextText,
   onClose,
   onOpenSettings,
   onCitation,
@@ -50,7 +54,7 @@ export function ReaderAIChatSheet({
   const readingContext = useReadingContext();
 
   const semanticContext = useMemo(() => {
-    if (!readingContext || readingContext.bookId !== bookId) return null;
+    if (!bookId || !readingContext || readingContext.bookId !== bookId) return null;
     return {
       currentChapter: readingContext.currentChapter.title,
       currentPosition: readingContext.currentPosition.cfi,
@@ -82,7 +86,8 @@ export function ReaderAIChatSheet({
 
   useEffect(() => {
     if (visible && !activeThreadId && bookThreads[0]) {
-      setBookActiveThread(bookId, bookThreads[0].id);
+      if (bookId) setBookActiveThread(bookId, bookThreads[0].id);
+      else useChatStore.getState().setGeneralActiveThread(bookThreads[0].id);
     }
   }, [activeThreadId, bookId, bookThreads, setBookActiveThread, visible]);
 
@@ -90,6 +95,7 @@ export function ReaderAIChatSheet({
     book,
     bookId,
     semanticContext,
+    silentContext: contextText,
   });
   const persistedMessages: MessageV2[] = useMemo(
     () => convertToMessageV2(activeThread?.messages ?? []),
@@ -150,7 +156,7 @@ export function ReaderAIChatSheet({
             <View style={s.titleBlock}>
               <Text style={s.title}>{t("chat.aiAssistant", "AI Reading Assistant")}</Text>
               <Text style={s.contextLabel} numberOfLines={1}>
-                {semanticContext?.currentChapter || book?.meta.title || ""}
+                {contextTitle || semanticContext?.currentChapter || book?.meta.title || ""}
               </Text>
             </View>
             <TouchableOpacity style={s.headerButton} onPress={handleNewThread}>

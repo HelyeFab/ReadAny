@@ -34,10 +34,12 @@ import { WebView } from "react-native-webview";
 import type { WebViewNavigation } from "react-native-webview";
 
 import { DefinitionSheet } from "@/components/reader/DefinitionSheet";
+import { ReaderAIChatSheet } from "@/components/reader/ReaderAIChatSheet";
 import {
   BookOpenIcon,
   BookmarkFilledIcon,
   BookmarkIcon,
+  BotIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -109,6 +111,26 @@ export function WebReaderScreen() {
     null,
   );
   const [ocrBusy, setOcrBusy] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [webPageContext, setWebPageContext] = useState("");
+
+  const captureWebPageContext = useCallback(() => {
+    webRef.current?.injectJavaScript(`
+      (function () {
+        try {
+          var text = String(document.body && document.body.innerText || '')
+            .replace(/\\s+/g, ' ')
+            .trim()
+            .slice(0, 12000);
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'readany-page-context',
+            text: text
+          }));
+        } catch (_) {}
+      })();
+      true;
+    `);
+  }, []);
 
   // Reopen whatever was being read, but only once the persisted state has
   // actually arrived — reading `lastUrl` before that always looks like "empty".
@@ -147,6 +169,15 @@ export function WebReaderScreen() {
 
   const handleMessage = useCallback(
     (raw: string) => {
+      try {
+        const contextMessage = JSON.parse(raw) as { type?: string; text?: string };
+        if (contextMessage.type === "readany-page-context") {
+          setWebPageContext(contextMessage.text?.trim() || "");
+          return;
+        }
+      } catch {
+        // Selection bridge messages are parsed below.
+      }
       const message = parseWebBridgeMessage(raw);
       if (!message) return;
       if (message.type === "selection") {
@@ -197,13 +228,10 @@ export function WebReaderScreen() {
 
   const askSensei = useCallback(() => {
     if (!selection) return;
-    const quoted = selection;
+    setWebPageContext(selection);
     setSelection(null);
-    navigation.navigate("Chat", {
-      selectedText: quoted,
-      source: pageTitle || address,
-    });
-  }, [selection, navigation, pageTitle, address]);
+    setShowAIChat(true);
+  }, [selection]);
 
   /** Freeze the page as an image so a box can be drawn on it without it moving. */
   const startRegionCapture = useCallback(async () => {
@@ -390,7 +418,10 @@ export function WebReaderScreen() {
               setLoading(true);
               setSelection(null);
             }}
-            onLoadEnd={() => setLoading(false)}
+            onLoadEnd={() => {
+              setLoading(false);
+              captureWebPageContext();
+            }}
             onError={({ nativeEvent }) => {
               setLoading(false);
               Alert.alert(
@@ -535,6 +566,31 @@ export function WebReaderScreen() {
         </ScrollView>
       )}
 
+      {url ? (
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={t("reader.askAI", "Ask AI")}
+          style={[s.aiBubble, { bottom: tabBarHeight + 16 }]}
+          onPress={() => {
+            captureWebPageContext();
+            setShowAIChat(true);
+          }}
+        >
+          <BotIcon size={22} color="#fff" />
+        </TouchableOpacity>
+      ) : null}
+
+      <ReaderAIChatSheet
+        visible={showAIChat}
+        contextTitle={pageTitle || hostOf(address)}
+        contextText={webPageContext}
+        onClose={() => setShowAIChat(false)}
+        onOpenSettings={() => {
+          setShowAIChat(false);
+          navigation.navigate("Chat");
+        }}
+      />
+
       {selection ? (
         <WebSelectionBar
           text={selection}
@@ -641,6 +697,24 @@ const makeStyles = (colors: ThemeColors) =>
     web: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    aiBubble: {
+      position: "absolute",
+      right: 16,
+      zIndex: 20,
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(59, 130, 246, 0.94)",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: "rgba(255, 255, 255, 0.42)",
+      elevation: 5,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
     },
     home: {
       flex: 1,
