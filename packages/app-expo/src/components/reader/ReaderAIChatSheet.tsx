@@ -1,6 +1,6 @@
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
-import { MessageCirclePlusIcon, XIcon } from "@/components/ui/Icon";
+import { MessageCirclePlusIcon, Trash2Icon, XIcon } from "@/components/ui/Icon";
 import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
 import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
 import { useTTSStore } from "@/stores";
@@ -122,6 +122,7 @@ export function ReaderAIChatSheet({
   const getThreadsForContext = useChatStore((state) => state.getThreadsForContext);
   const setBookActiveThread = useChatStore((state) => state.setBookActiveThread);
   const createThread = useChatStore((state) => state.createThread);
+  const removeThread = useChatStore((state) => state.removeThread);
   const [threadsReady, setThreadsReady] = useState(false);
 
   useEffect(() => {
@@ -244,6 +245,25 @@ export function ReaderAIChatSheet({
     await createThread(bookId);
   }, [activeThread, bookId, createThread]);
 
+  const handleClearChat = useCallback(() => {
+    if (!activeThread || activeThread.messages.length === 0) return;
+    Alert.alert(
+      t("chat.clearChat", "Clear chat"),
+      t("chat.clearChatConfirm", "Delete all messages in this conversation?"),
+      [
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("common.clear", "Clear"),
+          style: "destructive",
+          onPress: () => {
+            stopStream();
+            void removeThread(activeThread.id).then(() => createThread(bookId));
+          },
+        },
+      ],
+    );
+  }, [activeThread, bookId, createThread, removeThread, stopStream, t]);
+
   return (
     <Modal
       visible={visible}
@@ -274,6 +294,21 @@ export function ReaderAIChatSheet({
             </View>
             <TouchableOpacity style={s.headerButton} onPress={handleNewThread}>
               <MessageCirclePlusIcon size={19} color={colors.foreground} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.headerButton}
+              onPress={handleClearChat}
+              disabled={!activeThread || activeThread.messages.length === 0}
+              accessibilityLabel={t("chat.clearChat", "Clear chat")}
+            >
+              <Trash2Icon
+                size={18}
+                color={
+                  activeThread && activeThread.messages.length > 0
+                    ? colors.foreground
+                    : colors.border
+                }
+              />
             </TouchableOpacity>
             <TouchableOpacity style={s.headerButton} onPress={onClose}>
               <XIcon size={20} color={colors.foreground} />
