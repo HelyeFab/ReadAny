@@ -32,6 +32,7 @@ interface MessageListProps {
   currentStep?: "thinking" | "tool_calling" | "responding" | "idle";
   onCitationClick?: (citation: CitationPart) => void;
   onSpeakJapanese?: (text: string) => void;
+  onDefineJapanese?: (text: string) => void;
 }
 
 const BOTTOM_THRESHOLD = 80;
@@ -56,6 +57,7 @@ export function MessageList({
   currentStep,
   onCitationClick,
   onSpeakJapanese,
+  onDefineJapanese,
 }: MessageListProps) {
   const { t } = useTranslation();
   const colors = useColors();
@@ -149,6 +151,7 @@ export function MessageList({
           currentStep={currentStep}
           onCitationClick={onCitationClick}
           onSpeakJapanese={onSpeakJapanese}
+          onDefineJapanese={onDefineJapanese}
           onLongPress={handleBubbleLongPress}
         />
       );
@@ -160,6 +163,7 @@ export function MessageList({
       currentStep,
       onCitationClick,
       onSpeakJapanese,
+      onDefineJapanese,
       handleBubbleLongPress,
     ],
   );
@@ -264,6 +268,7 @@ interface MessageBubbleProps {
   currentStep?: "thinking" | "tool_calling" | "responding" | "idle";
   onCitationClick?: (citation: CitationPart) => void;
   onSpeakJapanese?: (text: string) => void;
+  onDefineJapanese?: (text: string) => void;
   onLongPress?: (text: string) => void;
 }
 
@@ -291,6 +296,7 @@ function MessageBubble({
   currentStep,
   onCitationClick,
   onSpeakJapanese,
+  onDefineJapanese,
   onLongPress,
 }: MessageBubbleProps) {
   const s = makeStyles(colors);
@@ -372,6 +378,7 @@ function MessageBubble({
             citations={citations}
             onCitationClick={onCitationClick}
             onSpeakJapanese={onSpeakJapanese}
+            onDefineJapanese={onDefineJapanese}
           />
         ))}
       </Pressable>

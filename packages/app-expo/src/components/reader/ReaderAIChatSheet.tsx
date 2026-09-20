@@ -1,5 +1,6 @@
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
+import { DefinitionSheet } from "@/components/reader/DefinitionSheet";
 import { MessageCirclePlusIcon, Trash2Icon, XIcon } from "@/components/ui/Icon";
 import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
 import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
@@ -60,6 +61,7 @@ export function ReaderAIChatSheet({
   const s = useMemo(() => makeStyles(colors), [colors]);
   const readingContext = useReadingContext();
   const ttsConfig = useTTSStore((state) => state.config);
+  const [definitionText, setDefinitionText] = useState<string | null>(null);
 
   const speakJapaneseSegment = useCallback(
     (text: string) => {
@@ -181,6 +183,7 @@ export function ReaderAIChatSheet({
           return ![
             "Help me understand this selected manga text. Translate it and explain its meaning and nuance.",
             "Explain the selected manga text using the complete page for context. Translate it and explain its meaning and nuance.",
+            "Explain the selected manga text using the complete page for context. Translate it, explain its meaning and nuance, then include a Word breakdown with each Japanese word, its reading, and its individual meaning.",
           ].includes(visibleText);
         },
       ),
@@ -323,6 +326,7 @@ export function ReaderAIChatSheet({
                 currentStep={currentStep}
                 onCitationClick={onCitation}
                 onSpeakJapanese={speakJapaneseSegment}
+                onDefineJapanese={setDefinitionText}
               />
             ) : (
               <View style={s.emptyState}>
@@ -346,6 +350,12 @@ export function ReaderAIChatSheet({
           />
         </View>
       </KeyboardAvoidingView>
+      <DefinitionSheet
+        visible={definitionText !== null}
+        word={definitionText ?? ""}
+        baseForms={[]}
+        onClose={() => setDefinitionText(null)}
+      />
     </Modal>
   );
 }

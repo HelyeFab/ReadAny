@@ -38,9 +38,16 @@ interface PartProps {
   citations?: CitationPart[];
   onCitationClick?: (citation: CitationPart) => void;
   onSpeakJapanese?: (text: string) => void;
+  onDefineJapanese?: (text: string) => void;
 }
 
-export function PartRenderer({ part, citations, onCitationClick, onSpeakJapanese }: PartProps) {
+export function PartRenderer({
+  part,
+  citations,
+  onCitationClick,
+  onSpeakJapanese,
+  onDefineJapanese,
+}: PartProps) {
   switch (part.type) {
     case "text":
       return (
@@ -49,6 +56,7 @@ export function PartRenderer({ part, citations, onCitationClick, onSpeakJapanese
           citations={citations}
           onCitationClick={onCitationClick}
           onSpeakJapanese={onSpeakJapanese}
+          onDefineJapanese={onDefineJapanese}
         />
       );
     case "reasoning":
@@ -81,11 +89,13 @@ function TextPartView({
   citations,
   onCitationClick,
   onSpeakJapanese,
+  onDefineJapanese,
 }: {
   part: TextPart;
   citations?: CitationPart[];
   onCitationClick?: (citation: CitationPart) => void;
   onSpeakJapanese?: (text: string) => void;
+  onDefineJapanese?: (text: string) => void;
 }) {
   const throttledText = useThrottledValue(part.text, 100);
   const isStreaming = part.status === "running";
@@ -101,6 +111,7 @@ function TextPartView({
       citations={citations}
       onCitationClick={onCitationClick}
       onSpeakJapanese={onSpeakJapanese}
+      onDefineJapanese={onDefineJapanese}
     />
   );
 }

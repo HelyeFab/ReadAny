@@ -21,10 +21,7 @@ const KANA_CHAR = new RegExp(`^[${KANA}]$`);
  * by a kana-only parenthetical. Starting at the kanji matters: allowing leading
  * kana would let the match reach back into the previous word.
  */
-const RUBY_PATTERN = new RegExp(
-  `[${KANJI}][${KANJI}${KANA}]*[（(]([${KANA}]+)[)）]`,
-  "g",
-);
+const RUBY_PATTERN = new RegExp(`[${KANJI}][${KANJI}${KANA}]*[（(]([${KANA}]+)[)）]`, "g");
 
 export type RubySegment =
   | { kind: "text"; text: string }
@@ -105,4 +102,13 @@ export function parseRubyParens(input: string): RubySegment[] {
   }
 
   return segments;
+}
+
+/** Keep the written Japanese and discard parenthesized readings before speech or lookup. */
+export function stripRubyReadings(input: string): string {
+  return parseRubyParens(input)
+    .map((segment) =>
+      segment.kind === "ruby" ? `${segment.prefix}${segment.base}${segment.suffix}` : segment.text,
+    )
+    .join("");
 }

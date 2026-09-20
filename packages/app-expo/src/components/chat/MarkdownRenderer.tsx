@@ -1,7 +1,8 @@
 import { renderRubyText } from "@/components/chat/RubyText";
 import { MermaidView } from "@/components/common/MermaidView";
-import { Volume2Icon } from "@/components/ui/Icon";
+import { ListIcon, Volume2Icon } from "@/components/ui/Icon";
 import { hasRubyParens } from "@/lib/ruby/parse-ruby-parens";
+import { stripRubyReadings } from "@/lib/ruby/parse-ruby-parens";
 import { fontSize as fs, radius, ui, useColors } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 import type { CitationPart } from "@readany/core/types/message";
@@ -19,6 +20,7 @@ interface MarkdownRendererProps {
   citations?: CitationPart[];
   onCitationClick?: (citation: CitationPart) => void;
   onSpeakJapanese?: (text: string) => void;
+  onDefineJapanese?: (text: string) => void;
 }
 
 const JAPANESE_RUN =
@@ -30,8 +32,9 @@ function renderJapaneseSpeechRuns(
   key: string | number,
   accentColor: string,
   onSpeakJapanese?: (text: string) => void,
+  onDefineJapanese?: (text: string) => void,
 ) {
-  if (!onSpeakJapanese || !/[\u3040-\u30ff]/.test(text)) return null;
+  if ((!onSpeakJapanese && !onDefineJapanese) || !/[\u3040-\u30ff]/.test(text)) return null;
   const parts = text.split(JAPANESE_RUN);
   if (parts.length < 2) return null;
   let textOffset = 0;
@@ -47,20 +50,32 @@ function renderJapaneseSpeechRuns(
             .every((char) =>
               /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ヵヶ]/u.test(char),
             );
+        const plainJapanese = stripRubyReadings(part).trim();
         return (
           <Fragment key={`${key}-${partOffset}`}>
             {hasRubyParens(part)
               ? renderRubyText(part, style as StyleProp<TextStyle>, `${key}-${partOffset}-ruby`)
               : part}
-            {isJapanese ? (
+            {isJapanese && onSpeakJapanese ? (
               <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel={`Speak ${part.trim()}`}
-                onPress={() => onSpeakJapanese(part.trim())}
+                onPress={() => onSpeakJapanese(plainJapanese)}
                 style={{ marginLeft: 5, transform: [{ translateY: 3 }] }}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
                 <Volume2Icon color={accentColor} size={15} />
+              </TouchableOpacity>
+            ) : null}
+            {isJapanese && onDefineJapanese ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={`Break down ${plainJapanese}`}
+                onPress={() => onDefineJapanese(plainJapanese)}
+                style={{ marginLeft: 5, transform: [{ translateY: 3 }] }}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <ListIcon color={accentColor} size={15} />
               </TouchableOpacity>
             ) : null}
           </Fragment>
@@ -239,6 +254,7 @@ export function MarkdownRenderer({
   citations,
   onCitationClick,
   onSpeakJapanese,
+  onDefineJapanese,
 }: MarkdownRendererProps) {
   const colors = useColors();
   const baseStyles = makeMarkdownStyles(colors);
@@ -279,6 +295,7 @@ export function MarkdownRenderer({
           node.key,
           colors.primary,
           onSpeakJapanese,
+          onDefineJapanese,
         );
         if (speechRuns) return speechRuns;
         if (citations && citations.length > 0 && /\[\d+\]/.test(text)) {
@@ -304,7 +321,7 @@ export function MarkdownRenderer({
         );
       },
     }),
-    [colors, citations, onCitationClick, onSpeakJapanese],
+    [colors, citations, onCitationClick, onDefineJapanese, onSpeakJapanese],
   );
 
   return (
