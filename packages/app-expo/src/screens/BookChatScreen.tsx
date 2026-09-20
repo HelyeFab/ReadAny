@@ -31,7 +31,7 @@ import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
 import { useLibraryStore } from "@/stores";
 import { useChatStore } from "@/stores/chat-store";
 import { useSettingsStore } from "@/stores/settings-store";
-import { readingContextService } from "@readany/core/ai/reading-context-service";
+import { readingContextService, useReadingContext } from "@readany/core/ai/reading-context-service";
 import { getPlatformService } from "@readany/core/services";
 import type { AttachedQuote } from "@readany/core/types";
 import type { CitationPart, MessageV2 } from "@readany/core/types/message";
@@ -96,6 +96,20 @@ export function BookChatScreen({ route, navigation }: Props) {
 
   const { books } = useLibraryStore();
   const book = useMemo(() => books.find((b) => b.id === bookId), [books, bookId]);
+  const readingContext = useReadingContext();
+  const semanticContext = useMemo(() => {
+    if (!readingContext || readingContext.bookId !== bookId) return null;
+    return {
+      currentChapter: readingContext.currentChapter.title,
+      currentPosition: readingContext.currentPosition.cfi,
+      surroundingText: readingContext.surroundingText,
+      recentHighlights: readingContext.recentHighlights.map((highlight) => highlight.text),
+      operationType:
+        readingContext.operationType === "selecting"
+          ? ("highlighting" as const)
+          : readingContext.operationType,
+    };
+  }, [bookId, readingContext]);
 
   // Initial quote from reader selection
   const [quotes, setQuotes] = useState<AttachedQuote[]>([]);
@@ -250,7 +264,7 @@ export function BookChatScreen({ route, navigation }: Props) {
 
   // Streaming chat
   const { isStreaming, currentMessage, currentStep, error, sendMessage, stopStream } =
-    useStreamingChat({ book, bookId });
+    useStreamingChat({ book, bookId, semanticContext });
 
   const messagesV2: MessageV2[] = useMemo(() => {
     if (!activeThread) return [];

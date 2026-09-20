@@ -3,6 +3,7 @@ import { HighlightExportSheet } from "@/components/notes/HighlightExportSheet";
 import { BookmarkRibbon } from "@/components/reader/BookmarkRibbon";
 import { ChapterTranslationSheet } from "@/components/reader/ChapterTranslationSheet";
 import { ReadingProgressSlider } from "@/components/reader/ReadingProgressSlider";
+import { ReaderAIChatSheet } from "@/components/reader/ReaderAIChatSheet";
 import { DefinitionSheet } from "@/components/reader/DefinitionSheet";
 import { SelectionPopover } from "@/components/reader/SelectionPopover";
 import { TTSPage } from "@/components/reader/TTSPage";
@@ -153,11 +154,7 @@ const NOTE_TOOLTIP_TOP_THRESHOLD = 180;
 import { useRubyStore } from "@readany/core/stores/ruby-store";
 import { ReaderSettingsPanel } from "./reader/ReaderSettingsPanel";
 import { ReaderTOCPanel } from "./reader/ReaderTOCPanel";
-import {
-  CONTROLS_TIMEOUT,
-  SCREEN_HEIGHT,
-  SCREEN_WIDTH,
-} from "./reader/reader-constants";
+import { CONTROLS_TIMEOUT, SCREEN_HEIGHT, SCREEN_WIDTH } from "./reader/reader-constants";
 import { BatteryIcon, ListIcon, SettingsIcon } from "./reader/reader-icons";
 import { makeStyles, noteTooltipMdStyles } from "./reader/reader-styles";
 import { useReaderBookmark } from "./reader/useReaderBookmark";
@@ -265,6 +262,10 @@ export function ReaderScreen({ route, navigation }: Props) {
   const noteTooltipVisibleRef = useRef(false);
   const suppressReaderTapUntilRef = useRef(0);
   const assetLoadedRef = useRef(false);
+  // Each relocation schedules an asynchronous visible-page capture. Only the
+  // newest request may update AI context, otherwise a slow WebView reply from
+  // the previous page can replace the page the user is actually viewing.
+  const aiPageContextRequestRef = useRef(0);
   // Mediator ref so onRelocate can fire TTS continuation without direct hook dependency
   const ttsPendingContinueRef = useRef<{
     pendingTTSContinueCallbackRef: React.RefObject<(() => void) | null>;
@@ -302,8 +303,34 @@ export function ReaderScreen({ route, navigation }: Props) {
     setTTSHighlight: (cfi: string | null, color?: string, force?: boolean) => void;
   } | null>(null);
 
+  const captureVisibleAIContext = useCallback(
+    async (requestId: number, alignCfi?: string | null) => {
+      const readerBridge = bridgeRef.current;
+      if (!readerBridge) return;
+
+      let visibleText = (await readerBridge.getVisibleText()).trim();
+      if (!visibleText) {
+        const visibleSegments = await readerBridge.getVisibleTTSSegments(alignCfi);
+        visibleText = visibleSegments
+          .map((segment) => segment.text.trim())
+          .filter(Boolean)
+          .join("\n");
+      }
+
+      if (!visibleText || requestId !== aiPageContextRequestRef.current) return;
+      const context = readingContextService.getContext();
+      if (!context || context.bookId !== bookId) return;
+      await readingContextService.updateContext({
+        bookId,
+        surroundingText: visibleText,
+      });
+    },
+    [bookId],
+  );
+
   // Chapter translation state
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+  const [showAIChat, setShowAIChat] = useState(false);
   const chapterTranslationBridgeRef = useRef<{
     getChapterParagraphs: () => Promise<Array<{ id: string; text: string; tagName: string }>>;
     injectChapterTranslations: (
@@ -619,9 +646,12 @@ export function ReaderScreen({ route, navigation }: Props) {
     keepControlsAlive();
   }, [showControls, hideControls, animateToolbar, keepControlsAlive]);
 
-  useEffect(() => () => {
-    if (controlsTimer.current) clearTimeout(controlsTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    },
+    [],
+  );
 
   // Reader bridge
   const bridge = useReaderBridge({
@@ -860,8 +890,14 @@ export function ReaderScreen({ route, navigation }: Props) {
         currentPosition: {
           cfi: detail.cfi || "",
           percentage: (detail.fraction ?? 0) * 100,
+          page: detail.page?.current,
         },
       });
+
+      const aiContextRequest = ++aiPageContextRequestRef.current;
+      setTimeout(() => {
+        void captureVisibleAIContext(aiContextRequest, detail.cfi);
+      }, 120);
     },
     onTocReady: (items: TOCItem[]) => {
       setToc(items);
@@ -1019,10 +1055,25 @@ export function ReaderScreen({ route, navigation }: Props) {
       appActive,
     // 维护约定：任何新增遮盖正文/输入态/导航跳转，必须在此追加判定。
     [
-      readSettings.volumeButtonsPageTurn, webViewReady, loading, error, isReimporting,
-      showSearch, showTOC, showSettings, showNotebook, showTTS,
-      showTranslation, showChapterTranslation, chapterTranslation.state.status,
-      selection, noteViewHighlight, noteTooltip, ttsPlayState, isFocused, appActive,
+      readSettings.volumeButtonsPageTurn,
+      webViewReady,
+      loading,
+      error,
+      isReimporting,
+      showSearch,
+      showTOC,
+      showSettings,
+      showNotebook,
+      showTTS,
+      showTranslation,
+      showChapterTranslation,
+      chapterTranslation.state.status,
+      selection,
+      noteViewHighlight,
+      noteTooltip,
+      ttsPlayState,
+      isFocused,
+      appActive,
     ],
   );
 
@@ -1899,14 +1950,47 @@ export function ReaderScreen({ route, navigation }: Props) {
           >
             <HeadphonesIcon size={20} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={s.floatingToolBtn}
-            onPress={() => navigation.navigate("BookChat", { bookId })}
-          >
-            <BotIcon size={20} color="#fff" />
-          </TouchableOpacity>
         </Animated.View>
       )}
+
+      {!showSearch && !showTOC && !showSettings && !showNotebook && (
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={t("reader.askAI", "Ask AI")}
+          style={[
+            s.floatingToolBtn,
+            s.persistentAIButton,
+            {
+              right: insets.right + 16,
+              bottom: insets.bottom + 110,
+            },
+          ]}
+          onPress={() => {
+            const aiContextRequest = ++aiPageContextRequestRef.current;
+            void captureVisibleAIContext(aiContextRequest, currentCfi);
+            setShowAIChat(true);
+          }}
+        >
+          <BotIcon size={22} color="#fff" />
+        </TouchableOpacity>
+      )}
+
+      <ReaderAIChatSheet
+        visible={showAIChat}
+        bookId={bookId}
+        book={book ?? null}
+        onClose={() => setShowAIChat(false)}
+        onOpenSettings={() => {
+          setShowAIChat(false);
+          navigation.navigate("AISettings");
+        }}
+        onCitation={(citation) => {
+          if (citation.bookId === bookId && citation.cfi) {
+            setShowAIChat(false);
+            bridgeRef.current?.goToCFI(citation.cfi);
+          }
+        }}
+      />
 
       {!showSearch && !showControls && showBottomTimeBattery && (
         <View

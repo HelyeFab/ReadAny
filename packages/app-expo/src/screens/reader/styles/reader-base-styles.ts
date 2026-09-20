@@ -105,6 +105,18 @@ export const makeToolbarStyles = (colors: ThemeColors) =>
       backgroundColor: "rgba(76, 82, 94, 0.88)",
     },
     floatingToolBtnActive: { backgroundColor: "rgba(59, 130, 246, 0.9)" },
+    persistentAIButton: {
+      position: "absolute",
+      zIndex: 35,
+      backgroundColor: "rgba(59, 130, 246, 0.94)",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: "rgba(255, 255, 255, 0.42)",
+      elevation: 5,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+    },
 
     // ── Bottom toolbar ────────────────────────────────────────────────────────
     bottomToolbar: { position: "absolute", bottom: 0, zIndex: 30, left: 0, right: 0 },
