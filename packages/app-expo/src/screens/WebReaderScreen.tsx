@@ -542,7 +542,7 @@ export function WebReaderScreen() {
             id: traceId,
             text: wholePage
               ? "Help me understand this manga page. Translate the visible Japanese and explain what is happening."
-              : "Explain only the user-selected manga text. Use the surrounding page silently to resolve meaning, but do not translate, summarize, quote, or break down any text outside the selection. Translate the selected text, explain its meaning and nuance, then include a Word breakdown containing only words present in the selected text, with each word's reading and meaning.",
+              : "Explain only the user-selected manga text. Use the surrounding page silently to resolve meaning, but do not translate, summarize, quote, or break down any text outside the selection. Your response must begin with a Japanese section that reproduces the complete selected Japanese text exactly as recognized, before any English translation or explanation. Then provide, in order: Translation, Meaning and nuance, and Word breakdown. The Word breakdown may contain only words present in the selected text, with each word's reading and meaning.",
           });
           setShowAIChat(true);
         } else {
