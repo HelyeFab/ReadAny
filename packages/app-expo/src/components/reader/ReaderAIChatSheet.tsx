@@ -127,11 +127,13 @@ export function ReaderAIChatSheet({
   const createThread = useChatStore((state) => state.createThread);
   const removeThread = useChatStore((state) => state.removeThread);
   const [threadsReady, setThreadsReady] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     if (!visible) {
       setThreadsReady(false);
+      setCollapsed(false);
       return () => {
         cancelled = true;
       };
@@ -360,90 +362,113 @@ export function ReaderAIChatSheet({
         style={s.overlay}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <Pressable style={s.backdrop} onPress={Keyboard.dismiss} />
+        {!collapsed && <Pressable style={s.backdrop} onPress={Keyboard.dismiss} />}
         <View
           style={[
             s.sheet,
-            messages.length === 0 && !isStreaming && !autoPrompt && s.sheetCompact,
-            { paddingBottom: Math.max(insets.bottom, 8) },
+            !collapsed && messages.length === 0 && !isStreaming && !autoPrompt && s.sheetCompact,
+            collapsed
+              ? [s.sheetCollapsed, { paddingBottom: Math.max(insets.bottom, 8) }]
+              : { paddingBottom: Math.max(insets.bottom, 8) },
           ]}
         >
-          <View style={s.handle} />
-          <View style={s.header}>
-            <View style={s.titleBlock}>
-              <Text style={s.title}>{t("chat.aiAssistant", "AI Reading Assistant")}</Text>
-              <Text style={s.contextLabel} numberOfLines={1}>
-                {contextTitle || semanticContext?.currentChapter || book?.meta.title || ""}
-              </Text>
-            </View>
-            <TouchableOpacity style={s.headerButton} onPress={handleNewThread}>
-              <MessageCirclePlusIcon size={19} color={colors.foreground} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={s.headerButton}
-              onPress={handleClearChat}
-              disabled={!activeThread || activeThread.messages.length === 0}
-              accessibilityLabel={t("chat.clearChat", "Clear chat")}
-            >
-              <Trash2Icon
-                size={18}
-                color={
-                  activeThread && activeThread.messages.length > 0
-                    ? colors.foreground
-                    : colors.border
-                }
-              />
-            </TouchableOpacity>
-            <TouchableOpacity style={s.headerButton} onPress={onClose}>
-              <XIcon size={20} color={colors.foreground} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={s.messages}>
-            {messages.length > 0 ? (
-              <MessageList
-                messages={messages}
-                isStreaming={isStreaming}
-                currentStep={currentStep}
-                onCitationClick={onCitation}
-                onSpeakJapanese={speakJapaneseSegment}
-                onDefineJapanese={handleDefineJapanese}
-              />
-            ) : (
-              <View style={s.emptyState}>
-                {autoPrompt ? (
-                  <>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={s.emptyLoadingText}>
-                      {t("web.ocrReading", "Reading the text…")}
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Text style={s.emptyTitle}>
-                      {t("chat.askAboutBook", "Ask about this page")}
-                    </Text>
-                    <Text style={s.emptyText}>
-                      {t(
-                        "chat.currentPageReady",
-                        "The current page and reading position are already available as context.",
-                      )}
-                    </Text>
-                  </>
-                )}
+          <TouchableOpacity
+            style={[s.handleButton, collapsed && s.handleButtonCollapsed]}
+            onPress={() => {
+              Keyboard.dismiss();
+              setCollapsed((current) => !current);
+            }}
+            activeOpacity={0.65}
+            accessibilityRole="button"
+            accessibilityLabel={
+              collapsed
+                ? t("chat.expandAssistant", "Show reading assistant")
+                : t("chat.collapseAssistant", "Hide reading assistant")
+            }
+          >
+            <View style={s.handle} />
+          </TouchableOpacity>
+          {!collapsed && (
+            <View style={s.header}>
+              <View style={s.titleBlock}>
+                <Text style={s.title}>{t("chat.aiAssistant", "AI Reading Assistant")}</Text>
+                <Text style={s.contextLabel} numberOfLines={1}>
+                  {contextTitle || semanticContext?.currentChapter || book?.meta.title || ""}
+                </Text>
               </View>
-            )}
-          </View>
+              <TouchableOpacity style={s.headerButton} onPress={handleNewThread}>
+                <MessageCirclePlusIcon size={19} color={colors.foreground} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.headerButton}
+                onPress={handleClearChat}
+                disabled={!activeThread || activeThread.messages.length === 0}
+                accessibilityLabel={t("chat.clearChat", "Clear chat")}
+              >
+                <Trash2Icon
+                  size={18}
+                  color={
+                    activeThread && activeThread.messages.length > 0
+                      ? colors.foreground
+                      : colors.border
+                  }
+                />
+              </TouchableOpacity>
+              <TouchableOpacity style={s.headerButton} onPress={onClose}>
+                <XIcon size={20} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+          )}
 
-          <ChatInput
-            onSend={handleSend}
-            onStop={stopStream}
-            isStreaming={isStreaming}
-            placeholder={t("chat.askAboutCurrentPage", "Ask about the current page...")}
-            keyboardBottomOffset={insets.bottom}
-          />
+          {!collapsed && (
+            <View style={s.messages}>
+              {messages.length > 0 ? (
+                <MessageList
+                  messages={messages}
+                  isStreaming={isStreaming}
+                  currentStep={currentStep}
+                  onCitationClick={onCitation}
+                  onSpeakJapanese={speakJapaneseSegment}
+                  onDefineJapanese={handleDefineJapanese}
+                />
+              ) : (
+                <View style={s.emptyState}>
+                  {autoPrompt ? (
+                    <>
+                      <ActivityIndicator size="large" color={colors.primary} />
+                      <Text style={s.emptyLoadingText}>
+                        {t("web.ocrReading", "Reading the text…")}
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={s.emptyTitle}>
+                        {t("chat.askAboutBook", "Ask about this page")}
+                      </Text>
+                      <Text style={s.emptyText}>
+                        {t(
+                          "chat.currentPageReady",
+                          "The current page and reading position are already available as context.",
+                        )}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
 
-          {wordCard ? (
+          {!collapsed && (
+            <ChatInput
+              onSend={handleSend}
+              onStop={stopStream}
+              isStreaming={isStreaming}
+              placeholder={t("chat.askAboutCurrentPage", "Ask about the current page...")}
+              keyboardBottomOffset={insets.bottom}
+            />
+          )}
+
+          {!collapsed && wordCard ? (
             <View style={s.wordCardBackdrop}>
               <Pressable style={StyleSheet.absoluteFill} onPress={() => setWordCard(null)} />
               <View style={s.wordCard}>
@@ -550,14 +575,30 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       height: "40%",
       minHeight: 350,
     },
-    handle: {
+    sheetCollapsed: {
+      height: 36,
+      minHeight: 0,
+      width: 104,
       alignSelf: "center",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomLeftRadius: 18,
+      borderBottomRightRadius: 18,
+      backgroundColor: colors.card,
+    },
+    handleButton: {
+      height: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    handleButtonCollapsed: {
+      flex: 1,
+      height: undefined,
+    },
+    handle: {
       width: 42,
       height: 4,
       borderRadius: radius.full,
       backgroundColor: withOpacity(colors.foreground, 0.24),
-      marginTop: 8,
-      marginBottom: 4,
     },
     header: {
       minHeight: 54,
