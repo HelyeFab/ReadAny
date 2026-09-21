@@ -364,7 +364,7 @@ export function ReaderAIChatSheet({
         <View
           style={[
             s.sheet,
-            messages.length === 0 && !isStreaming && s.sheetCompact,
+            messages.length === 0 && !isStreaming && !autoPrompt && s.sheetCompact,
             { paddingBottom: Math.max(insets.bottom, 8) },
           ]}
         >
@@ -411,13 +411,26 @@ export function ReaderAIChatSheet({
               />
             ) : (
               <View style={s.emptyState}>
-                <Text style={s.emptyTitle}>{t("chat.askAboutBook", "Ask about this page")}</Text>
-                <Text style={s.emptyText}>
-                  {t(
-                    "chat.currentPageReady",
-                    "The current page and reading position are already available as context.",
-                  )}
-                </Text>
+                {autoPrompt ? (
+                  <>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={s.emptyLoadingText}>
+                      {t("web.ocrReading", "Reading the text…")}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={s.emptyTitle}>
+                      {t("chat.askAboutBook", "Ask about this page")}
+                    </Text>
+                    <Text style={s.emptyText}>
+                      {t(
+                        "chat.currentPageReady",
+                        "The current page and reading position are already available as context.",
+                      )}
+                    </Text>
+                  </>
+                )}
               </View>
             )}
           </View>
@@ -573,6 +586,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       paddingVertical: 12,
     },
     emptyTitle: { color: colors.foreground, fontSize: 18, fontWeight: "600" },
+    emptyLoadingText: { color: colors.mutedForeground, fontSize: 14, marginTop: 12 },
     emptyText: {
       color: colors.mutedForeground,
       fontSize: 14,

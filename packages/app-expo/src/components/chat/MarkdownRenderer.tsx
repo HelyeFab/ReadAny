@@ -43,6 +43,20 @@ function japaneseFocus(node: ASTNode): string | null {
   return (japaneseCharacters?.length ?? 0) >= 2 ? plain : null;
 }
 
+function sectionHeadingBackground(label: string, colors: ThemeColors): string | null {
+  const normalized = label
+    .trim()
+    .toLowerCase()
+    .replace(/[:：]$/, "");
+  if (normalized === "japanese" || normalized === "source text") return colors.highlightPink;
+  if (normalized === "translation") return colors.highlightBlue;
+  if (normalized === "meaning and nuance" || normalized === "meaning & nuance") {
+    return colors.highlightPurple;
+  }
+  if (normalized === "word breakdown") return colors.highlightGreen;
+  return null;
+}
+
 function JapaneseActions({
   text,
   accentColor,
@@ -272,8 +286,41 @@ export function MarkdownRenderer({
   // This ensures custom styles (like tooltip dark background) are not overridden
   const styles = styleOverrides || baseStyles;
 
-  const rules = useMemo<RenderRules>(
-    () => ({
+  const rules = useMemo<RenderRules>(() => {
+    const renderHeading =
+      (level: 1 | 2 | 3) =>
+      (node: ASTNode, children: ReactNode[], parentNodes: ASTNode[], style: any) => {
+        const backgroundColor = sectionHeadingBackground(nodeText(node), colors);
+        const headingStyle = style[`heading${level}`];
+        if (!backgroundColor) {
+          return (
+            <Text key={node.key} style={headingStyle}>
+              {children}
+            </Text>
+          );
+        }
+        return (
+          <View
+            key={node.key}
+            style={{
+              alignSelf: "flex-start",
+              marginTop: 10,
+              marginBottom: 7,
+              paddingHorizontal: 12,
+              paddingVertical: 5,
+              borderRadius: radius.full,
+              backgroundColor,
+            }}
+          >
+            <Text style={[headingStyle, { marginTop: 0, marginBottom: 0 }]}>{children}</Text>
+          </View>
+        );
+      };
+
+    return {
+      heading1: renderHeading(1),
+      heading2: renderHeading(2),
+      heading3: renderHeading(3),
       fence: (node: ASTNode, children: ReactNode[], parentNodes: ASTNode[], style: any) => {
         const code = node.content || "";
         const lang = getCodeLanguage(node);
@@ -372,9 +419,8 @@ export function MarkdownRenderer({
           </View>
         );
       },
-    }),
-    [colors, citations, onCitationClick, onDefineJapanese, onSpeakJapanese],
-  );
+    };
+  }, [colors, citations, onCitationClick, onDefineJapanese, onSpeakJapanese]);
 
   return (
     <View>
