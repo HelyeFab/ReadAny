@@ -28,8 +28,8 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useWindowDimensions,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { captureRef } from "react-native-view-shot";
@@ -534,13 +534,15 @@ export function WebReaderScreen() {
             setFullPageContext(completePageText);
           }
           setWebPageContext(
-            `[Complete current page transcript — always use this for surrounding context]\n${completeContext}\n\n${wholePage ? "" : `[User-selected focus — answer specifically about this region]\n${cleaned}`}`,
+            wholePage
+              ? `[Complete current page transcript]\n${completeContext}`
+              : `[Silent surrounding context — use only to disambiguate the selected text. Do not quote, translate, summarize, explain, or list words from this context.]\n${completeContext}\n[/Silent surrounding context]\n\n[User-selected text — this is the only text the answer may translate, explain, or break down.]\n${cleaned}\n[/User-selected text]`,
           );
           setPendingAIPrompt({
             id: traceId,
             text: wholePage
               ? "Help me understand this manga page. Translate the visible Japanese and explain what is happening."
-              : "Explain the selected manga text using the complete page for context. Translate it, explain its meaning and nuance, then include a Word breakdown with each Japanese word, its reading, and its individual meaning.",
+              : "Explain only the user-selected manga text. Use the surrounding page silently to resolve meaning, but do not translate, summarize, quote, or break down any text outside the selection. Translate the selected text, explain its meaning and nuance, then include a Word breakdown containing only words present in the selected text, with each word's reading and meaning.",
           });
           setShowAIChat(true);
         } else {
