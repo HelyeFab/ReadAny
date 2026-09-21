@@ -43,6 +43,7 @@ interface ReaderAIChatSheetProps {
   onClose: () => void;
   onOpenSettings: () => void;
   onCitation?: (citation: CitationPart) => void;
+  collapsedBottomOffset?: number;
 }
 
 export function ReaderAIChatSheet({
@@ -56,6 +57,7 @@ export function ReaderAIChatSheet({
   onClose,
   onOpenSettings,
   onCitation,
+  collapsedBottomOffset = 0,
 }: ReaderAIChatSheetProps) {
   const { t } = useTranslation();
   const colors = useColors();
@@ -368,7 +370,7 @@ export function ReaderAIChatSheet({
             s.sheet,
             !collapsed && messages.length === 0 && !isStreaming && !autoPrompt && s.sheetCompact,
             collapsed
-              ? [s.sheetCollapsed, { paddingBottom: Math.max(insets.bottom, 8) }]
+              ? [s.sheetCollapsed, { marginBottom: collapsedBottomOffset }]
               : { paddingBottom: Math.max(insets.bottom, 8) },
           ]}
         >
@@ -576,14 +578,19 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       minHeight: 350,
     },
     sheetCollapsed: {
-      height: 36,
+      height: 38,
       minHeight: 0,
-      width: 104,
+      width: 112,
       alignSelf: "center",
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomLeftRadius: 18,
       borderBottomRightRadius: 18,
       backgroundColor: colors.card,
+      shadowColor: "#000",
+      shadowOpacity: 0.16,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 8,
     },
     handleButton: {
       height: 20,
@@ -593,6 +600,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
     handleButtonCollapsed: {
       flex: 1,
       height: undefined,
+      paddingHorizontal: 28,
     },
     handle: {
       width: 42,

@@ -852,6 +852,7 @@ export function WebReaderScreen() {
 
       <ReaderAIChatSheet
         visible={showAIChat}
+        collapsedBottomOffset={tabBarHeight}
         contextTitle={pageTitle || hostOf(address)}
         contextText={webPageContext}
         autoPrompt={pendingAIPrompt}
