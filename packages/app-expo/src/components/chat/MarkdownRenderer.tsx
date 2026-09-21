@@ -370,6 +370,25 @@ export function MarkdownRenderer({
       },
       paragraph: (node: ASTNode, children: ReactNode[], parentNodes: ASTNode[], style: any) => {
         const focus = japaneseFocus(node);
+        const sectionBackground = sectionHeadingBackground(nodeText(node), colors);
+        if (sectionBackground) {
+          return (
+            <View
+              key={node.key}
+              style={{
+                alignSelf: "flex-start",
+                marginTop: 10,
+                marginBottom: 7,
+                paddingHorizontal: 12,
+                paddingVertical: 5,
+                borderRadius: radius.full,
+                backgroundColor: sectionBackground,
+              }}
+            >
+              <Text style={[style.paragraph, { marginTop: 0, marginBottom: 0 }]}>{children}</Text>
+            </View>
+          );
+        }
         return (
           <View key={node.key} style={style._VIEW_SAFE_paragraph}>
             {children}
@@ -399,20 +418,22 @@ export function MarkdownRenderer({
               {marker}
             </Text>
             <View
-              style={
+              style={[
                 orderedList
                   ? style._VIEW_SAFE_ordered_list_content
-                  : style._VIEW_SAFE_bullet_list_content
-              }
+                  : style._VIEW_SAFE_bullet_list_content,
+                focus && (onSpeakJapanese || onDefineJapanese)
+                  ? { flexDirection: "row", alignItems: "center", flexWrap: "wrap" }
+                  : null,
+              ]}
             >
-              {children}
+              <View style={{ flexShrink: 1 }}>{children}</View>
               {focus && (onSpeakJapanese || onDefineJapanese) ? (
                 <JapaneseActions
                   text={focus}
                   accentColor={colors.primary}
                   onSpeak={onSpeakJapanese}
                   onDefine={onDefineJapanese}
-                  stacked
                 />
               ) : null}
             </View>
