@@ -1,6 +1,6 @@
 import { BookOpenIcon, CheckIcon, ChevronDownIcon, MoonIcon, SunIcon } from "@/components/ui/Icon";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
-import { useTheme } from "@/styles/ThemeContext";
+import { THEME_MAP, useTheme } from "@/styles/ThemeContext";
 import type { ThemeMode } from "@/styles/ThemeContext";
 import { fontSize, fontWeight, radius, spacing, ui } from "@/styles/theme";
 import { useCallback, useEffect, useState } from "react";
@@ -84,33 +84,34 @@ export default function AppearanceSettingsScreen() {
             <View style={s.themeGrid}>
               {THEMES.map((item) => {
                 const active = mode === item.id;
+                const preview = THEME_MAP[item.id];
                 return (
                   <TouchableOpacity
                     key={item.id}
                     style={[
                       s.themeCard,
-                      { borderColor: colors.border, backgroundColor: colors.card },
+                      { borderColor: preview.border, backgroundColor: preview.card },
                       active && {
-                        borderColor: colors.primary,
-                        backgroundColor: `${colors.primary}0D`,
+                        borderColor: preview.primary,
+                        backgroundColor: preview.accent,
                       },
                     ]}
                     onPress={() => setMode(item.id)}
                     activeOpacity={0.7}
                   >
-                    <item.Icon size={24} color={active ? colors.primary : colors.mutedForeground} />
+                    <item.Icon size={24} color={preview.primary} />
                     <Text
                       style={[
                         s.themeLabel,
-                        { color: colors.foreground },
-                        active && { fontWeight: fontWeight.medium, color: colors.primary },
+                        { color: preview.foreground },
+                        active && { fontWeight: fontWeight.medium, color: preview.primary },
                       ]}
                     >
                       {t(item.labelKey, item.fallback)}
                     </Text>
                     {active && (
                       <View style={s.checkBadge}>
-                        <Text style={[s.checkMark, { color: colors.primary }]}>✓</Text>
+                        <Text style={[s.checkMark, { color: preview.primary }]}>✓</Text>
                       </View>
                     )}
                   </TouchableOpacity>

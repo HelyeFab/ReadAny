@@ -156,7 +156,6 @@ const sepiaColors: ThemeColors = {
   stone500: "#78716c",
 };
 
-
 // ── Tinted paper themes ──
 // One per band of the reference palette. Each is derived from its seed hue:
 // paper tinted toward the hue, ink near-black but carrying the same hue, and
@@ -164,18 +163,18 @@ const sepiaColors: ThemeColors = {
 
 // ── Apricot (#ffc196) ──
 const apricotColors: ThemeColors = {
-  background: "#f7f3f0",
+  background: "#f8e6d8",
   foreground: "#2d2520",
-  card: "#fcfbfa",
+  card: "#fff7f0",
   cardForeground: "#2d2520",
-  muted: "#ede6e0",
+  muted: "#f0d8c6",
   mutedForeground: "#7f6b5c",
-  border: "#e3d8d1",
+  border: "#dfbfa8",
   primary: "#b54a00",
   primaryForeground: "#fcfbfb",
   destructive: "#e53935",
   destructiveForeground: "#fafafa",
-  accent: "#f2ebe6",
+  accent: "#f5d5be",
   accentForeground: "#993f00",
   indigo: "#6366f1",
   emerald: "#10b981",
@@ -196,18 +195,18 @@ const apricotColors: ThemeColors = {
 
 // ── Coral (#ff7a83) ──
 const coralColors: ThemeColors = {
-  background: "#f7f0f1",
+  background: "#f8e1e3",
   foreground: "#2d2020",
-  card: "#fcfafa",
+  card: "#fff5f5",
   cardForeground: "#2d2020",
-  muted: "#ede0e1",
+  muted: "#f1cfd2",
   mutedForeground: "#7f5c5f",
-  border: "#e3d1d2",
+  border: "#e3b4b9",
   primary: "#b5000c",
   primaryForeground: "#fcfbfb",
   destructive: "#e53935",
   destructiveForeground: "#fafafa",
-  accent: "#f2e6e6",
+  accent: "#f5cdd0",
   accentForeground: "#99000a",
   indigo: "#6366f1",
   emerald: "#10b981",
@@ -228,18 +227,18 @@ const coralColors: ThemeColors = {
 
 // ── Rose (#c5638a) ──
 const roseColors: ThemeColors = {
-  background: "#f6f1f3",
+  background: "#f3e1e8",
   foreground: "#2c2025",
-  card: "#fcfafb",
+  card: "#fff5f8",
   cardForeground: "#2c2025",
-  muted: "#ece1e6",
+  muted: "#eacdd8",
   mutedForeground: "#7f5c6a",
-  border: "#e2d2d8",
+  border: "#dcb5c4",
   primary: "#843152",
   primaryForeground: "#fcfbfb",
   destructive: "#e53935",
   destructiveForeground: "#fafafa",
-  accent: "#f1e7eb",
+  accent: "#eccbd8",
   accentForeground: "#702945",
   indigo: "#6366f1",
   emerald: "#10b981",
@@ -260,18 +259,18 @@ const roseColors: ThemeColors = {
 
 // ── Sage (#a5b587) ──
 const sageColors: ThemeColors = {
-  background: "#f4f5f2",
+  background: "#e8eedf",
   foreground: "#272923",
-  card: "#fbfcfb",
+  card: "#f8fbed",
   cardForeground: "#272923",
-  muted: "#e8eae4",
+  muted: "#d8e0ca",
   mutedForeground: "#707765",
-  border: "#dbded6",
+  border: "#bdcba8",
   primary: "#647a3b",
   primaryForeground: "#fbfbfb",
   destructive: "#e53935",
   destructiveForeground: "#fafafa",
-  accent: "#edefe9",
+  accent: "#d7e2c7",
   accentForeground: "#556732",
   indigo: "#6366f1",
   emerald: "#10b981",
@@ -292,18 +291,18 @@ const sageColors: ThemeColors = {
 
 // ── Jade (#58af8c) ──
 const jadeColors: ThemeColors = {
-  background: "#f1f6f4",
+  background: "#dff0e9",
   foreground: "#222b27",
-  card: "#fbfcfb",
+  card: "#f2fbf7",
   cardForeground: "#222b27",
-  muted: "#e3ebe8",
+  muted: "#cce3da",
   mutedForeground: "#607b70",
-  border: "#d4e0db",
+  border: "#add2c3",
   primary: "#3b7a61",
   primaryForeground: "#fbfcfb",
   destructive: "#e53935",
   destructiveForeground: "#fafafa",
-  accent: "#e8f0ed",
+  accent: "#c9e5da",
   accentForeground: "#326752",
   indigo: "#6366f1",
   emerald: "#10b981",
@@ -324,18 +323,18 @@ const jadeColors: ThemeColors = {
 
 // ── Teal (#009d95) ──
 const tealColors: ThemeColors = {
-  background: "#f0f7f7",
+  background: "#dcf0ef",
   foreground: "#202d2c",
-  card: "#fafcfc",
+  card: "#f0fbfa",
   cardForeground: "#202d2c",
-  muted: "#e0eded",
+  muted: "#c5e2e0",
   mutedForeground: "#5c7f7d",
-  border: "#d1e3e2",
+  border: "#a5d2cf",
   primary: "#00b5ac",
   primaryForeground: "#fbfcfc",
   destructive: "#e53935",
   destructiveForeground: "#fafafa",
-  accent: "#e6f2f2",
+  accent: "#c1e6e3",
   accentForeground: "#009991",
   indigo: "#6366f1",
   emerald: "#10b981",
@@ -356,18 +355,18 @@ const tealColors: ThemeColors = {
 
 // ── Deep Blue (#006294) ──
 const indigoColors: ThemeColors = {
-  background: "#f0f5f7",
+  background: "#e0ebf3",
   foreground: "#20282d",
-  card: "#fafbfc",
+  card: "#f2f8fc",
   cardForeground: "#20282d",
-  muted: "#e0e9ed",
+  muted: "#cbdce8",
   mutedForeground: "#5c737f",
-  border: "#d1dde3",
+  border: "#adc8da",
   primary: "#0078b5",
   primaryForeground: "#fbfbfc",
   destructive: "#e53935",
   destructiveForeground: "#fafafa",
-  accent: "#e6eef2",
+  accent: "#c8dfed",
   accentForeground: "#006599",
   indigo: "#6366f1",
   emerald: "#10b981",
