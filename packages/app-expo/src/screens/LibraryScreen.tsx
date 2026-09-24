@@ -247,6 +247,7 @@ export function LibraryScreen() {
   const [showSort, setShowSort] = useState(false);
   const searchAnim = useRef(new Animated.Value(0)).current;
   const searchInputRef = useRef<TextInput>(null);
+  const breadcrumbScrollRef = useRef<ScrollView>(null);
 
   const [tagSheetOpen, setTagSheetOpen] = useState(false);
   const [tagSheetBook, setTagSheetBook] = useState<Book | null>(null);
@@ -573,20 +574,20 @@ export function LibraryScreen() {
 
   const hasSearch = filter.search.trim().length > 0;
 
-  /** "Series › Volume 1" — without it, a nested folder is indistinguishable. */
-  const folderPathLabel = useMemo(() => {
-    if (!activeGroupId) return t("sidebar.library", "书库");
-    const trail: string[] = [];
+  /** Each folder keeps its id so every breadcrumb segment can navigate there. */
+  const folderTrail = useMemo(() => {
+    if (!activeGroupId) return [];
+    const trail: BookGroup[] = [];
     const byId = new Map(groups.map((g) => [g.id, g]));
     let cursor = byId.get(activeGroupId);
     const guard = new Set<string>();
     while (cursor && !guard.has(cursor.id)) {
       guard.add(cursor.id);
-      trail.unshift(cursor.name);
+      trail.unshift(cursor);
       cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
     }
-    return trail.join(" › ");
-  }, [activeGroupId, groups, t]);
+    return trail;
+  }, [activeGroupId, groups]);
 
   /**
    * Folders are nested, so the grid shows ONE level at a time: the folders
@@ -1746,9 +1747,50 @@ export function LibraryScreen() {
                     <ChevronLeftIcon size={18} color={colors.mutedForeground} />
                   </TouchableOpacity>
                 )}
-                <Text style={s.headerTitle} numberOfLines={1}>
-                  {folderPathLabel}
-                </Text>
+                {activeGroup ? (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={s.breadcrumbScroll}
+                    contentContainerStyle={s.breadcrumbContent}
+                    onContentSizeChange={(_, __) => {
+                      breadcrumbScrollRef.current?.scrollToEnd({ animated: false });
+                    }}
+                    ref={breadcrumbScrollRef}
+                  >
+                    {folderTrail.map((folder, index) => {
+                      const isCurrent = folder.id === activeGroupId;
+                      return (
+                        <View key={folder.id} style={s.breadcrumbSegment}>
+                          {index > 0 ? <Text style={s.breadcrumbSeparator}>›</Text> : null}
+                          <TouchableOpacity
+                            onPress={() => setActiveGroupId(folder.id)}
+                            activeOpacity={0.6}
+                            accessibilityRole="button"
+                            accessibilityLabel={t("library.openFolder", {
+                              name: folder.name,
+                              defaultValue: `Open ${folder.name}`,
+                            })}
+                          >
+                            <Text
+                              style={[
+                                s.breadcrumbText,
+                                isCurrent ? s.breadcrumbCurrent : s.breadcrumbAncestor,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {folder.name}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                ) : (
+                  <Text style={s.headerTitle} numberOfLines={1}>
+                    {t("sidebar.library", "书库")}
+                  </Text>
+                )}
               </View>
               <View style={s.headerActions}>
                 <SyncButton size={18} color={colors.mutedForeground} />
@@ -2202,6 +2244,17 @@ const makeStyles = (
       fontWeight: fontWeight.bold,
       color: colors.foreground,
     },
+    breadcrumbScroll: { flex: 1 },
+    breadcrumbContent: { alignItems: "center", paddingRight: spacing.sm },
+    breadcrumbSegment: { flexDirection: "row", alignItems: "center" },
+    breadcrumbSeparator: {
+      color: colors.mutedForeground,
+      fontSize: fontSize.xl,
+      marginHorizontal: spacing.sm,
+    },
+    breadcrumbText: { fontSize: fontSize.xl },
+    breadcrumbAncestor: { color: colors.primary, fontWeight: fontWeight.medium },
+    breadcrumbCurrent: { color: colors.foreground, fontWeight: fontWeight.bold },
     headerActions: { flexDirection: "row", alignItems: "center", gap: 4 },
     selectionLead: {
       flexDirection: "row",
