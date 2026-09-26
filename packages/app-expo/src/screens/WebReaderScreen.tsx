@@ -375,7 +375,11 @@ export function WebReaderScreen() {
       };
       [visionText, deviceText] = await Promise.all([visionPromise(), devicePromise()]);
       const contentLength = (value: string) => value.replace(/\s+/g, "").length;
-      const text = contentLength(deviceText) > contentLength(visionText) ? deviceText : visionText;
+      // Vision can see speech-bubble boundaries and Japanese manga reading
+      // order. ML Kit often returns more glyphs, but its flat block order can
+      // interleave columns from separate bubbles. Use it only as the offline
+      // fallback instead of treating a longer transcript as a better one.
+      const text = visionText.trim() || deviceText;
       console.info(
         "[WebAIRegion] ocr",
         JSON.stringify({
