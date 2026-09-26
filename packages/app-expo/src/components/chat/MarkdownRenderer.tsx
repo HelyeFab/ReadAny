@@ -57,6 +57,71 @@ function sectionHeadingBackground(label: string, colors: ThemeColors): string | 
   return null;
 }
 
+function plainSectionLabel(line: string): string {
+  return line
+    .trim()
+    .replace(/^#{1,6}\s*/u, "")
+    .replace(/[*_`]/gu, "")
+    .replace(/[:：]$/u, "")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * OCR keeps the visual line breaks from a manga crop. Those fragments become
+ * hard Markdown breaks and leave a tablet-sized response looking like a thin
+ * column. Reflow only the plain Japanese source lines; structured lists and
+ * every explanatory section retain their authored layout.
+ */
+function reflowJapaneseSource(content: string): string {
+  const lines = content.split("\n");
+  const output: string[] = [];
+  let inJapaneseSection = false;
+  let sourceLines: string[] = [];
+
+  const flushSource = () => {
+    if (sourceLines.length === 0) return;
+    output.push(sourceLines.join("　"));
+    sourceLines = [];
+  };
+
+  for (const line of lines) {
+    const label = plainSectionLabel(line);
+    if (label === "japanese" || label === "source text") {
+      flushSource();
+      inJapaneseSection = true;
+      output.push(line);
+      continue;
+    }
+    if (
+      inJapaneseSection &&
+      ["translation", "meaning and nuance", "meaning & nuance", "word breakdown"].includes(label)
+    ) {
+      flushSource();
+      inJapaneseSection = false;
+      output.push(line);
+      continue;
+    }
+
+    if (inJapaneseSection) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      if (/^(?:[-*+]\s|\d+[.)]\s|>|#{1,6}\s)/u.test(trimmed)) {
+        flushSource();
+        output.push(line);
+      } else {
+        sourceLines.push(trimmed);
+      }
+      continue;
+    }
+
+    output.push(line);
+  }
+
+  flushSource();
+  return output.join("\n");
+}
+
 function JapaneseActions({
   text,
   accentColor,
@@ -281,6 +346,7 @@ export function MarkdownRenderer({
   onDefineJapanese,
 }: MarkdownRendererProps) {
   const colors = useColors();
+  const displayContent = useMemo(() => reflowJapaneseSource(content), [content]);
   const baseStyles = makeMarkdownStyles(colors);
   // When styleOverrides is provided, use it directly without merging with baseStyles
   // This ensures custom styles (like tooltip dark background) are not overridden
@@ -446,7 +512,7 @@ export function MarkdownRenderer({
   return (
     <View>
       <Markdown style={styles} rules={rules} mergeStyle>
-        {content}
+        {displayContent}
       </Markdown>
     </View>
   );
