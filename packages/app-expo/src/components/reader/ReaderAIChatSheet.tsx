@@ -174,7 +174,10 @@ export function ReaderAIChatSheet({
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => collapsed,
+        onStartShouldSetPanResponderCapture: () => collapsed,
         onMoveShouldSetPanResponder: (_event, gesture) =>
+          collapsed && Math.hypot(gesture.dx, gesture.dy) > 2,
+        onMoveShouldSetPanResponderCapture: (_event, gesture) =>
           collapsed && Math.hypot(gesture.dx, gesture.dy) > 2,
         onPanResponderGrant: () => {
           collapsedDragStart.current = collapsedCoordinates.current;
@@ -197,6 +200,7 @@ export function ReaderAIChatSheet({
         onPanResponderTerminate: () => {
           hasMovedCollapsedHandle.current = true;
         },
+        onPanResponderTerminationRequest: () => false,
       }),
     [clampCollapsedPosition, collapsed, collapsedPosition],
   );
