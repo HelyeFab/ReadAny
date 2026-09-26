@@ -25,15 +25,18 @@ import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -68,6 +71,7 @@ export function ReaderAIChatSheet({
   const { t } = useTranslation();
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const s = useMemo(() => makeStyles(colors), [colors]);
   const readingContext = useReadingContext();
   const ttsConfig = useTTSStore((state) => state.config);
@@ -137,6 +141,65 @@ export function ReaderAIChatSheet({
   const [threadsReady, setThreadsReady] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const collapsedPosition = useRef(new Animated.ValueXY()).current;
+  const collapsedCoordinates = useRef({ x: 0, y: 0 });
+  const collapsedDragStart = useRef({ x: 0, y: 0 });
+  const hasMovedCollapsedHandle = useRef(false);
+
+  const clampCollapsedPosition = useCallback(
+    (x: number, y: number) => ({
+      x: Math.max(8, Math.min(windowWidth - 60, x)),
+      y: Math.max(insets.top + 8, Math.min(windowHeight - collapsedBottomOffset - 38, y)),
+    }),
+    [collapsedBottomOffset, insets.top, windowHeight, windowWidth],
+  );
+
+  useEffect(() => {
+    if (!collapsed) return;
+    const next = hasMovedCollapsedHandle.current
+      ? clampCollapsedPosition(collapsedCoordinates.current.x, collapsedCoordinates.current.y)
+      : clampCollapsedPosition((windowWidth - 52) / 2, windowHeight - collapsedBottomOffset - 36);
+    collapsedCoordinates.current = next;
+    collapsedPosition.setValue(next);
+  }, [
+    clampCollapsedPosition,
+    collapsed,
+    collapsedBottomOffset,
+    collapsedPosition,
+    windowHeight,
+    windowWidth,
+  ]);
+
+  const collapsedPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => collapsed,
+        onMoveShouldSetPanResponder: (_event, gesture) =>
+          collapsed && Math.hypot(gesture.dx, gesture.dy) > 2,
+        onPanResponderGrant: () => {
+          collapsedDragStart.current = collapsedCoordinates.current;
+        },
+        onPanResponderMove: (_event, gesture) => {
+          const next = clampCollapsedPosition(
+            collapsedDragStart.current.x + gesture.dx,
+            collapsedDragStart.current.y + gesture.dy,
+          );
+          collapsedCoordinates.current = next;
+          collapsedPosition.setValue(next);
+        },
+        onPanResponderRelease: (_event, gesture) => {
+          if (Math.hypot(gesture.dx, gesture.dy) <= 6) {
+            setCollapsed(false);
+            return;
+          }
+          hasMovedCollapsedHandle.current = true;
+        },
+        onPanResponderTerminate: () => {
+          hasMovedCollapsedHandle.current = true;
+        },
+      }),
+    [clampCollapsedPosition, collapsed, collapsedPosition],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -409,20 +472,21 @@ export function ReaderAIChatSheet({
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         {!collapsed && <Pressable style={s.backdrop} onPress={Keyboard.dismiss} />}
-        <View
+        <Animated.View
           style={[
             s.sheet,
             !collapsed && messages.length === 0 && !isStreaming && !autoPrompt && s.sheetCompact,
             collapsed
-              ? [s.sheetCollapsed, { marginBottom: collapsedBottomOffset + 6 }]
+              ? [s.sheetCollapsed, { left: 0, top: 0 }, collapsedPosition.getLayout()]
               : { paddingBottom: Math.max(insets.bottom, 8) },
           ]}
+          {...(collapsed ? collapsedPanResponder.panHandlers : {})}
         >
           <TouchableOpacity
             style={[s.handleButton, collapsed && s.handleButtonCollapsed]}
             onPress={() => {
               Keyboard.dismiss();
-              setCollapsed((current) => !current);
+              if (!collapsed) setCollapsed(true);
             }}
             activeOpacity={0.65}
             accessibilityRole="button"
@@ -578,7 +642,7 @@ export function ReaderAIChatSheet({
               </View>
             </View>
           ) : null}
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -651,11 +715,10 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       minHeight: 350,
     },
     sheetCollapsed: {
+      position: "absolute",
       height: 30,
       minHeight: 0,
       width: 52,
-      alignSelf: "flex-end",
-      marginRight: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderRadius: 15,
       backgroundColor: colors.card,
