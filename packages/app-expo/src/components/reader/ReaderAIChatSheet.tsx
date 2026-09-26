@@ -414,7 +414,7 @@ export function ReaderAIChatSheet({
             s.sheet,
             !collapsed && messages.length === 0 && !isStreaming && !autoPrompt && s.sheetCompact,
             collapsed
-              ? [s.sheetCollapsed, { marginBottom: collapsedBottomOffset }]
+              ? [s.sheetCollapsed, { marginBottom: collapsedBottomOffset + 6 }]
               : { paddingBottom: Math.max(insets.bottom, 8) },
           ]}
         >
@@ -432,7 +432,7 @@ export function ReaderAIChatSheet({
                 : t("chat.collapseAssistant", "Hide reading assistant")
             }
           >
-            <View style={s.handle} />
+            <View style={[s.handle, collapsed && s.handleCollapsed]} />
           </TouchableOpacity>
           {!collapsed && (
             <View style={s.header}>
@@ -651,19 +651,19 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       minHeight: 350,
     },
     sheetCollapsed: {
-      height: 38,
+      height: 30,
       minHeight: 0,
-      width: 112,
-      alignSelf: "center",
+      width: 52,
+      alignSelf: "flex-end",
+      marginRight: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomLeftRadius: 18,
-      borderBottomRightRadius: 18,
+      borderRadius: 15,
       backgroundColor: colors.card,
       shadowColor: "#000",
-      shadowOpacity: 0.16,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 8,
+      shadowOpacity: 0.12,
+      shadowRadius: 5,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 5,
     },
     handleButton: {
       height: 20,
@@ -673,13 +673,17 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
     handleButtonCollapsed: {
       flex: 1,
       height: undefined,
-      paddingHorizontal: 28,
+      paddingHorizontal: 10,
     },
     handle: {
       width: 42,
       height: 4,
       borderRadius: radius.full,
       backgroundColor: withOpacity(colors.foreground, 0.24),
+    },
+    handleCollapsed: {
+      width: 24,
+      backgroundColor: withOpacity(colors.foreground, 0.38),
     },
     header: {
       minHeight: 54,
