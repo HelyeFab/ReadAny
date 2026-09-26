@@ -64,6 +64,7 @@ import {
   type AppStateStatus,
   Easing,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -349,7 +350,11 @@ export function ReaderScreen({ route, navigation }: Props) {
 
   // Track OS-level accessibility font scale; re-renders when the user
   // changes the system font size while the reader is open.
-  const { fontScale: systemFontScale } = useWindowDimensions();
+  const {
+    width: windowWidth,
+    height: windowHeight,
+    fontScale: systemFontScale,
+  } = useWindowDimensions();
   // Apply the system scale only when the user has opted into
   // followSystemFontScale. The store keeps the user's raw fontSize, so
   // toggling the option (or changing OS font size) doesn't drift the
@@ -423,6 +428,73 @@ export function ReaderScreen({ route, navigation }: Props) {
   // ── System info (clock/battery/statusBar/SafeArea) ─────────────────────────
   const { readerClock, batteryLevel, isBatteryCharging, stableTopInset, insets } =
     useReaderSystemInfo({ showSearch, isIPadLayout, shouldToggleSystemStatusBar, baseTopInset });
+
+  const initialAIBubblePosition = useMemo(
+    () => ({
+      x: Math.max(insets.left + 8, windowWidth - insets.right - 68),
+      y: Math.max(stableTopInset + 8, windowHeight - insets.bottom - 162),
+    }),
+    [insets.bottom, insets.left, insets.right, stableTopInset, windowHeight, windowWidth],
+  );
+  const aiBubblePosition = useRef(new Animated.ValueXY(initialAIBubblePosition)).current;
+  const aiBubbleCoordinatesRef = useRef(initialAIBubblePosition);
+
+  const clampAIBubble = useCallback(
+    (x: number, y: number) => ({
+      x: Math.max(insets.left + 8, Math.min(windowWidth - insets.right - 60, x)),
+      y: Math.max(
+        stableTopInset + 8,
+        Math.min(windowHeight - insets.bottom - 162, y),
+      ),
+    }),
+    [insets.bottom, insets.left, insets.right, stableTopInset, windowHeight, windowWidth],
+  );
+
+  const openAIChat = useCallback(() => {
+    const aiContextRequest = ++aiPageContextRequestRef.current;
+    void captureVisibleAIContext(aiContextRequest, currentCfi);
+    setShowAIChat(true);
+  }, [captureVisibleAIContext, currentCfi]);
+
+  const aiBubblePanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponder: (_event, gesture) =>
+          Math.abs(gesture.dx) + Math.abs(gesture.dy) > 3,
+        onMoveShouldSetPanResponderCapture: (_event, gesture) =>
+          Math.abs(gesture.dx) + Math.abs(gesture.dy) > 3,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderMove: (_event, gesture) => {
+          const start = aiBubbleCoordinatesRef.current;
+          aiBubblePosition.setValue(clampAIBubble(start.x + gesture.dx, start.y + gesture.dy));
+        },
+        onPanResponderRelease: (_event, gesture) => {
+          const moved = Math.hypot(gesture.dx, gesture.dy) > 8;
+          const start = aiBubbleCoordinatesRef.current;
+          const next = moved
+            ? clampAIBubble(start.x + gesture.dx, start.y + gesture.dy)
+            : start;
+          aiBubbleCoordinatesRef.current = next;
+          aiBubblePosition.setValue(next);
+          if (!moved) openAIChat();
+        },
+        onPanResponderTerminate: () => {
+          aiBubblePosition.setValue(aiBubbleCoordinatesRef.current);
+        },
+      }),
+    [aiBubblePosition, clampAIBubble, openAIChat],
+  );
+
+  useEffect(() => {
+    const next = clampAIBubble(
+      aiBubbleCoordinatesRef.current.x,
+      aiBubbleCoordinatesRef.current.y,
+    );
+    aiBubbleCoordinatesRef.current = next;
+    aiBubblePosition.setValue(next);
+  }, [aiBubblePosition, clampAIBubble]);
 
   // ── Bookmark ───────────────────────────────────────────────────────────────
   const bookmark = useReaderBookmark({
@@ -1954,25 +2026,22 @@ export function ReaderScreen({ route, navigation }: Props) {
       )}
 
       {!showSearch && !showTOC && !showSettings && !showNotebook && (
-        <TouchableOpacity
+        <Animated.View
           accessibilityRole="button"
           accessibilityLabel={t("reader.askAI", "Ask AI")}
           style={[
             s.floatingToolBtn,
             s.persistentAIButton,
             {
-              right: insets.right + 16,
-              bottom: insets.bottom + 110,
+              left: 0,
+              top: 0,
+              transform: aiBubblePosition.getTranslateTransform(),
             },
           ]}
-          onPress={() => {
-            const aiContextRequest = ++aiPageContextRequestRef.current;
-            void captureVisibleAIContext(aiContextRequest, currentCfi);
-            setShowAIChat(true);
-          }}
+          {...aiBubblePanResponder.panHandlers}
         >
           <BotIcon size={22} color="#fff" />
-        </TouchableOpacity>
+        </Animated.View>
       )}
 
       <ReaderAIChatSheet
