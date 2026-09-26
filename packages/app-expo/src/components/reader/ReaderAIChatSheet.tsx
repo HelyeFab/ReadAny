@@ -1,7 +1,13 @@
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
 import { MessageList } from "@/components/chat/MessageList";
-import { MessageCirclePlusIcon, Trash2Icon, Volume2Icon, XIcon } from "@/components/ui/Icon";
+import {
+  HistoryIcon,
+  MessageCirclePlusIcon,
+  Trash2Icon,
+  Volume2Icon,
+  XIcon,
+} from "@/components/ui/Icon";
 import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
 import { previewTTSConfig, stopTTSPreview } from "@/lib/platform/tts-preview";
 import { useTTSStore } from "@/stores";
@@ -130,6 +136,7 @@ export function ReaderAIChatSheet({
   const removeThread = useChatStore((state) => state.removeThread);
   const [threadsReady, setThreadsReady] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -229,6 +236,41 @@ export function ReaderAIChatSheet({
       ),
     [breakdownAssistantIds, isStreaming, persistedMessages, transientMessage, wordCard],
   );
+  const latestExchange = useMemo(() => {
+    const rawMessages = activeThread?.messages ?? [];
+    let startIndex = -1;
+    for (let index = rawMessages.length - 1; index >= 0; index -= 1) {
+      const message = rawMessages[index];
+      if (
+        message.role === "user" &&
+        !message.content.includes("Give a concise word breakdown for this Japanese expression:")
+      ) {
+        startIndex = index;
+        break;
+      }
+    }
+
+    if (startIndex < 0) {
+      return {
+        key: activeThread?.id ?? "empty",
+        ids: new Set(messages.map((message) => message.id)),
+      };
+    }
+
+    return {
+      key: rawMessages[startIndex].id,
+      ids: new Set(rawMessages.slice(startIndex).map((message) => message.id)),
+    };
+  }, [activeThread?.id, activeThread?.messages, messages]);
+  const latestMessages = useMemo(
+    () =>
+      messages.filter(
+        (message) => latestExchange.ids.has(message.id) || message.id === transientMessage?.id,
+      ),
+    [latestExchange.ids, messages, transientMessage?.id],
+  );
+  const hasHistory = latestMessages.length < messages.length;
+  const displayedMessages = showHistory ? messages : latestMessages;
 
   useEffect(() => {
     if (!wordCard || wordCard.content || !wordCard.requestedAt) return;
@@ -265,6 +307,7 @@ export function ReaderAIChatSheet({
       quotes?: AttachedQuote[],
       hideUserMessage = false,
     ) => {
+      setShowHistory(false);
       const resolvedAIConfig = await resolveActiveAIConfig(useSettingsStore.getState());
       if (!resolvedAIConfig) {
         Alert.alert(
@@ -326,6 +369,7 @@ export function ReaderAIChatSheet({
 
   const handleNewThread = useCallback(async () => {
     if (activeThread && activeThread.messages.length === 0) return;
+    setShowHistory(false);
     await createThread(bookId);
   }, [activeThread, bookId, createThread]);
 
@@ -398,6 +442,19 @@ export function ReaderAIChatSheet({
                   {contextTitle || semanticContext?.currentChapter || book?.meta.title || ""}
                 </Text>
               </View>
+              {hasHistory ? (
+                <TouchableOpacity
+                  style={[s.headerButton, showHistory && s.headerButtonActive]}
+                  onPress={() => setShowHistory((current) => !current)}
+                  accessibilityLabel={
+                    showHistory
+                      ? t("chat.showLatest", "Show latest result")
+                      : t("chat.showHistory", "Show chat history")
+                  }
+                >
+                  <HistoryIcon size={19} color={showHistory ? colors.primary : colors.foreground} />
+                </TouchableOpacity>
+              ) : null}
               <TouchableOpacity style={s.headerButton} onPress={handleNewThread}>
                 <MessageCirclePlusIcon size={19} color={colors.foreground} />
               </TouchableOpacity>
@@ -424,15 +481,31 @@ export function ReaderAIChatSheet({
 
           {!collapsed && (
             <View style={s.messages}>
-              {messages.length > 0 ? (
-                <MessageList
-                  messages={messages}
-                  isStreaming={isStreaming}
-                  currentStep={currentStep}
-                  onCitationClick={onCitation}
-                  onSpeakJapanese={speakJapaneseSegment}
-                  onDefineJapanese={handleDefineJapanese}
-                />
+              {displayedMessages.length > 0 ? (
+                <>
+                  {hasHistory ? (
+                    <TouchableOpacity
+                      style={s.historyBar}
+                      onPress={() => setShowHistory((current) => !current)}
+                      activeOpacity={0.7}
+                    >
+                      <HistoryIcon size={15} color={colors.primary} />
+                      <Text style={s.historyBarText}>
+                        {showHistory
+                          ? t("chat.backToLatest", "Back to latest result")
+                          : t("chat.previousResults", "History")}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <MessageList
+                    messages={displayedMessages}
+                    isStreaming={isStreaming}
+                    currentStep={currentStep}
+                    onCitationClick={onCitation}
+                    onSpeakJapanese={speakJapaneseSegment}
+                    onDefineJapanese={handleDefineJapanese}
+                  />
+                </>
               ) : (
                 <View style={s.emptyState}>
                   {autoPrompt ? (
@@ -626,6 +699,18 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       justifyContent: "center",
       borderRadius: radius.full,
     },
+    headerButtonActive: { backgroundColor: withOpacity(colors.primary, 0.1) },
+    historyBar: {
+      minHeight: 36,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: withOpacity(colors.foreground, 0.1),
+      backgroundColor: withOpacity(colors.primary, 0.06),
+    },
+    historyBarText: { color: colors.primary, fontSize: 13, fontWeight: "600" },
     messages: { flex: 1 },
     emptyState: {
       flex: 1,
