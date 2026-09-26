@@ -2040,7 +2040,7 @@ export function ReaderScreen({ route, navigation }: Props) {
           ]}
           {...aiBubblePanResponder.panHandlers}
         >
-          <BotIcon size={22} color="#fff" />
+          <BotIcon size={22} color={colors.primaryForeground} />
         </Animated.View>
       )}
 

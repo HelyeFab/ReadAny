@@ -67,7 +67,15 @@ import { readRegionWithVision, supportsVisionOcr } from "@/lib/web/vision-ocr";
 import type { TabParamList } from "@/navigation/TabNavigator";
 import { useSettingsStore } from "@/stores";
 import { isSavedUrl, useTTSStore, useWebStore } from "@/stores";
-import { fontSize as fs, fontWeight as fw, radius, spacing, ui, useColors } from "@/styles/theme";
+import {
+  fontSize as fs,
+  fontWeight as fw,
+  radius,
+  spacing,
+  ui,
+  useColors,
+  withOpacity,
+} from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 import ReadingSvg from "../../assets/illustrations/reading.svg";
 import { isOcrAvailable, recognizeRegion } from "../../modules/mlkit-ocr";
@@ -845,7 +853,7 @@ export function WebReaderScreen() {
             style={[s.aiBubble, { transform: bubblePosition.getTranslateTransform() }]}
             {...aiBubblePanResponder.panHandlers}
           >
-            <BotIcon size={22} color="#fff" />
+            <BotIcon size={22} color={colors.primaryForeground} />
           </Animated.View>
         </>
       ) : null}
@@ -989,9 +997,9 @@ const makeStyles = (colors: ThemeColors) =>
       borderRadius: 26,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "rgba(59, 130, 246, 0.94)",
+      backgroundColor: colors.primary,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: "rgba(255, 255, 255, 0.42)",
+      borderColor: withOpacity(colors.primaryForeground, 0.42),
       elevation: 5,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },

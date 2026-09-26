@@ -108,9 +108,9 @@ export const makeToolbarStyles = (colors: ThemeColors) =>
     persistentAIButton: {
       position: "absolute",
       zIndex: 35,
-      backgroundColor: "rgba(59, 130, 246, 0.94)",
+      backgroundColor: colors.primary,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: "rgba(255, 255, 255, 0.42)",
+      borderColor: withOpacity(colors.primaryForeground, 0.42),
       elevation: 5,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
