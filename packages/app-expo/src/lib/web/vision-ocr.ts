@@ -61,7 +61,7 @@ export async function readRegionWithVision(
   // The same pixels always say the same thing, so a box read twice is free.
   let key = "";
   try {
-    key = await ocrCacheKey(image);
+    key = `manga-order-v2:${await ocrCacheKey(image)}`;
     const diagnosticUri = await storeDiagnosticCrop(key, image);
     console.info(
       "[WebAIRegion] crop-saved",
