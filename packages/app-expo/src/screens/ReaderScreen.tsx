@@ -8,6 +8,7 @@ import { SelectionPopover } from "@/components/reader/SelectionPopover";
 import { TTSPage } from "@/components/reader/TTSPage";
 import { TranslationPanel } from "@/components/reader/TranslationPanel";
 import {
+  BookMarkedIcon,
   BookmarkFilledIcon,
   BookmarkIcon,
   BotIcon,
@@ -2320,6 +2321,24 @@ export function ReaderScreen({ route, navigation }: Props) {
                   style={[s.bottomDockLabel, isBookmarked && s.bottomDockLabelActive]}
                   numberOfLines={1}
                 >
+                  {t("reader.bookmark", "加书签")}
+                </Text>
+              </TouchableOpacity>
+              {/*
+                The toggle beside this only marks the current page. The list of
+                a book's bookmarks already existed, but only as the second tab
+                of the Contents panel, so it was easy to miss entirely. This
+                opens that same panel straight on the Bookmarks tab.
+              */}
+              <TouchableOpacity
+                style={s.bottomDockBtn}
+                onPress={() => {
+                  setTocActiveTab("bookmarks");
+                  setShowTOC(true);
+                }}
+              >
+                <BookMarkedIcon size={bottomDockIconSize} color={colors.foreground} />
+                <Text style={s.bottomDockLabel} numberOfLines={1}>
                   {t("reader.bookmarks", "书签")}
                 </Text>
               </TouchableOpacity>
