@@ -2014,6 +2014,7 @@ export function ReaderScreen({ route, navigation }: Props) {
         visible={definition !== null}
         word={definition?.word ?? ""}
         baseForms={definition?.baseForms ?? []}
+        language={book?.meta?.language}
         onClose={() => setDefinition(null)}
       />
 

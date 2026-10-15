@@ -1,7 +1,7 @@
 {
   "dictionary": {
     "title": "詞典",
-    "description": "匯入 Yomitan 詞典壓縮檔，與瀏覽器擴充功能使用的相同。",
+    "description": "匯入 Yomitan（.zip）或 StarDict 辭典。StarDict 請同時選取 .ifo、.idx 和 .dict 檔案，或包含它們的 .zip / .tar.gz。",
     "import": "匯入詞典",
     "importing": "匯入中…",
     "imported": "已匯入 {{count}} 筆。",
@@ -9,7 +9,11 @@
     "empty": "尚無詞典。",
     "entries": "筆",
     "noneInstalled": "未安裝詞典。請在 設定 → 詞典 中新增。",
-    "noMatch": "找不到詞條。"
+    "noMatch": "找不到詞條。",
+    "lookElsewhere": "在別處查詢",
+    "otherApps": "其他應用程式",
+    "detectLanguage": "自動偵測",
+    "noTextApp": "沒有已安裝的應用程式可以接收要查詢的文字。安裝 Google 翻譯、DeepL 或 GoldenDict 等辭典應用程式後會出現在這裡。"
   },
   "anki": {
     "title": "加入 Anki",

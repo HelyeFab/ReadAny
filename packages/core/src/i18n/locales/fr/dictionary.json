@@ -1,7 +1,7 @@
 {
   "dictionary": {
     "title": "Dictionnaires",
-    "description": "Importez une archive de dictionnaire Yomitan. Les mêmes paquets que votre extension de navigateur fonctionnent ici.",
+    "description": "Importez un dictionnaire Yomitan (.zip) ou StarDict. Pour StarDict, sélectionnez ensemble les fichiers .ifo, .idx et .dict, ou un .zip / .tar.gz qui les contient.",
     "import": "Importer un dictionnaire",
     "importing": "Importation…",
     "imported": "{{count}} entrées importées.",
@@ -9,7 +9,11 @@
     "empty": "Aucun dictionnaire.",
     "entries": "entrées",
     "noneInstalled": "Aucun dictionnaire installé. Ajoutez-en un dans Réglages → Dictionnaires.",
-    "noMatch": "Aucune entrée trouvée."
+    "noMatch": "Aucune entrée trouvée.",
+    "lookElsewhere": "Chercher ailleurs",
+    "otherApps": "Autres applis",
+    "detectLanguage": "Détecter",
+    "noTextApp": "Aucune application installée n'accepte de texte à rechercher. Google Traduction, DeepL ou une appli de dictionnaire comme GoldenDict s'ajouteront ici."
   },
   "anki": {
     "title": "Ajouter à Anki",

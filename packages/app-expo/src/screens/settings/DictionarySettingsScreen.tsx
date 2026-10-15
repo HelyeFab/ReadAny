@@ -2,7 +2,8 @@ import type { DictionaryInfo } from "@/lib/dictionary/yomitan-import";
 import { radius, spacing, ui, useColors } from "@/styles/theme";
 import * as DocumentPicker from "expo-document-picker";
 /**
- * Dictionaries — import the same Yomitan packs used in the browser.
+ * Dictionaries — import Yomitan packs (the ones the browser extension uses)
+ * and StarDict sets (the ones KOReader and GoldenDict use).
  */
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -28,23 +29,31 @@ export default function DictionarySettingsScreen() {
 
   const handleImport = useCallback(async () => {
     if (busy) return;
+    // Any type, several at once: Android has no MIME type for .ifo or
+    // .dict.dz, and a loose StarDict set is three or four files picked together.
     const picked = await DocumentPicker.getDocumentAsync({
-      type: ["application/zip", "application/octet-stream"],
+      type: "*/*",
+      multiple: true,
       copyToCacheDirectory: true,
     });
-    if (picked.canceled || !picked.assets?.[0]) return;
+    if (picked.canceled || !picked.assets?.length) return;
 
     setBusy(true);
     setProgress(null);
     try {
-      const { importYomitanZip } = await import("@/lib/dictionary/yomitan-import");
-      const info = await importYomitanZip(picked.assets[0].uri, (done, total, title) => {
-        setProgress(`${title} — ${done}/${total}`);
-      });
+      const { importDictionaries } = await import("@/lib/dictionary/import");
+      const imported = await importDictionaries(
+        picked.assets.map((asset) => ({ uri: asset.uri, name: asset.name })),
+        (done, total, title) => {
+          setProgress(`${title} — ${done}/${total}`);
+        },
+      );
       await refresh();
       Alert.alert(
-        info.title,
-        t("dictionary.imported", "{{count}} entries imported.", { count: info.termCount }),
+        imported.map((info) => info.title).join(", "),
+        t("dictionary.imported", "{{count}} entries imported.", {
+          count: imported.reduce((sum, info) => sum + info.termCount, 0),
+        }),
       );
     } catch (err) {
       Alert.alert(
@@ -73,7 +82,7 @@ export default function DictionarySettingsScreen() {
         <Text style={{ color: colors.mutedForeground, fontSize: ui(13) }}>
           {t(
             "dictionary.description",
-            "Import a Yomitan dictionary archive. The same packs your browser extension uses will work here.",
+            "Import a Yomitan (.zip) or StarDict dictionary. For StarDict, pick the .ifo, .idx and .dict files together, or a .zip / .tar.gz containing them.",
           )}
         </Text>
 

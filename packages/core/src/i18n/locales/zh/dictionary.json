@@ -1,7 +1,7 @@
 {
   "dictionary": {
     "title": "词典",
-    "description": "导入 Yomitan 词典压缩包，与浏览器扩展使用的相同。",
+    "description": "导入 Yomitan（.zip）或 StarDict 词典。StarDict 请同时选择 .ifo、.idx 和 .dict 文件，或包含它们的 .zip / .tar.gz。",
     "import": "导入词典",
     "importing": "导入中…",
     "imported": "已导入 {{count}} 条。",
@@ -9,7 +9,11 @@
     "empty": "尚无词典。",
     "entries": "条",
     "noneInstalled": "未安装词典。请在 设置 → 词典 中添加。",
-    "noMatch": "未找到词条。"
+    "noMatch": "未找到词条。",
+    "lookElsewhere": "在别处查询",
+    "otherApps": "其他应用",
+    "detectLanguage": "自动检测",
+    "noTextApp": "没有已安装的应用可以接收要查询的文本。安装 Google 翻译、DeepL 或 GoldenDict 等词典应用后会出现在这里。"
   },
   "anki": {
     "title": "添加到 Anki",
