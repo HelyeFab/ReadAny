@@ -1,7 +1,8 @@
 import type { Definition, PhraseHit } from "@/lib/dictionary/lookup";
 import { radius, spacing, ui, useColors } from "@/styles/theme";
 /**
- * Definitions for the selected word, from the imported Yomitan dictionaries.
+ * Definitions for the selected word, from the imported dictionaries, with a
+ * way to look it up in another app or on the web underneath.
  *
  * Deliberately a plain sheet rather than a dialog: looking a word up while
  * reading should cost one tap to open and one to dismiss, and should never
@@ -19,15 +20,18 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { LookElsewhere } from "./LookElsewhere";
 
 interface Props {
   visible: boolean;
   word: string;
   baseForms: string[];
+  /** The book's language metadata, used as the source for web lookups. */
+  language?: string;
   onClose: () => void;
 }
 
-export function DefinitionSheet({ visible, word, baseForms, onClose }: Props) {
+export function DefinitionSheet({ visible, word, baseForms, language, onClose }: Props) {
   const { t } = useTranslation();
   const colors = useColors();
   const [entries, setEntries] = useState<Definition[] | null>(null);
@@ -217,6 +221,8 @@ export function DefinitionSheet({ visible, word, baseForms, onClose }: Props) {
             ))}
           </ScrollView>
         )}
+
+        <LookElsewhere key={word} text={word} language={language} />
       </View>
     </Modal>
   );

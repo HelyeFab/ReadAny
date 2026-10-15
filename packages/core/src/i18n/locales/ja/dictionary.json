@@ -1,7 +1,7 @@
 {
   "dictionary": {
     "title": "辞書",
-    "description": "Yomitanの辞書ファイルを読み込みます。ブラウザ拡張と同じものが使えます。",
+    "description": "Yomitan（.zip）または StarDict の辞書をインポートします。StarDict は .ifo・.idx・.dict をまとめて選ぶか、それらを含む .zip / .tar.gz を選んでください。",
     "import": "辞書を読み込む",
     "importing": "読み込み中…",
     "imported": "{{count}}件を読み込みました。",
@@ -9,7 +9,11 @@
     "empty": "辞書がありません。",
     "entries": "件",
     "noneInstalled": "辞書が未登録です。設定 → 辞書 から追加してください。",
-    "noMatch": "見つかりませんでした。"
+    "noMatch": "見つかりませんでした。",
+    "lookElsewhere": "ほかで調べる",
+    "otherApps": "他のアプリ",
+    "detectLanguage": "自動検出",
+    "noTextApp": "テキストを受け取れるアプリがインストールされていません。Google 翻訳、DeepL、GoldenDict などの辞書アプリを入れるとここに表示されます。"
   },
   "anki": {
     "title": "Ankiに追加",
