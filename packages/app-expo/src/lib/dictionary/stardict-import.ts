@@ -232,39 +232,59 @@ export async function importStarDictFiles(
     const syn = companion(files, stem, [".syn", ".syn.dz", ".syn.gz"]);
 
     const entries = parseIdx(idx, header.offsetBits);
-    const articles = entries.map((entry) =>
-      parseArticle(dict.subarray(entry.offset, entry.offset + entry.size), header.sameTypeSequence),
-    );
+    // A narrowed copy: the null check above does not reach into a generator.
+    const articleBytes: Uint8Array = dict;
     const synonyms = syn ? parseSyn(syn) : [];
 
-    const terms: TermInput[] = entries.map((entry, i) => ({
-      expression: entry.word,
-      reading: articles[i].reading,
-      rules: "",
-      score: 0,
-      glossary: articles[i].text,
-    }));
-    for (const synonym of synonyms) {
-      const target = entries[synonym.index];
-      const article = articles[synonym.index];
-      if (!target || !article?.text || synonym.word === target.word) continue;
-      terms.push({
-        expression: synonym.word,
-        reading: article.reading,
-        rules: SYNONYM_RULE,
-        // Below real headwords, so a form that is also a word in its own right
-        // shows its own entry first.
-        score: -1,
-        glossary: target.word,
-      });
+    // Articles are decoded as each chunk is written, never all at once:
+    // English Wiktionary is 850k terms and ~50M characters of definitions,
+    // which held in memory together is more than a phone will give an app.
+    function* allTerms(): Generator<TermInput> {
+      for (const entry of entries) {
+        const article = parseArticle(
+          articleBytes.subarray(entry.offset, entry.offset + entry.size),
+          header.sameTypeSequence,
+        );
+        yield {
+          expression: entry.word,
+          reading: article.reading,
+          rules: "",
+          score: 0,
+          glossary: article.text,
+        };
+      }
+      for (const synonym of synonyms) {
+        const target = entries[synonym.index];
+        if (!target || synonym.word === target.word) continue;
+        yield {
+          expression: synonym.word,
+          // The headword's own reading arrives when the pointer is resolved.
+          reading: "",
+          rules: SYNONYM_RULE,
+          // Below real headwords, so a form that is also a word in its own
+          // right shows its own entry first.
+          score: -1,
+          glossary: target.word,
+        };
+      }
     }
 
     const dictId = await createDictionary(header.bookname, header.version);
+    const total = entries.length + synonyms.length;
     let termCount = 0;
-    for (let i = 0; i < terms.length; i += CHUNK) {
-      termCount += await insertTerms(dictId, terms.slice(i, i + CHUNK));
-      onProgress?.(Math.min(i + CHUNK, terms.length), terms.length, header.bookname);
+    let seen = 0;
+    let chunk: TermInput[] = [];
+    for (const term of allTerms()) {
+      chunk.push(term);
+      seen += 1;
+      if (chunk.length >= CHUNK) {
+        termCount += await insertTerms(dictId, chunk);
+        chunk = [];
+        onProgress?.(seen, total, header.bookname);
+      }
     }
+    termCount += await insertTerms(dictId, chunk);
+    onProgress?.(total, total, header.bookname);
     await setTermCount(dictId, termCount);
     imported.push({
       id: dictId,
