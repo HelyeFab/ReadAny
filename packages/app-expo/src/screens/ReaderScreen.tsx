@@ -24,7 +24,12 @@ import {
 } from "@/components/ui/Icon";
 import { SyncButton } from "@/components/ui/SyncButton";
 import { useReaderBridge } from "@/hooks/use-reader-bridge";
-import type { RelocateEvent, SelectionEvent, VisibleTTSSegment } from "@/hooks/use-reader-bridge";
+import type {
+  RelocateEvent,
+  SelectionContext,
+  SelectionEvent,
+  VisibleTTSSegment,
+} from "@/hooks/use-reader-bridge";
 import { startFileServer, stopFileServer } from "@/lib/reader/local-file-server";
 import type { RootStackParamList } from "@/navigation/RootNavigator";
 import {
@@ -244,7 +249,11 @@ export function ReaderScreen({ route, navigation }: Props) {
   const [readerHtmlUri, setReaderHtmlUri] = useState<string | null>(null);
   const [currentCfi, setCurrentCfi] = useState("");
   const [selection, setSelection] = useState<SelectionEvent | null>(null);
-  const [definition, setDefinition] = useState<{ word: string; baseForms: string[] } | null>(null);
+  const [definition, setDefinition] = useState<{
+    word: string;
+    baseForms: string[];
+    context?: SelectionContext;
+  } | null>(null);
   const [fontServerUrl, setFontServerUrl] = useState<string | null>(null);
   const [noteViewHighlight, setNoteViewHighlight] = useState<{
     id: string;
@@ -1845,6 +1854,8 @@ export function ReaderScreen({ route, navigation }: Props) {
         visible={definition !== null}
         word={definition?.word ?? ""}
         baseForms={definition?.baseForms ?? []}
+        context={definition?.context}
+        source={book?.meta?.title}
         language={book?.meta?.language}
         onClose={() => setDefinition(null)}
       />
@@ -1861,9 +1872,9 @@ export function ReaderScreen({ route, navigation }: Props) {
             tts.startSelectionTTS(text, cfi);
             setSelection(null);
           }}
-          onDefine={(text, baseForms) => {
+          onDefine={(text, baseForms, context) => {
             setSelection(null);
-            setDefinition({ word: text.trim(), baseForms });
+            setDefinition({ word: text.trim(), baseForms, context });
           }}
           onAIChat={() => {
             const selectedText = selectionPopoverSelection.text;

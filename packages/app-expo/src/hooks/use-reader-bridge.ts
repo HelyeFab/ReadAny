@@ -24,12 +24,19 @@ export interface SelectionEvent {
   cfi: string;
   /** Dictionary forms from the reader's tokenizer; empty when it is not loaded. */
   baseForms?: string[];
+  /** The rest of the sentence on either side of the selection. */
+  context?: SelectionContext;
   position: {
     x: number;
     y: number;
     selectionTop: number;
     selectionBottom: number;
   };
+}
+
+export interface SelectionContext {
+  before: string;
+  after: string;
 }
 
 export interface BookmarkPullEvent {

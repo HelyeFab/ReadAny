@@ -13,6 +13,7 @@
  */
 import { Platform } from "react-native";
 import * as IntentLauncher from "expo-intent-launcher";
+import { foldTerm } from "@/lib/dictionary/fold";
 
 export const CREATE_FLASHCARD_ACTION = "org.openintents.action.CREATE_FLASHCARD";
 export const ANKIDROID_PACKAGE = "com.ichi2.anki";
@@ -53,21 +54,51 @@ export async function sendToAnki({ front, back }: AnkiCard): Promise<void> {
   }
 }
 
+export interface CardContext {
+  /** The sentence on either side of the word, as it appeared on the page. */
+  before?: string;
+  after?: string;
+  /** Where the word was met, usually the book title. */
+  source?: string;
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 /**
- * Build a card from a dictionary lookup. Front is the word as it appeared;
- * the back carries the dictionary form and readings, because the form on the
- * page is rarely the form worth learning.
+ * Build a card from a dictionary lookup. The front is the sentence the word
+ * was met in, with the word in bold, because a word learnt in context sticks
+ * far better than a bare one; it falls back to the word alone when the reader
+ * could not say what surrounded it. The back starts with the word itself, so
+ * the bold on the front can always be found again, then the dictionary form
+ * and readings, because the form on the page is rarely the form worth learning.
  */
 export function cardFromDefinitions(
   word: string,
   entries: { expression: string; reading: string; glossary: string; dictionary: string }[],
+  context: CardContext = {},
 ): AnkiCard {
+  // Lookup also tries guessed stems (morass -> moras), and another language's
+  // dictionary can answer one with an unrelated word. When the word itself
+  // was found, the guesses do not belong on the card.
+  const target = foldTerm(word);
+  const exact = entries.filter((entry) => foldTerm(entry.expression) === target);
+  const chosen = (exact.length > 0 ? exact : entries).slice(0, 3);
+
   const lines: string[] = [];
-  for (const entry of entries.slice(0, 3)) {
+  for (const entry of chosen) {
     const head = entry.reading && entry.reading !== entry.expression
       ? `${entry.expression}（${entry.reading}）`
       : entry.expression;
     lines.push(`${head}\n${entry.glossary}`);
   }
-  return { front: word, back: lines.join("\n\n") };
+
+  const before = context.before ?? "";
+  const after = context.after ?? "";
+  const front = before.trim() || after.trim()
+    ? `${escapeHtml(before)}<b>${escapeHtml(word)}</b>${escapeHtml(after)}`.trim()
+    : word;
+  const source = context.source?.trim() ? `\n\n— ${context.source.trim()}` : "";
+  return { front, back: `${lines.join("\n\n")}${source}` };
 }

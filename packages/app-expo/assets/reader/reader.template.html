@@ -3474,6 +3474,7 @@ html, body {
         text,
         cfi,
         baseForms: japaneseBaseForms(text),
+        context: getSelectionContext(range),
         position: {
           x: iframeRect.left + rect.left + rect.width / 2,
           y: iframeRect.top + firstRect.top - 4,
@@ -3526,6 +3527,74 @@ html, body {
         if (text) return text;
       } catch {}
       return (fallback || '').trim();
+    }
+
+    var SENTENCE_BLOCKS = 'p, li, blockquote, dd, dt, td, th, figcaption, h1, h2, h3, h4, h5, h6';
+    // Western end punctuation needs whitespace after it (so 3.5 and e.g. stay
+    // whole); Japanese end punctuation never has any.
+    var SENTENCE_END = /[.!?…]["'”’»)\]]*\s+|[。！？]["」』）]*/g;
+    var CONTEXT_SIDE_MAX = 240;
+
+    function textWithoutRuby(range) {
+      try {
+        var fragment = range.cloneContents();
+        fragment.querySelectorAll('rt, rp').forEach(function (node) { node.remove(); });
+        return (fragment.textContent || '').replace(/\s+/g, ' ');
+      } catch (e) {
+        return '';
+      }
+    }
+
+    /**
+     * The rest of the sentence on either side of the selection, for flashcards:
+     * a word learnt in the sentence it was met in sticks far better than the
+     * bare word. Empty strings when the selection is not inside a text block.
+     */
+    function getSelectionContext(range) {
+      try {
+        var node = range.startContainer;
+        var el = node.nodeType === 1 ? node : node.parentElement;
+        var block = el && el.closest ? el.closest(SENTENCE_BLOCKS) : null;
+        if (!block) block = el && el.parentElement;
+        if (!block || !block.contains(range.endContainer)) return { before: '', after: '' };
+        var doc = block.ownerDocument;
+
+        var head = doc.createRange();
+        head.setStart(block, 0);
+        head.setEnd(range.startContainer, range.startOffset);
+        var tail = doc.createRange();
+        tail.setStart(range.endContainer, range.endOffset);
+        tail.setEnd(block, block.childNodes.length);
+
+        // The selected text is posted trimmed, so whitespace the selection
+        // swallowed at either end belongs to the context instead.
+        var selected = range.toString();
+        var before = textWithoutRuby(head) + (/^\s/.test(selected) ? ' ' : '');
+        var after = (/\s$/.test(selected) ? ' ' : '') + textWithoutRuby(tail);
+
+        var start = 0;
+        var match;
+        SENTENCE_END.lastIndex = 0;
+        while ((match = SENTENCE_END.exec(before))) start = match.index + match[0].length;
+        before = before.slice(start).replace(/^\s+/, '');
+
+        SENTENCE_END.lastIndex = 0;
+        match = SENTENCE_END.exec(after);
+        if (match) after = after.slice(0, match.index + match[0].replace(/\s+$/, '').length);
+        after = after.replace(/\s+$/, '');
+
+        // A run-on sentence or a block with no punctuation at all: keep the
+        // words nearest the selection rather than the whole paragraph.
+        if (before.length > CONTEXT_SIDE_MAX) {
+          before = '…' + before.slice(before.length - CONTEXT_SIDE_MAX).replace(/^\S*\s/, '');
+        }
+        if (after.length > CONTEXT_SIDE_MAX) {
+          after = after.slice(0, CONTEXT_SIDE_MAX).replace(/\s\S*$/, '') + '…';
+        }
+        return { before: before, after: after };
+      } catch (e) {
+        return { before: '', after: '' };
+      }
     }
 
     function getVisibleTextSnippet(maxLen) {
