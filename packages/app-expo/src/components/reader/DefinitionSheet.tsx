@@ -1,3 +1,4 @@
+import type { SelectionContext } from "@/hooks/use-reader-bridge";
 import type { Definition, PhraseHit } from "@/lib/dictionary/lookup";
 import { radius, spacing, ui, useColors } from "@/styles/theme";
 /**
@@ -26,12 +27,24 @@ interface Props {
   visible: boolean;
   word: string;
   baseForms: string[];
+  /** The sentence around the selection, for the Anki card's front. */
+  context?: SelectionContext;
+  /** The book title, recorded on the Anki card. */
+  source?: string;
   /** The book's language metadata, used as the source for web lookups. */
   language?: string;
   onClose: () => void;
 }
 
-export function DefinitionSheet({ visible, word, baseForms, language, onClose }: Props) {
+export function DefinitionSheet({
+  visible,
+  word,
+  baseForms,
+  context,
+  source,
+  language,
+  onClose,
+}: Props) {
   const { t } = useTranslation();
   const colors = useColors();
   const [entries, setEntries] = useState<Definition[] | null>(null);
@@ -69,13 +82,14 @@ export function DefinitionSheet({ visible, word, baseForms, language, onClose }:
     };
   }, [visible, word, baseForms]);
 
-  const addToAnki = async (term: string, defs: Definition[]) => {
+  /** `cardContext` is the sentence around `term`, when it is known. */
+  const addToAnki = async (term: string, defs: Definition[], cardContext?: SelectionContext) => {
     if (defs.length === 0) return;
     try {
       const { sendToAnki, cardFromDefinitions, AnkiUnavailableError } = await import(
         "@/lib/anki/send-to-anki"
       );
-      await sendToAnki(cardFromDefinitions(term, defs));
+      await sendToAnki(cardFromDefinitions(term, defs, { ...cardContext, source }));
       onClose();
     } catch (err) {
       const { AnkiUnavailableError: Unavailable } = await import("@/lib/anki/send-to-anki");
@@ -88,6 +102,17 @@ export function DefinitionSheet({ visible, word, baseForms, language, onClose }:
             : String(err),
       );
     }
+  };
+
+  // A word picked out of a selected phrase: the sentence is the phrase plus
+  // whatever surrounded it, split at the word's first appearance.
+  const phraseContext = (surface: string): SelectionContext | undefined => {
+    const at = word.indexOf(surface);
+    if (at === -1) return context;
+    return {
+      before: `${context?.before ?? ""}${word.slice(0, at)}`,
+      after: `${word.slice(at + surface.length)}${context?.after ?? ""}`,
+    };
   };
 
   if (!visible) return null;
@@ -123,7 +148,7 @@ export function DefinitionSheet({ visible, word, baseForms, language, onClose }:
 
         {entries !== null && entries.length > 0 && (
           <TouchableOpacity
-            onPress={() => void addToAnki(word, entries)}
+            onPress={() => void addToAnki(word, entries, context)}
             style={{
               alignSelf: "flex-start",
               backgroundColor: colors.primary,
@@ -173,7 +198,11 @@ export function DefinitionSheet({ visible, word, baseForms, language, onClose }:
                     </Text>
                   ) : null}
                   <View style={{ flex: 1 }} />
-                  <TouchableOpacity onPress={() => void addToAnki(hit.surface, hit.entries)}>
+                  <TouchableOpacity
+                    onPress={() =>
+                      void addToAnki(hit.surface, hit.entries, phraseContext(hit.surface))
+                    }
+                  >
                     <Text style={{ fontSize: ui(12), color: colors.primary }}>
                       {t("anki.add", "Add to Anki")}
                     </Text>

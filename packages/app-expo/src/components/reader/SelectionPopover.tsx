@@ -10,7 +10,7 @@ import {
   XIcon,
 } from "@/components/ui/Icon";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import type { SelectionEvent } from "@/hooks/use-reader-bridge";
+import type { SelectionContext, SelectionEvent } from "@/hooks/use-reader-bridge";
 import { radius, spacing, ui, useColors, withOpacity } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_COLOR_HEX } from "@readany/core/types";
@@ -57,7 +57,7 @@ interface Props {
   onSpeak?: (text: string, cfi: string) => void;
   onNote?: (text: string, cfi: string) => void;
   onTranslate?: (text: string) => void;
-  onDefine?: (text: string, baseForms: string[]) => void;
+  onDefine?: (text: string, baseForms: string[], context?: SelectionContext) => void;
   onRemoveHighlight?: () => void;
   existingHighlight?: { id: string; color: HighlightColor; note?: string } | null;
   defaultColor?: HighlightColor;
@@ -264,7 +264,7 @@ export function SelectionPopover({
           {onDefine && (
             <TouchableOpacity
               style={s.iconBtn}
-              onPress={() => onDefine(selection.text, selection.baseForms ?? [])}
+              onPress={() => onDefine(selection.text, selection.baseForms ?? [], selection.context)}
             >
               <BookOpenIcon size={18} color={colors.foreground} />
             </TouchableOpacity>
