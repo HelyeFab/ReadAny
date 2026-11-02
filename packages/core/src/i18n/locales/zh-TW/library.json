@@ -160,7 +160,10 @@
     "gridView": "格狀檢視",
     "menu": "書庫選項",
     "folderView": "資料夾",
-    "layout": "版面"
+    "layout": "版面",
+    "identifyBooks": "識別書籍",
+    "identifyBooksDone": "已識別 {{count}} 本，{{failed}} 本無法讀取。其中 {{duplicates}} 本與書架上已有的書重複。",
+    "identifyBooksProgress": "正在識別… {{done}}/{{total}} — 點按停止"
   },
   "home": {
     "library": "書庫",

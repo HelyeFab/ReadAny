@@ -32,8 +32,15 @@ import {
 } from "@/components/ui/Icon";
 import { SyncButton } from "@/components/ui/SyncButton";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
+import { hashBookFile } from "@/lib/file-hash";
 import { cafeIllustration } from "@/lib/library/cafe-illustration";
-import { openMobileBook } from "@/lib/library/open-mobile-book";
+import {
+  type HashBackfillProgress,
+  backfillFileHashes,
+  booksMissingFileHash,
+  existingFileHashes,
+} from "@/lib/library/file-hash-backfill";
+import { isLikelyRelativeAppPath, openMobileBook } from "@/lib/library/open-mobile-book";
 import { backfillPdfCovers, coverlessPdfs } from "@/lib/library/pdf-cover-backfill";
 import { setCallback, setExtractorRef } from "@/lib/rag/auto-vectorize-service";
 import { startFileServer } from "@/lib/reader/local-file-server";
@@ -1014,6 +1021,69 @@ export function LibraryScreen() {
     }
   }, [coverJob, pdfsNeedingCovers, updateBook, loadBooks, t]);
 
+  const [hashJob, setHashJob] = useState<HashBackfillProgress | null>(null);
+  const hashCancelRef = useRef<{ cancelled: boolean }>({ cancelled: false });
+
+  const booksNeedingHash = useMemo(() => booksMissingFileHash(books), [books]);
+
+  /**
+   * Give the older books a content hash.
+   *
+   * Import de-duplication matches on SHA-256 and nothing else, so a library
+   * imported before hashing existed matches nothing: re-importing the same
+   * folder would add a second copy of all 374 books rather than skipping them.
+   * Run once, and the next import can tell what it already has.
+   *
+   * Started by hand, like the covers: it reads every byte of every book on the
+   * device, which is the user's battery to spend, not ours. The hashes it
+   * writes sync, so the other devices get them without doing the reading.
+   */
+  const handleBackfillHashes = useCallback(async () => {
+    if (hashJob || booksNeedingHash.length === 0) return;
+
+    hashCancelRef.current = { cancelled: false };
+    setHashJob({ done: 0, total: booksNeedingHash.length, failed: 0 });
+    try {
+      const platform = getPlatformService();
+      const appData = await platform.getAppDataDir();
+      const LegacyFileSystem = await import("expo-file-system/legacy");
+      const absolute = (filePath: string) =>
+        isLikelyRelativeAppPath(filePath) ? platform.joinPath(appData, filePath) : filePath;
+
+      const result = await backfillFileHashes({
+        books: booksNeedingHash,
+        knownHashes: existingFileHashes(books),
+        statFile: async (filePath) => {
+          const info = await LegacyFileSystem.getInfoAsync(await absolute(filePath));
+          return info.exists && !info.isDirectory ? (info.size ?? 0) : 0;
+        },
+        hashFile: async (filePath, size, onProgress) =>
+          hashBookFile(await absolute(filePath), size, onProgress),
+        saveFileHash: async (bookId, fileHash) => {
+          await updateBook(bookId, { fileHash } as Partial<Book>);
+        },
+        onProgress: setHashJob,
+        signal: hashCancelRef.current,
+      });
+
+      await loadBooks();
+      Alert.alert(
+        t("library.identifyBooks", "Identify books"),
+        t("library.identifyBooksDone", {
+          count: result.done,
+          failed: result.failed,
+          duplicates: result.duplicates,
+          defaultValue:
+            "{{count}} books identified, {{failed}} could not be read. {{duplicates}} are a second copy of a book already here.",
+        }),
+      );
+    } catch (e) {
+      Alert.alert(t("common.error", "错误"), e instanceof Error ? e.message : String(e));
+    } finally {
+      setHashJob(null);
+    }
+  }, [hashJob, booksNeedingHash, books, updateBook, loadBooks, t]);
+
   const shelfScopeLabel = useMemo(() => {
     if (shelfMode === "all" || shelfGroupIds.length === 0) {
       return t("library.shelfEverything", "全部书籍");
@@ -1642,6 +1712,32 @@ export function LibraryScreen() {
               })}
             </Text>
           ) : null}
+          {hashJob ? (
+            // Reading 1.3 GB of books takes long enough that being stuck with it
+            // is a real prospect, so the progress line is also the way out.
+            <TouchableOpacity
+              onPress={() => {
+                hashCancelRef.current.cancelled = true;
+              }}
+              activeOpacity={0.6}
+            >
+              <Text style={s.shelfScopeCount}>
+                {t("library.identifyBooksProgress", {
+                  done: hashJob.done,
+                  total: hashJob.total,
+                  defaultValue: "Identifying… {{done}}/{{total}} — tap to stop",
+                })}
+              </Text>
+              {hashJob.current ? (
+                <Text style={s.shelfScopeCount} numberOfLines={1}>
+                  {hashJob.current}
+                  {hashJob.currentFraction !== undefined
+                    ? ` · ${Math.round(hashJob.currentFraction * 100)}%`
+                    : ""}
+                </Text>
+              ) : null}
+            </TouchableOpacity>
+          ) : null}
           {isShelfView && isLoaded && hasBooks ? (
             <View style={s.shelfScopeBar}>
               <TouchableOpacity
@@ -1783,6 +1879,8 @@ export function LibraryScreen() {
         viewMode={activeGroupId ? (isListView ? "list" : "grid") : viewMode}
         coverlessPdfCount={pdfsNeedingCovers.length}
         onGenerateCovers={handleGenerateCovers}
+        unidentifiedBookCount={booksNeedingHash.length}
+        onIdentifyBooks={handleBackfillHashes}
         canCreateFolder={isGroupView}
         onClose={() => setShowLibraryMenu(false)}
         onSearch={() => (showSearch ? closeSearch() : openSearch())}

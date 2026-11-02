@@ -243,6 +243,7 @@ export function ReaderScreen({ route, navigation }: Props) {
   const [webViewReady, setWebViewReady] = useState(false);
   const [translationReady, setTranslationReady] = useState(false);
   const [readerHtmlUri, setReaderHtmlUri] = useState<string | null>(null);
+  const [webViewGeneration, setWebViewGeneration] = useState(0);
   const [currentCfi, setCurrentCfi] = useState("");
   const [selection, setSelection] = useState<SelectionEvent | null>(null);
   const [definition, setDefinition] = useState<{ word: string; baseForms: string[] } | null>(null);
@@ -532,16 +533,47 @@ export function ReaderScreen({ route, navigation }: Props) {
     if (assetLoadedRef.current) return;
     assetLoadedRef.current = true;
 
+    /**
+     * Resolve the reader HTML, with a deadline and retries.
+     *
+     * `downloadAsync()` unpacks a 2.4 MB asset out of the APK. When it does not
+     * come back — seen on the Honor — the screen is left blank with a spinner
+     * and no way out: the guard above is latched before the await, so nothing
+     * retries, and because it never rejected there is no error to show either.
+     * A blank reader with an idle CPU is the worst failure this screen has, and
+     * it looked exactly like a slow book.
+     */
+    const ATTEMPT_TIMEOUT_MS = 8000;
+    const MAX_ATTEMPTS = 3;
+
     const loadAsset = async () => {
-      try {
-        const asset = READER_HTML_ASSET;
-        await asset.downloadAsync();
-        const uri = asset.localUri || asset.uri;
-        setReaderHtmlUri(uri);
-      } catch (err) {
-        console.error("[ReaderScreen] Failed to load reader.html asset:", err);
-        setError("Failed to load reader");
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          const asset = READER_HTML_ASSET;
+          await Promise.race([
+            asset.downloadAsync(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("timed out")), ATTEMPT_TIMEOUT_MS),
+            ),
+          ]);
+          const uri = asset.localUri || asset.uri;
+          if (!uri) throw new Error("asset resolved to no uri");
+          setReaderHtmlUri(uri);
+          return;
+        } catch (err) {
+          console.warn(`[ReaderScreen] reader.html attempt ${attempt} failed:`, err);
+          // A timed-out unpack may still have produced a usable uri.
+          const fallback = READER_HTML_ASSET.localUri || READER_HTML_ASSET.uri;
+          if (fallback) {
+            setReaderHtmlUri(fallback);
+            return;
+          }
+        }
       }
+      console.error("[ReaderScreen] Failed to load reader.html asset");
+      setError("Failed to load reader");
+      // Let a later mount try again rather than latching the failure forever.
+      assetLoadedRef.current = false;
     };
     loadAsset();
   }, []);
@@ -561,30 +593,77 @@ export function ReaderScreen({ route, navigation }: Props) {
     return server ? [`${server.replace(/\/$/, "")}/dicts/ja`, direct] : [direct, direct];
   }, []);
 
+  /** Slide the toolbars to `toValue` and leave them there. */
+  const animateToolbar = useCallback(
+    (toValue: number) => {
+      Animated.timing(toolbarAnim, {
+        toValue,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    },
+    [toolbarAnim],
+  );
+
+  const hideControls = useCallback(() => {
+    if (controlsTimer.current) {
+      clearTimeout(controlsTimer.current);
+      controlsTimer.current = null;
+    }
+    setShowControls(false);
+    animateToolbar(TOOLBAR_HIDE_OFFSET);
+  }, [animateToolbar]);
+
+  /**
+   * Restart the countdown to hiding the controls.
+   *
+   * The timer used to be set once, when the controls opened, and never touched
+   * again — so the four seconds ran down while they were being used. On e-ink
+   * that is not long: nothing acknowledges a tap for a few hundred
+   * milliseconds, and the dock scrolls sideways, so reaching Settings past its
+   * right edge meant a swipe AND a tap inside one countdown that had already
+   * started. Every touch inside the controls now buys another four seconds, and
+   * they still go away on their own once the touching stops.
+   */
+  const keepControlsAlive = useCallback(() => {
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    controlsTimer.current = setTimeout(hideControls, CONTROLS_TIMEOUT);
+  }, [hideControls]);
+
+  /**
+   * Watches touches without taking them. The capture phase runs before the
+   * children, and returning false declines to become the responder, so the
+   * button or the scroll view underneath handles the gesture exactly as before.
+   *
+   * Hooked to both the start and the move phases: start alone would let a drag
+   * of the progress slider outlive its own countdown, since one touch that
+   * lasts six seconds only ever starts once.
+   */
+  const keepControlsAliveOnTouch = useCallback(() => {
+    keepControlsAlive();
+    return false;
+  }, [keepControlsAlive]);
+
   // Controls toggle — declared before bridge so onTap can reference it without TS error
   const toggleControls = useCallback(() => {
-    const willShow = !showControls;
-    setShowControls(willShow);
-    Animated.timing(toolbarAnim, {
-      toValue: willShow ? 0 : TOOLBAR_HIDE_OFFSET,
-      duration: 180,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-
-    if (willShow) {
-      if (controlsTimer.current) clearTimeout(controlsTimer.current);
-      controlsTimer.current = setTimeout(() => {
-        setShowControls(false);
-        Animated.timing(toolbarAnim, {
-          toValue: TOOLBAR_HIDE_OFFSET,
-          duration: 180,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }).start();
-      }, CONTROLS_TIMEOUT);
+    if (showControls) {
+      hideControls();
+      return;
     }
-  }, [showControls, toolbarAnim]);
+    setShowControls(true);
+    animateToolbar(0);
+    keepControlsAlive();
+  }, [showControls, hideControls, animateToolbar, keepControlsAlive]);
+
+  // A pending hide must not outlive the screen.
+  useEffect(
+    () => () => {
+      if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    },
+    [],
+  );
+
 
   // Reader bridge
   const bridge = useReaderBridge({
@@ -1162,7 +1241,7 @@ export function ReaderScreen({ route, navigation }: Props) {
         const platform = getPlatformService();
         const appData = await platform.getAppDataDir();
         const absPath = await platform.joinPath(appData, book.filePath);
-        const lastLocation = book.currentCfi || undefined;
+        const lastLocation = lastCfiRef.current || book.currentCfi || undefined;
         const fileName = book.filePath.split("/").pop() || "book.epub";
         const mimeType = BOOK_FORMAT_MIME_TYPES[book.format] || "application/octet-stream";
 
@@ -1520,8 +1599,10 @@ export function ReaderScreen({ route, navigation }: Props) {
         {/* WebView with foliate-js */}
         <View style={{ flex: 1 }}>
           <WebView
+            key={webViewGeneration}
             ref={bridge.webViewRef}
             source={{ uri: readerHtmlUri }}
+            applicationNameForUserAgent="ReadAnyReader"
             style={[
               s.webview,
               {
@@ -1531,6 +1612,23 @@ export function ReaderScreen({ route, navigation }: Props) {
             ]}
             pointerEvents={isPanelOpen ? "none" : "auto"}
             onMessage={bridge.handleMessage}
+            /*
+             * No `onLoadStart={() => setWebViewReady(false)}` here.
+             *
+             * It looks harmless and it is a race: onLoadStart is a NATIVE
+             * callback while the page's ready signal comes over onMessage, so
+             * they can arrive in either order. When onLoadStart lands after
+             * ready, readiness is cleared and nothing ever sets it again — the
+             * page has already announced itself and will not do so twice — so
+             * the effect that opens the book never runs and the reader sits on
+             * its spinner forever. Intermittent by nature, which is why it read
+             * as "the book takes an awful amount of time to load" and then as
+             * an unresponsive page: with no content document there are no tap
+             * listeners, so nothing turns.
+             *
+             * The remount path does not need it either: onRenderProcessGone
+             * already clears readiness before bumping the generation.
+             */
             onError={(e) => {
               console.error("[ReaderScreen] WebView error:", e.nativeEvent);
             }}
@@ -1539,6 +1637,12 @@ export function ReaderScreen({ route, navigation }: Props) {
             }}
             onContentProcessDidTerminate={() => {
               console.warn("[ReaderScreen] WebView content process terminated");
+            }}
+            onRenderProcessGone={() => {
+              progressTrackingGuardUntilRef.current = Date.now() + 3000;
+              setWebViewReady(false);
+              setLoading(true);
+              setWebViewGeneration((generation) => generation + 1);
             }}
             javaScriptEnabled
             domStorageEnabled
@@ -1582,6 +1686,8 @@ export function ReaderScreen({ route, navigation }: Props) {
       {!showSearch && (
         <Animated.View
           pointerEvents={showControls ? "auto" : "none"}
+          onStartShouldSetResponderCapture={keepControlsAliveOnTouch}
+          onMoveShouldSetResponderCapture={keepControlsAliveOnTouch}
           style={[
             s.topToolbar,
             {
@@ -1803,6 +1909,8 @@ export function ReaderScreen({ route, navigation }: Props) {
       {!showSearch && (
         <Animated.View
           pointerEvents={showControls ? "auto" : "none"}
+          onStartShouldSetResponderCapture={keepControlsAliveOnTouch}
+          onMoveShouldSetResponderCapture={keepControlsAliveOnTouch}
           style={[
             s.floatingTools,
             {
@@ -1888,6 +1996,8 @@ export function ReaderScreen({ route, navigation }: Props) {
       {!showSearch && (
         <Animated.View
           pointerEvents={showControls ? "auto" : "none"}
+          onStartShouldSetResponderCapture={keepControlsAliveOnTouch}
+          onMoveShouldSetResponderCapture={keepControlsAliveOnTouch}
           style={[
             s.bottomToolbar,
             {

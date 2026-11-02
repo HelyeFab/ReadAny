@@ -160,7 +160,10 @@
     "gridView": "그리드 보기",
     "menu": "서재 옵션",
     "folderView": "폴더",
-    "layout": "레이아웃"
+    "layout": "레이아웃",
+    "identifyBooks": "책 식별",
+    "identifyBooksDone": "{{count}}권을 식별했습니다. {{failed}}권은 읽을 수 없었습니다. {{duplicates}}권은 이미 있는 책의 사본입니다.",
+    "identifyBooksProgress": "식별 중… {{done}}/{{total}} — 탭하여 중지"
   },
   "home": {
     "library": "서재",

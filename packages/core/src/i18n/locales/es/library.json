@@ -160,7 +160,10 @@
     "gridView": "Vista de cuadrícula",
     "menu": "Opciones de la biblioteca",
     "folderView": "Carpetas",
-    "layout": "Diseño"
+    "layout": "Diseño",
+    "identifyBooks": "Identificar libros",
+    "identifyBooksDone": "{{count}} libros identificados, {{failed}} no se pudieron leer. {{duplicates}} son una segunda copia de un libro que ya está aquí.",
+    "identifyBooksProgress": "Identificando… {{done}}/{{total}} — toca para detener"
   },
   "home": {
     "library": "Biblioteca",

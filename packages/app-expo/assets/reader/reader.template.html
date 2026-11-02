@@ -21,15 +21,26 @@
      * highlights did not.
      */
     :root {
-      --overlayer-highlight-opacity: 1;
       /*
-       * A highlight drawn ON TOP of the text mixes with it: black under a half
-       * opaque colour comes out brown, which is what "the text goes brown"
-       * was. Multiply is what a highlighter actually does — white paper times
-       * the colour is the colour, black text times the colour is still black —
-       * so the paper takes the ink and the letters stay as dark as they were.
+       * ⚠️ These two were set to `1` and `multiply` on 2026-09-14, and the
+       * result was only ever seen on ONE engine. Overlayer wrote them onto the
+       * <g> as `var(...)` expressions, which Chromium 151 does not resolve and
+       * 153 does — so the e-ink reader silently kept the .3 fallback while the
+       * phone got full-strength multiply. The look approved on the Boox was
+       * therefore the fluorescent COLOURS at .3, never the blend mode; on the
+       * phone the same build turned a highlighted section into a near-black
+       * slab (measured #370715 with #0d0105 text — unreadable).
+       *
+       * Multiply also has to blend across an iframe boundary here: the overlay
+       * SVG is a sibling of the content iframe, not inside it, so what it
+       * blends with depends on how the engine composites that iframe. That is
+       * not a thing to rely on.
+       *
+       * So: the value is now resolved concretely by `cssVar` in overlayer.js,
+       * and it is the strength that has actually been read on for a day.
        */
-      --overlayer-highlight-blend-mode: multiply;
+      --overlayer-highlight-opacity: .3;
+      --overlayer-highlight-blend-mode: normal;
     }
 
     * {
@@ -203,6 +214,22 @@
     }
     window.__READANY_READER_BUILD_ID = 'android-local-server-cors';
     postToRN('debug', { message: '[ReaderBuild] ' + window.__READANY_READER_BUILD_ID });
+
+    // Report anything thrown in here to the host.
+    //
+    // Worth keeping: a throw early in this script leaves the reader on its
+    // spinner with NOTHING in the log after the build stamp, which is
+    // indistinguishable from a slow book and sent a whole debugging session
+    // down the wrong path. One line in logcat would have named it immediately.
+    window.addEventListener('error', function (e) {
+      postToRN('debug', {
+        message: '[FatalJS] ' + (e && e.message) + ' @ ' + (e && e.filename) + ':' + (e && e.lineno) + ':' + (e && e.colno),
+      });
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      var r = e && e.reason;
+      postToRN('debug', { message: '[FatalRejection] ' + (r && (r.stack || r.message) || r) });
+    });
     Promise.withResolvers ??= function () {
       let resolve;
       let reject;
@@ -242,6 +269,7 @@
     let readerElement = null;
     let bookTextMetricsJobId = 0;
     let bookTextMetricsTimer = null;
+    let measuredBookTextMetrics = null;
     let bookmarkPullGestureActive = false;
     let pullBookmarkResetTimer = null;
     let refreshAnnotationsTimer = null;
@@ -753,13 +781,25 @@
       }
     }
 
+    function readerCssVar(name, fallback) {
+      try {
+        var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return v || fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
+
     function drawTTSHighlight(rects, options) {
       const { color = 'rgba(96, 165, 250, 0.35)', padding = 1, radius = 4, radiusPadding = 2 } = options || {};
       const svgNS = 'http://www.w3.org/2000/svg';
       const g = document.createElementNS(svgNS, 'g');
       g.setAttribute('fill', color);
-      g.style.opacity = 'var(--overlayer-highlight-opacity, 1)';
-      g.style.mixBlendMode = 'var(--overlayer-highlight-blend-mode, normal)';
+      // Same engine trap as Overlayer.highlight: a `var()` written onto the
+      // element resolves on Chromium 153 and silently falls back on 151, so the
+      // read-aloud highlight has to resolve to a concrete value too.
+      g.style.opacity = readerCssVar('--overlayer-highlight-opacity', '1');
+      g.style.mixBlendMode = readerCssVar('--overlayer-highlight-blend-mode', 'normal');
 
       for (let index = 0; index < rects.length; index++) {
         const { left, top, width, height } = rects[index];
@@ -846,15 +886,16 @@
           console.warn('[WebView] Failed to measure section characters:', section && section.href, error);
         }
 
-        if (index > 0 && index % 3 === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 0));
-        }
+        // Measuring an entire book creates every section document. Give the
+        // renderer time between sections so opening and page taps stay quick.
+        await new Promise((resolve) => setTimeout(resolve, 120));
       }
 
       return totalCharacters;
     }
 
     function scheduleBookTextMetrics(book) {
+      if (!book || measuredBookTextMetrics?.book === book) return;
       if (bookTextMetricsTimer) {
         clearTimeout(bookTextMetricsTimer);
         bookTextMetricsTimer = null;
@@ -866,9 +907,10 @@
         const totalCharacters = await computeBookTextMetrics(book, jobId);
         if (jobId !== bookTextMetricsJobId || currentBook !== book) return;
         if (totalCharacters > 0) {
+          measuredBookTextMetrics = { book, totalCharacters };
           postToRN('bookTextMetrics', { totalCharacters });
         }
-      }, 900);
+      }, 8000);
     }
 
     async function followTTSLocation(cfi) {
@@ -1615,6 +1657,10 @@
         var snippetTimer = null;
         el.addEventListener('relocate', (e) => {
           markLoaded();
+          // Any page movement cancels a background book scan. Restart after
+          // the reader has been still for a while; progress has a fraction
+          // fallback until the character count is ready.
+          scheduleBookTextMetrics(currentBook);
           hideFootnoteTip();
           const detail = e.detail;
           const previousSectionIndex = currentSectionIndex;
