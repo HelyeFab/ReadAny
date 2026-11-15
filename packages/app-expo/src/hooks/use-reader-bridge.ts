@@ -81,6 +81,7 @@ export interface ReaderBridgeCallbacks {
   onRelocate?: (detail: RelocateEvent) => void;
   onBookTextMetrics?: (detail: { totalCharacters: number }) => void;
   onTocReady?: (items: TOCItem[]) => void;
+  onDictionaryLookup?: (detail: Pick<SelectionEvent, "text" | "baseForms" | "context">) => void;
   onSelection?: (detail: SelectionEvent) => void;
   onSelectionCleared?: () => void;
   onTap?: () => void;
@@ -102,6 +103,7 @@ export interface ReaderBridgeCallbacks {
     position: { x: number; y: number; selectionTop: number; selectionBottom: number };
   }) => void;
   onPageSnippet?: (text: string) => void;
+  onBookmarkPreviews?: (labels: Record<string, string>) => void;
   onBookmarkSnippet?: (text: string) => void;
   onToggleBookmark?: () => void;
   onBookmarkPull?: (detail: BookmarkPullEvent) => void;
@@ -346,6 +348,10 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
     },
     [inject],
   );
+
+  const requestBookmarkPreviews = useCallback((bookmarks: Array<{ id: string; cfi: string; label?: string }>) => {
+    inject(`window.requestBookmarkPreviews(${JSON.stringify(bookmarks)})`);
+  }, [inject]);
 
   const requestPageSnippet = useCallback(() => {
     inject("window.requestPageSnippet()");
@@ -766,6 +772,9 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
           case "toc":
             cb.onTocReady?.(msg.items || []);
             break;
+          case "dictionaryLookup":
+            cb.onDictionaryLookup?.(msg);
+            break;
           case "selection":
             cb.onSelection?.(msg);
             break;
@@ -807,6 +816,9 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
             break;
           case "pageSnippet":
             cb.onPageSnippet?.(msg.textSnippet || "");
+            break;
+          case "bookmarkPreviews":
+            cb.onBookmarkPreviews?.(msg.labels || {});
             break;
           case "bookmarkSnippet":
             cb.onBookmarkSnippet?.(msg.textSnippet || "");
@@ -997,6 +1009,7 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       setNavigationLocked,
       setBookmarkPullState,
       requestPageSnippet,
+      requestBookmarkPreviews,
       getVisibleText,
       getVisibleTTSSegments,
       getTTSSegmentContext,
@@ -1034,6 +1047,7 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       setNavigationLocked,
       setBookmarkPullState,
       requestPageSnippet,
+      requestBookmarkPreviews,
       getVisibleText,
       getVisibleTTSSegments,
       getTTSSegmentContext,

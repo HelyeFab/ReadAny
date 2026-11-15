@@ -361,6 +361,7 @@
 
     function applyRendererFlowMode(renderer) {
       if (!renderer || !view) return;
+      renderer.toggleAttribute('no-swipe', currentViewMode !== 'scroll');
 
       if (view.isFixedLayout) {
         renderer.removeAttribute('no-continuous-scroll');
@@ -1607,7 +1608,7 @@
           syncOwnSelectionMode(doc);
           attachPenSelection(doc);
           attachTapListener(doc);
-          attachPullBookmarkListener(doc);
+          attachVerticalPageSwipeListener(doc);
           attachSelectionListener(doc);
           attachNoteLongPress(doc);
           refreshUserAnnotations(100);
@@ -2682,6 +2683,65 @@ html, body {
       return !!anchor.querySelector('img, picture, svg, image, canvas');
     }
 
+    // A caret hit alone can snap to nearby text even in a margin. Require the
+    // tap to land inside the actual word before taking it away from navigation.
+    function dictionaryWordAtPoint(doc, x, y) {
+      const caret = doc.caretRangeFromPoint ? doc.caretRangeFromPoint(x, y) : null;
+      if (!caret || caret.startContainer.nodeType !== 3) return null;
+      const node = caret.startContainer;
+      if (node.parentElement.closest('rt, rp, script, style')) return null;
+      // Formatting (including bionic reading) can split one word into several
+      // text nodes. Segment the containing paragraph, then map back to DOM points.
+      const block = node.parentElement.closest('p, li, div, h1, h2, h3, h4, h5, h6, blockquote, td') || doc.body;
+      const walker = doc.createTreeWalker(block, 4);
+      const runs = [];
+      let text = '';
+      let offset = -1;
+      for (let current = walker.nextNode(); current; current = walker.nextNode()) {
+        if (current.parentElement.closest('rt, rp, script, style')) continue;
+        if (current === node) offset = text.length + caret.startOffset;
+        runs.push({ node: current, start: text.length, end: text.length + current.length });
+        text += current.textContent;
+      }
+      if (offset < 0) return null;
+      const isJapanese = /[\u3040-\u30ff]/.test(text) || /^ja\b/i.test(doc.documentElement.lang);
+      let segments;
+      if (isJapanese && _rubyJaTokenizer) {
+        segments = [];
+        for (const token of _rubyJaTokenizer.tokenize(text)) {
+          const part = { index: token.word_position - 1, segment: token.surface_form };
+          const previous = segments[segments.length - 1];
+          // Attach grammatical endings and honorific affixes to their word.
+          if (previous && previous.index + previous.segment.length === part.index &&
+              (token.pos === '助動詞' || token.pos_detail_1 === '接尾' || previous.prefix)) {
+            previous.segment += part.segment;
+            previous.prefix = token.pos === '接頭詞';
+          } else if (/[\p{L}\p{N}]/u.test(part.segment)) {
+            segments.push({ ...part, prefix: token.pos === '接頭詞' });
+          }
+        }
+      } else {
+        segments = typeof Intl.Segmenter === 'function'
+          ? Array.from(new Intl.Segmenter(isJapanese ? 'ja' : doc.documentElement.lang || undefined,
+              { granularity: 'word' }).segment(text)).filter(part => part.isWordLike)
+          : Array.from(text.matchAll(/[\p{L}\p{M}\p{N}]+(?:['’][\p{L}\p{M}]+)*/gu),
+              match => ({ index: match.index, segment: match[0] }));
+      }
+      for (const part of segments) {
+        if (offset < part.index || offset > part.index + part.segment.length) continue;
+        const range = doc.createRange();
+        const start = runs.find(run => run.end > part.index);
+        const endOffset = part.index + part.segment.length;
+        const end = runs.find(run => run.end >= endOffset);
+        if (!start || !end) continue;
+        range.setStart(start.node, part.index - start.start);
+        range.setEnd(end.node, endOffset - end.start);
+        if (Array.from(range.getClientRects()).some(rect =>
+          x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom)) return range;
+      }
+      return null;
+    }
+
     // ─── Tap detection ───
     function attachTapListener(doc) {
       if (doc.__readany_tap) return;
@@ -2790,194 +2850,72 @@ html, body {
         const sel = doc.getSelection();
         if (sel && !sel.isCollapsed && sel.toString().trim().length > 0) return;
 
-        let viewW;
-        try { viewW = window.top.innerWidth || window.innerWidth; } catch { viewW = window.innerWidth; }
-        const iframe = doc.defaultView && doc.defaultView.frameElement;
-        const iframeLeft = iframe ? iframe.getBoundingClientRect().left : 0;
-        const viewportX = e.changedTouches[0].clientX + iframeLeft;
-        const normalizedX = ((viewportX % viewW) + viewW) % viewW;
-        e.preventDefault();
-        e.stopPropagation();
-
-        const centerStart = viewW * 0.375;
-        const centerEnd = viewW * 0.625;
-
-        if (normalizedX >= centerStart && normalizedX <= centerEnd) {
+        const wordRange = dictionaryWordAtPoint(doc, touch.clientX, touch.clientY);
+        if (wordRange) {
           e.preventDefault();
           e.stopPropagation();
-          postToRN('tap', {});
+          const text = getRangeTextWithoutRuby(wordRange, wordRange.toString());
+          postToRN('dictionaryLookup', {
+            text,
+            baseForms: japaneseBaseForms(text),
+            context: getSelectionContext(wordRange),
+          });
           return;
         }
 
-        // In scroll mode, only toggle toolbar (center tap) — no page navigation
-        if (currentViewMode === 'scroll') {
-          postToRN('tap', {});
-          return;
-        }
-
-        armTapNavigationLock();
+        // Blank space toggles controls; page turns belong to vertical swipes.
         e.preventDefault();
         e.stopPropagation();
-
-        if (normalizedX < centerStart) {
-          if (view) goPrevByMode(undefined, 'tap:left');
-        } else {
-          if (view) goNextByMode(undefined, 'tap:right');
-        }
+        postToRN('tap', {});
       }, { passive: false, capture: true });
     }
 
-    function attachPullBookmarkListener(doc) {
-      if (doc.__readany_pullBookmark) return;
-      doc.__readany_pullBookmark = true;
-
-      const ACTIVATE_DISTANCE = 10;
-      const INTENT_THRESHOLD = 14;
-      const VERTICAL_INTENT_RATIO = 1.35;
-      const HORIZONTAL_CANCEL_RATIO = 1.05;
-      const PULL_THRESHOLD = 60;
-      const MAX_PULL_DISTANCE = 92;
-      const COOLDOWN_MS = 700;
-      let pullState = null;
-      let lastTriggeredAt = 0;
-
+    function attachVerticalPageSwipeListener(doc) {
+      if (doc.__readany_verticalPageSwipe) return;
+      doc.__readany_verticalPageSwipe = true;
+      let state = null;
       doc.addEventListener('touchstart', (e) => {
-        if (!view || e.touches.length !== 1 || currentViewMode === 'scroll') {
-          pullState = null;
-          return;
-        }
-
+        state = null;
+        if (!view || currentViewMode === 'scroll' || e.touches.length !== 1 ||
+            doc.__readany_selection_interaction || tapNavigationInFlight) return;
         const target = e.target;
-        if (target && target.closest && target.closest('a[href], audio, video, button, input, select, textarea')) {
-          pullState = null;
-          return;
-        }
-
-        const sel = doc.getSelection();
-        if (sel && !sel.isCollapsed && sel.toString().trim().length > 0) {
-          pullState = null;
-          return;
-        }
-
+        if (target && target.closest && target.closest('a[href], audio, video, button, input, select, textarea')) return;
+        const selection = doc.getSelection();
+        if (selection && !selection.isCollapsed) return;
         const touch = e.touches[0];
-        pullState = {
-          startX: touch.clientX,
-          startY: touch.clientY,
-          active: false,
-          armed: false,
-          cancelled: false,
-        };
+        state = { x: touch.clientX, y: touch.clientY, startedAt: Date.now() };
       }, { passive: true, capture: true });
-
       doc.addEventListener('touchmove', (e) => {
-        if (!pullState || e.touches.length !== 1) return;
-
-        // ⚠️ Stand down once a selection has taken the gesture.
-        //
-        // This used to happen by itself: the check at touchstart bailed when a
-        // non-collapsed selection existed, and the WebView's own selection
-        // always did. Paginated mode no longer has one — selection is ours and
-        // user-select is none — so nothing was left to keep this out, and a
-        // downward sweep to select near the top of a page pulled the page down
-        // underneath it. That is the shake.
-        //
-        // Checked on move rather than at touchstart because a selection arms
-        // 350ms in, by which time this gesture has already started.
-        if (doc.__readany_selection_interaction) {
-          if (!pullState.cancelled) {
-            pullState.cancelled = true;
-            resetPullBookmarkUI(false);
-          }
+        if (!state) return;
+        if (e.touches.length !== 1 || currentViewMode === 'scroll' || doc.__readany_selection_interaction) {
+          state = null;
           return;
         }
-
         const touch = e.touches[0];
-        const deltaX = touch.clientX - pullState.startX;
-        const deltaY = touch.clientY - pullState.startY;
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-
-        if (pullState.cancelled) return;
-
-        if (!pullState.active) {
-          if (absX < INTENT_THRESHOLD && absY < INTENT_THRESHOLD) return;
-
-          if (
-            absX >= Math.max(INTENT_THRESHOLD, absY * HORIZONTAL_CANCEL_RATIO) ||
-            deltaY < -INTENT_THRESHOLD / 2
-          ) {
-            pullState.cancelled = true;
-            resetPullBookmarkUI(false);
-            return;
-          }
-
-          if (deltaY < ACTIVATE_DISTANCE) return;
-          if (absY < Math.max(INTENT_THRESHOLD, absX * VERTICAL_INTENT_RATIO)) return;
-
-          pullState.active = true;
-          // Lock paginator's touch-driven page turns while we own the gesture,
-          // so a slightly diagonal pull-down can't drift the page horizontally.
-          try {
-            if (typeof window.setNavigationLocked === 'function') {
-              window.setNavigationLocked(true);
-            }
-          } catch (err) { /* renderer not ready yet — no-op */ }
-        }
-
-        if (deltaY <= 0) {
-          resetPullBookmarkUI(false);
-          return;
-        }
-
-        const armed = deltaY >= PULL_THRESHOLD;
-        pullState.armed = armed;
+        const dx = Math.abs(touch.clientX - state.x);
+        const dy = Math.abs(touch.clientY - state.y);
+        if (dy > 12 && dy > dx * 1.5) e.preventDefault();
+      }, { passive: false, capture: true });
+      doc.addEventListener('touchend', (e) => {
+        const start = state;
+        state = null;
+        if (!start || currentViewMode === 'scroll' || e.changedTouches.length !== 1 ||
+            doc.__readany_selection_interaction || doc.__readany_selection_tap_guard_until > Date.now() ||
+            tapNavigationInFlight || Date.now() - start.startedAt > 900) return;
+        const touch = e.changedTouches[0];
+        const dx = touch.clientX - start.x;
+        const dy = touch.clientY - start.y;
+        if (Math.abs(dy) < 60 || Math.abs(dy) < Math.abs(dx) * 1.5) return;
         e.preventDefault();
         e.stopPropagation();
-        updatePullBookmarkUI(Math.min(MAX_PULL_DISTANCE, deltaY), armed);
+        hideFootnoteTip();
+        armTapNavigationLock();
+        if (dy < 0) goNextByMode(undefined, 'swipe:up');
+        else goPrevByMode(undefined, 'swipe:down');
       }, { passive: false, capture: true });
-
-      doc.addEventListener('touchend', (e) => {
-        const state = pullState;
-        pullState = null;
-        try {
-          if (typeof window.setNavigationLocked === 'function') {
-            window.setNavigationLocked(false);
-          }
-        } catch (err) { /* no-op */ }
-        if (!state) return;
-
-        if (state.active) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-
-        const shouldToggle =
-          !!state.active &&
-          !!state.armed &&
-          !state.cancelled &&
-          e.changedTouches.length === 1 &&
-          Date.now() - lastTriggeredAt >= COOLDOWN_MS;
-
-        resetPullBookmarkUI(true);
-
-        if (shouldToggle) {
-          lastTriggeredAt = Date.now();
-          postToRN('toggleBookmark', {});
-        }
-      }, { passive: false, capture: true });
-
-      doc.addEventListener('touchcancel', () => {
-        pullState = null;
-        try {
-          if (typeof window.setNavigationLocked === 'function') {
-            window.setNavigationLocked(false);
-          }
-        } catch (err) { /* no-op */ }
-        resetPullBookmarkUI(true);
-      }, { passive: true, capture: true });
+      doc.addEventListener('touchcancel', () => { state = null; }, { passive: true, capture: true });
     }
 
-    // ─── Selection detection ───
     function attachSelectionListener(doc) {
       if (doc.__readany_selection) return;
       doc.__readany_selection = true;
@@ -3610,6 +3548,7 @@ html, body {
 
         var texts = [];
         var totalLen = 0;
+        var lastBlock = null;
 
         // Check if we're in paginated mode (CSS columns)
         var isPaginated = !renderer.scrolled;
@@ -3618,7 +3557,7 @@ html, body {
 
         var walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, {
           acceptNode: function(node) {
-            if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_SKIP;
+            if (!node.nodeValue) return NodeFilter.FILTER_SKIP;
             if (isTTSFootnoteMarker(node.nodeValue)) return NodeFilter.FILTER_REJECT;
             if (shouldSkipTTSNode(node.parentElement)) return NodeFilter.FILTER_REJECT;
             return NodeFilter.FILTER_ACCEPT;
@@ -3648,12 +3587,16 @@ html, body {
           }
           
           if (isVisible) {
-            var t = normalizeTTSText(textNode.nodeValue);
-            if (t) { texts.push(t); totalLen += t.length; }
+            var block = textNode.parentElement.closest('p, li, div, h1, h2, h3, h4, blockquote');
+            if (lastBlock && block !== lastBlock) texts.push(' ');
+            var t = textNode.nodeValue;
+            texts.push(t);
+            totalLen += t.trim().length;
+            lastBlock = block;
           }
           textNode = walker.nextNode();
         }
-        var result = normalizeTTSText(texts.join(' '));
+        var result = normalizeTTSText(texts.join(''));
         return result.length > maxLen ? result.slice(0, maxLen) : result;
       } catch (e) { return ''; }
     }
@@ -4792,6 +4735,56 @@ html, body {
         view.renderer.navigationLocked = locked;
       }
     };
+    // Recover old previews by matching their non-space characters against the
+    // original EPUB. This preserves punctuation and real word boundaries rather
+    // than guessing which spaces belong inside words. Never changes a bookmark CFI.
+    function repairBookmarkPreview(label, source) {
+      if (!label || !source) return null;
+      const needle = label.replace(/\s/g, '');
+      if (needle.length < 12) return null;
+      const positions = [];
+      let compact = '';
+      for (let i = 0; i < source.length; i++) {
+        if (!/\s/.test(source[i])) { positions.push(i); compact += source[i]; }
+      }
+      const at = compact.indexOf(needle);
+      if (at < 0 || compact.indexOf(needle, at + 1) >= 0) return null;
+      const original = normalizeTTSText(source.slice(positions[at], positions[at + needle.length - 1] + 1));
+      return original !== label ? original : null;
+    }
+
+    window.requestBookmarkPreviews = async function(bookmarks) {
+      const labels = {};
+      const sources = new Map();
+      for (const bookmark of bookmarks || []) {
+        try {
+          const resolved = view.resolveCFI(bookmark.cfi);
+          if (!resolved || resolved.index == null) continue;
+          if (!sources.has(resolved.index)) {
+            const section = view.book.sections[resolved.index];
+            const doc = section.createDocument ? await section.createDocument() : null;
+            // Original EPUB documents have no generated bionic spans or ruby.
+            let source = '';
+            if (doc && doc.body) {
+              const walker = doc.createTreeWalker(doc.body, 4);
+              let lastBlock = null;
+              for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+                if (shouldSkipTTSNode(node.parentElement)) continue;
+                const block = node.parentElement.closest('p, li, div, h1, h2, h3, h4, blockquote');
+                if (lastBlock && lastBlock !== block) source += ' ';
+                source += node.nodeValue;
+                lastBlock = block;
+              }
+            }
+            sources.set(resolved.index, source);
+          }
+          const repaired = repairBookmarkPreview(bookmark.label, sources.get(resolved.index));
+          if (repaired) labels[bookmark.id] = repaired;
+        } catch (e) { /* Keep the saved preview if the source cannot be recovered. */ }
+      }
+      postToRN('bookmarkPreviews', { labels });
+    };
+
     window.requestPageSnippet = function () {
       var snippet = getVisibleTextSnippet(80);
       postToRN('bookmarkSnippet', { textSnippet: snippet || '' });

@@ -285,6 +285,7 @@ export function ReaderScreen({ route, navigation }: Props) {
 
   const bridgeRef = useRef<{
     requestPageSnippet: () => void;
+    requestBookmarkPreviews: (bookmarks: Array<{ id: string; cfi: string; label?: string }>) => void;
     goNext: () => void;
     search: (query: string) => void;
     clearSearch: () => void;
@@ -514,6 +515,13 @@ export function ReaderScreen({ route, navigation }: Props) {
     requestPageSnippet: () => bridgeRef.current?.requestPageSnippet(),
   });
   const { isBookmarked, bookBookmarks, handleToggleBookmark } = bookmark;
+  const [bookmarkPreviewLabels, setBookmarkPreviewLabels] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (showTOC && tocActiveTab === "bookmarks") {
+      bridgeRef.current?.requestBookmarkPreviews(bookBookmarks);
+    }
+  }, [showTOC, tocActiveTab, bookBookmarks]);
+
 
   const suppressProgressTracking = useCallback((duration = PROGRAMMATIC_NAV_GUARD_MS) => {
     progressTrackingGuardUntilRef.current = Math.max(
@@ -984,6 +992,15 @@ export function ReaderScreen({ route, navigation }: Props) {
     onTocReady: (items: TOCItem[]) => {
       setToc(items);
     },
+    onDictionaryLookup: (detail) => {
+      if (!detail.text.trim()) return;
+      setSelection(null);
+      setDefinition({
+        word: detail.text.trim(),
+        baseForms: detail.baseForms ?? [],
+        context: detail.context,
+      });
+    },
     onSelection: (detail: SelectionEvent) => {
       setSelection(detail);
       if (detail.cfi && detail.text.trim()) {
@@ -1103,6 +1120,7 @@ export function ReaderScreen({ route, navigation }: Props) {
     onPageSnippet: (_text: string) => {
       // page snippet handled by bookmark hook if pending
     },
+    onBookmarkPreviews: setBookmarkPreviewLabels,
     onBookmarkSnippet: (text: string) => {
       bookmark.onBookmarkSnippet(text);
     },
@@ -2348,7 +2366,7 @@ export function ReaderScreen({ route, navigation }: Props) {
         visible={showTOC}
         activeTab={tocActiveTab}
         toc={toc}
-        bookmarks={bookBookmarks}
+        bookmarks={bookBookmarks.map((bm) => ({ ...bm, label: bookmarkPreviewLabels[bm.id] ?? bm.label }))}
         currentChapter={currentChapter}
         onClose={() => setShowTOC(false)}
         onTabChange={setTocActiveTab}

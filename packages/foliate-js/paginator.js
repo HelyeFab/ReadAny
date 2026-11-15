@@ -2151,6 +2151,12 @@ export class Paginator extends HTMLElement {
     #onTouchStart(e) {
         this.#cancelScrollInertia()
         if (this.#navigationLocked) return
+        // The mobile reader owns paginated vertical swipes, including vertical
+        // Japanese layout which uses scrolled flow with discrete page steps.
+        if (this.hasAttribute('no-swipe') && this.hasAttribute('no-continuous-scroll')) {
+            this.#touchState = null
+            return
+        }
         const contents = this.getContents?.() ?? []
         for (const { doc } of contents) {
             const selection = doc?.getSelection?.()

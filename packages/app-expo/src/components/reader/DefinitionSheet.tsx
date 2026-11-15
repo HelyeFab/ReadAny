@@ -1,3 +1,4 @@
+import { guessLanguage } from "@/lib/dictionary/look-elsewhere";
 import type { SelectionContext } from "@/hooks/use-reader-bridge";
 import type { Definition, PhraseHit } from "@/lib/dictionary/lookup";
 import { radius, spacing, ui, useColors } from "@/styles/theme";
@@ -251,7 +252,12 @@ export function DefinitionSheet({
           </ScrollView>
         )}
 
-        <LookElsewhere key={word} text={word} language={language} />
+        <LookElsewhere
+          key={word}
+          text={word}
+          language={guessLanguage(`${context?.before ?? ""}${word}${context?.after ?? ""}`) === "ja"
+            ? "ja" : language}
+        />
       </View>
     </Modal>
   );
