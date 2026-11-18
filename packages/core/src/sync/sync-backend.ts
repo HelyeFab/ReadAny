@@ -122,7 +122,8 @@ export type SyncConfig = WebDavConfig | S3Config | LANConfig;
 
 /** Default configuration values */
 export const DEFAULT_SYNC_CONFIG = {
-  autoSync: false,
+  // On by default: reading positions are only useful across devices if they actually move.
+  autoSync: true,
   syncIntervalMins: 30,
   wifiOnly: false,
   notifyOnComplete: true,

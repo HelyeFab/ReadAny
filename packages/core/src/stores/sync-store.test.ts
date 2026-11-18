@@ -188,9 +188,11 @@ describe("useSyncStore", () => {
       ([key]) => key === "sync_config",
     );
     expect(savedConfigCall).toBeTruthy();
+    // A newly configured backend has auto-sync ON by default.
     expect(JSON.parse(savedConfigCall?.[1] as string)).toEqual({
       ...baseConfig,
       allowInsecure: true,
+      autoSync: true,
     });
     expect(mockPlatformService.kvSetItem).toHaveBeenCalledWith("sync_webdav_password", "password");
     expect(useSyncStore.getState()).toMatchObject({
@@ -199,6 +201,7 @@ describe("useSyncStore", () => {
       config: {
         ...baseConfig,
         allowInsecure: true,
+        autoSync: true,
       },
     });
   });
