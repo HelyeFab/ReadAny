@@ -22,13 +22,27 @@ export function isAuthSyncError(error: string | null | undefined): boolean {
 let lastTriggeredAt = 0;
 
 /**
+ * Reading positions must follow the user between devices even when periodic
+ * auto-sync is switched off: coming back to the app and opening a book always pull.
+ * (Wi-Fi-only and credentials checks inside syncNow still apply.)
+ */
+export function requestPositionSync(reason: string, minGapMs = 30_000): Promise<void> {
+  return requestAutoSync(reason, minGapMs, { evenIfAutoSyncOff: true });
+}
+
+/**
  * Ask for a sync now (app came to the foreground, a book was closed, ...).
  * Respects the auto-sync setting, skips while a sync runs, and is rate-limited so
  * rapid app switching does not hammer the server.
  */
-export async function requestAutoSync(reason: string, minGapMs = 60_000): Promise<void> {
+export async function requestAutoSync(
+  reason: string,
+  minGapMs = 60_000,
+  options: { evenIfAutoSyncOff?: boolean } = {},
+): Promise<void> {
   const state = useSyncStore.getState();
-  if (!state.isConfigured || !(hasAutoSync(state.config) && state.config.autoSync)) return;
+  if (!state.isConfigured) return;
+  if (!options.evenIfAutoSyncOff && !(hasAutoSync(state.config) && state.config.autoSync)) return;
   if (state.status !== "idle" && state.status !== "error") return;
   if (isAuthSyncError(state.error)) return;
   const now = Date.now();

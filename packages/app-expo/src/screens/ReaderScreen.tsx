@@ -1376,6 +1376,12 @@ export function ReaderScreen({ route, navigation }: Props) {
     setBookTitle(book.meta.title);
     updateBook(bookId, { lastOpenedAt: Date.now() });
     loadAnnotations(bookId);
+    // Pull now: if another device read further, the sync:completed handler below
+    // moves this book there a few seconds after it opens.
+    {
+      const { requestPositionSync } = require("@readany/core/hooks/use-auto-sync");
+      void requestPositionSync("book opened", 15_000);
+    }
 
     return () => {
       readingContextService.clearContext();

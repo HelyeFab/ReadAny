@@ -60,7 +60,7 @@ import { RootNavigator } from "@/navigation/RootNavigator";
 import { useLibraryStore } from "@/stores/library-store";
 import { ThemeProvider, useTheme } from "@/styles/ThemeContext";
 import { ui } from "@/styles/theme";
-import { requestAutoSync, useAutoSync } from "@readany/core/hooks/use-auto-sync";
+import { requestPositionSync, useAutoSync } from "@readany/core/hooks/use-auto-sync";
 
 installFeedbackLogCapture();
 
@@ -272,7 +272,7 @@ function AppInner() {
   // instead of waiting for the next 30-minute tick.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") void requestAutoSync("app foreground");
+      if (state === "active") void requestPositionSync("app foreground");
     });
     return () => sub.remove();
   }, []);
