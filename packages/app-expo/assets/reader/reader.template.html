@@ -2895,12 +2895,13 @@ html, body {
             baseForms: japaneseBaseForms(text),
             context: getSelectionContext(wordRange),
           };
-          // Mark the word first, THEN open the entry, so it is clear which word
+          // Flash the word first, THEN open the entry, so it is clear which word
           // was picked and the sheet does not jump up the instant the finger lifts.
           dictionaryTapPending = true;
-          markTappedWord(doc, wordRange);
+          const clearFlash = flashTappedWord(doc, wordRange);
           setTimeout(() => {
             dictionaryTapPending = false;
+            clearFlash();
             postToRN('dictionaryLookup', lookup);
           }, isEinkDisplay ? DICTIONARY_TAP_DELAY_EINK_MS : DICTIONARY_TAP_DELAY_MS);
           return;
@@ -2913,66 +2914,52 @@ html, body {
       }, { passive: false, capture: true });
     }
 
-    // ── Tapped-word mark (dictionary) ─────────────────────────────────────
-    // The tapped word is tinted, then the dictionary opens after a short beat.
-    // The tint stays while the entry is open and clears on the next touch.
+    // ── Tapped-word flash (dictionary) ────────────────────────────────────
+    // A short animation on the tapped word, then the dictionary opens. Nothing
+    // stays highlighted: the flash is gone by the time the entry is open.
+    //   LCD   — tint pops in (slight scale), then fades out.
+    //   e-ink — outline drawn once, removed once when the entry opens (no fade:
+    //           every intermediate frame would ghost).
     const DICTIONARY_TAP_DELAY_MS = 260;
-    const DICTIONARY_TAP_DELAY_EINK_MS = 180; // e-ink draws the mark in one refresh
+    const DICTIONARY_TAP_DELAY_EINK_MS = 180;
     let dictionaryTapPending = false;
 
-    function markTappedWord(doc, range) {
-      clearTappedWordMarks();
-      const win = doc.defaultView;
+    function flashTappedWord(doc, range) {
       const color = (currentThemeColors && currentThemeColors.primary) || '#c2570c';
       const tint = /^#[0-9a-f]{6}$/i.test(color)
-        ? color + '40'
-        : `color-mix(in srgb, ${color} 25%, transparent)`;
-      if (win && win.CSS && win.CSS.highlights && typeof win.Highlight === 'function') {
-        if (!doc.__readany_tapMarkStyle) {
-          const style = doc.createElement('style');
-          style.id = 'readany-tap-mark-style';
-          doc.head && doc.head.appendChild(style);
-          doc.__readany_tapMarkStyle = style;
-        }
-        doc.__readany_tapMarkStyle.textContent = isEinkDisplay
-          ? '::highlight(readany-tap){background-color:#000;color:#fff;}'
-          : `::highlight(readany-tap){background-color:${tint};}`;
-        win.CSS.highlights.set('readany-tap', new win.Highlight(range.cloneRange()));
-        tappedWordMarkDocs.add(doc);
-      } else {
-        // Older WebViews: absolutely positioned boxes over the word.
-        const rects = Array.from(range.getClientRects());
-        const boxes = rects.map((r) => {
+        ? color + '55'
+        : `color-mix(in srgb, ${color} 33%, transparent)`;
+      const boxes = Array.from(range.getClientRects())
+        .filter((r) => r.width > 0 && r.height > 0)
+        .map((r) => {
           const box = doc.createElement('div');
-          box.className = 'readany-tap-mark';
-          box.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;` +
-            `pointer-events:none;z-index:2147483647;border-radius:3px;` +
-            (isEinkDisplay ? 'outline:2px solid #000;' : `background:${tint};`);
+          box.className = 'readany-tap-flash';
+          const pad = 2;
+          box.style.cssText =
+            `position:fixed;left:${r.left - pad}px;top:${r.top - pad}px;` +
+            `width:${r.width + pad * 2}px;height:${r.height + pad * 2}px;` +
+            'pointer-events:none;z-index:2147483647;border-radius:4px;' +
+            (isEinkDisplay
+              ? 'outline:2px solid #000;'
+              : `background:${tint};opacity:0;transform:scale(0.85);` +
+                'transition:opacity 120ms ease-out, transform 160ms cubic-bezier(0.2,0.9,0.3,1.4);');
           doc.documentElement.appendChild(box);
           return box;
         });
-        doc.__readany_tapMarkBoxes = boxes;
-        tappedWordMarkDocs.add(doc);
+      if (isEinkDisplay) {
+        return () => boxes.forEach((box) => box.remove());
       }
-      if (!doc.__readany_tapMarkClearer) {
-        doc.__readany_tapMarkClearer = true;
-        doc.addEventListener('touchstart', () => {
-          if (!dictionaryTapPending) clearTappedWordMarks();
-        }, { passive: true, capture: true });
-      }
-    }
-
-    const tappedWordMarkDocs = new Set();
-    function clearTappedWordMarks() {
-      for (const doc of tappedWordMarkDocs) {
-        try {
-          const win = doc.defaultView;
-          if (win && win.CSS && win.CSS.highlights) win.CSS.highlights.delete('readany-tap');
-          (doc.__readany_tapMarkBoxes || []).forEach((b) => b.remove());
-          doc.__readany_tapMarkBoxes = null;
-        } catch {}
-      }
-      tappedWordMarkDocs.clear();
+      // pop in on the next frame, fade out shortly before the entry opens
+      requestAnimationFrame(() => boxes.forEach((box) => {
+        box.style.opacity = '1';
+        box.style.transform = 'scale(1)';
+      }));
+      setTimeout(() => boxes.forEach((box) => {
+        box.style.transition = 'opacity 220ms ease-in';
+        box.style.opacity = '0';
+      }), 170);
+      setTimeout(() => boxes.forEach((box) => box.remove()), 450);
+      return () => {};
     }
 
     // ── Vertical page swipe ────────────────────────────────────────────────

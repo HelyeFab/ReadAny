@@ -116,10 +116,11 @@ export const BIONIC_CSS = `
 }
 [${BIONIC_PROCESSED_ATTR}] b {
   font-weight: inherit;
-  /* ON TOP of the reader's text-weight outline (--readany-text-stroke), never in
-     place of it: a fixed value here made the word starts THINNER than the rest
-     once text weight was raised above 0.35px. */
-  -webkit-text-stroke: calc(var(--readany-text-stroke, 0px) + 0.35px) currentColor;
+  /* A RATIO of the reader's text-weight outline (--readany-text-stroke) plus a
+     small base, so the fixation point stays visibly bolder at every weight. A
+     fixed value made word starts THINNER than the rest once text weight passed
+     it; a fixed increment would fade into the body text at high weights. */
+  -webkit-text-stroke: calc(var(--readany-text-stroke, 0em) * 1.5 + 0.016em) currentColor;
   text-shadow: 0.2px 0 currentColor;
 }
 `;
