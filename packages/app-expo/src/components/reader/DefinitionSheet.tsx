@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -23,6 +24,11 @@ import {
   View,
 } from "react-native";
 import { LookElsewhere } from "./LookElsewhere";
+import {
+  type KotonohaDefinition,
+  isKotonohaQuery,
+  lookupKotonoha,
+} from "@/lib/dictionary/kotonoha";
 
 interface Props {
   visible: boolean;
@@ -52,6 +58,39 @@ export function DefinitionSheet({
   /** Word-by-word gloss, used when the selection is a phrase rather than a word. */
   const [phrase, setPhrase] = useState<PhraseHit[]>([]);
   const [installed, setInstalled] = useState(true);
+  /**
+   * Kotonoha, the main Japanese dictionary: its entries go on top of the
+   * imported ones when they arrive; the sheet never waits for the network.
+   * "loading" | "done" | "offline" | "idle" (not a Japanese lookup).
+   */
+  const [kotonoha, setKotonoha] = useState<KotonohaDefinition[]>([]);
+  const [kotonohaState, setKotonohaState] = useState<"idle" | "loading" | "done" | "offline">(
+    "idle",
+  );
+
+  useEffect(() => {
+    if (!visible || !word) return;
+    let cancelled = false;
+    setKotonoha([]);
+    if (isKotonohaQuery(word)) {
+      setKotonohaState("loading");
+      lookupKotonoha(word, baseForms)
+        .then((found) => {
+          if (cancelled) return;
+          setKotonoha(found);
+          setKotonohaState("done");
+        })
+        .catch((err) => {
+          console.warn("[Dictionary] Kotonoha unreachable:", err);
+          if (!cancelled) setKotonohaState("offline");
+        });
+    } else {
+      setKotonohaState("idle");
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, word, baseForms]);
 
   useEffect(() => {
     if (!visible || !word) return;
@@ -118,6 +157,13 @@ export function DefinitionSheet({
 
   if (!visible) return null;
 
+  // Kotonoha first, then the imported dictionaries. Kotonoha's entries count as
+  // results even when no dictionary is installed.
+  const allEntries: Definition[] | null =
+    entries === null && kotonoha.length === 0 ? null : [...kotonoha, ...(entries ?? [])];
+  const kotonohaUrl = (entry: Definition) =>
+    (entry as Partial<KotonohaDefinition>).url;
+
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)" }} onPress={onClose} />
@@ -147,9 +193,9 @@ export function DefinitionSheet({
           </Text>
         )}
 
-        {entries !== null && entries.length > 0 && (
+        {allEntries !== null && allEntries.length > 0 && (
           <TouchableOpacity
-            onPress={() => void addToAnki(word, entries, context)}
+            onPress={() => void addToAnki(word, allEntries, context)}
             style={{
               alignSelf: "flex-start",
               backgroundColor: colors.primary,
@@ -164,16 +210,30 @@ export function DefinitionSheet({
           </TouchableOpacity>
         )}
 
-        {entries === null ? (
+        {kotonohaState === "loading" && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={{ fontSize: ui(12), color: colors.mutedForeground }}>
+              {t("dictionary.kotonohaLoading", "Kotonoha…")}
+            </Text>
+          </View>
+        )}
+        {kotonohaState === "offline" && (
+          <Text style={{ fontSize: ui(12), color: colors.mutedForeground }}>
+            {t("dictionary.kotonohaOffline", "Kotonoha is unreachable — showing offline dictionaries.")}
+          </Text>
+        )}
+
+        {allEntries === null ? (
           <ActivityIndicator style={{ marginVertical: spacing.lg }} color={colors.primary} />
-        ) : !installed ? (
+        ) : !installed && allEntries.length === 0 && kotonohaState !== "loading" ? (
           <Text style={{ color: colors.mutedForeground }}>
             {t(
               "dictionary.noneInstalled",
               "No dictionaries installed. Add one in Settings → Dictionaries.",
             )}
           </Text>
-        ) : entries.length === 0 && phrase.length > 0 ? (
+        ) : allEntries.length === 0 && phrase.length > 0 ? (
           <ScrollView>
             <Text
               style={{ color: colors.mutedForeground, fontSize: ui(12), marginBottom: spacing.sm }}
@@ -220,13 +280,15 @@ export function DefinitionSheet({
               </View>
             ))}
           </ScrollView>
-        ) : entries.length === 0 ? (
-          <Text style={{ color: colors.mutedForeground }}>
-            {t("dictionary.noMatch", "No entry found.")}
-          </Text>
+        ) : allEntries.length === 0 ? (
+          kotonohaState === "loading" ? null : (
+            <Text style={{ color: colors.mutedForeground }}>
+              {t("dictionary.noMatch", "No entry found.")}
+            </Text>
+          )
         ) : (
           <ScrollView>
-            {entries.map((entry, i) => (
+            {allEntries.map((entry, i) => (
               <View
                 key={`${entry.dictionary}-${entry.expression}-${i}`}
                 style={{
@@ -244,9 +306,18 @@ export function DefinitionSheet({
                 <Text style={{ fontSize: ui(14), color: colors.foreground, marginTop: 2 }}>
                   {entry.glossary}
                 </Text>
-                <Text style={{ fontSize: ui(11), color: colors.mutedForeground, marginTop: 4 }}>
-                  {entry.dictionary}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: spacing.md }}>
+                  <Text style={{ fontSize: ui(11), color: colors.mutedForeground }}>
+                    {entry.dictionary}
+                  </Text>
+                  {kotonohaUrl(entry) ? (
+                    <TouchableOpacity onPress={() => void Linking.openURL(kotonohaUrl(entry) as string)}>
+                      <Text style={{ fontSize: ui(11), color: colors.primary }}>
+                        {t("dictionary.openInKotonoha", "Open in Kotonoha")}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               </View>
             ))}
           </ScrollView>
