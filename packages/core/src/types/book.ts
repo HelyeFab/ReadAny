@@ -102,6 +102,11 @@ export interface ViewSettings {
   fixedLayoutZoom?: number; // relative zoom multiplier for PDF/CBZ fixed layouts
   pageMargin: number; // px
   paragraphSpacing: number;
+  /**
+   * Extra text thickness, 0 (font as designed) .. 5. Drawn as an outline around
+   * each glyph, so it also thickens thin fonts that ship no bolder weights.
+   */
+  textWeight?: number;
   justifyBodyText?: boolean; // default true: justify eligible reflowable EPUB body paragraphs
 }
 

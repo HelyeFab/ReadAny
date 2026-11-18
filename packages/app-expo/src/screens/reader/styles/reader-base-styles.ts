@@ -111,11 +111,9 @@ export const makeToolbarStyles = (colors: ThemeColors) =>
       backgroundColor: colors.primary,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: withOpacity(colors.primaryForeground, 0.42),
-      elevation: 5,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
+      // No shadow: the button rests almost transparent (see aiBubbleOpacity in
+      // ReaderScreen) and a shadow would stay visible as a grey smudge.
+      elevation: 0,
     },
 
     // ── Bottom toolbar ────────────────────────────────────────────────────────

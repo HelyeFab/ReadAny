@@ -53,6 +53,7 @@ export function ReaderSettingsPanel({
     fontSize: settingFontSize,
     lineHeight: settingLineHeight,
     paragraphSpacing: settingParagraphSpacing,
+    textWeight: settingTextWeightRaw,
     pageMargin: settingPageMargin,
     viewMode: settingViewMode,
     volumeButtonsPageTurn,
@@ -62,6 +63,7 @@ export function ReaderSettingsPanel({
     followSystemFontScale,
     bionicReading,
   } = readSettings;
+  const settingTextWeight = Math.max(0, Math.min(5, Math.round(settingTextWeightRaw ?? 0)));
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -148,6 +150,27 @@ export function ReaderSettingsPanel({
                 onPress={() =>
                   onUpdateSetting("paragraphSpacing", Math.min(24, settingParagraphSpacing + 2))
                 }
+              >
+                <Text style={s.stepBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          {/* Text Weight: thickens thin fonts (glyph outline, works for any font) */}
+          <View style={s.settingRow}>
+            <Text style={s.settingLabel}>{t("reader.textWeight", "Text weight")}</Text>
+            <View style={s.settingControl}>
+              <TouchableOpacity
+                style={s.stepBtn}
+                onPress={() => onUpdateSetting("textWeight", Math.max(0, settingTextWeight - 1))}
+              >
+                <Text style={s.stepBtnText}>-</Text>
+              </TouchableOpacity>
+              <Text style={s.settingValue}>
+                {settingTextWeight === 0 ? t("reader.textWeightNormal", "Normal") : `+${settingTextWeight}`}
+              </Text>
+              <TouchableOpacity
+                style={s.stepBtn}
+                onPress={() => onUpdateSetting("textWeight", Math.min(5, settingTextWeight + 1))}
               >
                 <Text style={s.stepBtnText}>+</Text>
               </TouchableOpacity>

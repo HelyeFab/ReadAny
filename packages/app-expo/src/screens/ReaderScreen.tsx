@@ -465,6 +465,26 @@ export function ReaderScreen({ route, navigation }: Props) {
   const AI_BUBBLE_POSITION_KEY = "reader_ai_bubble_position";
   const aiBubbleUserDraggedRef = useRef(false);
   const aiBubbleRestoredRef = useRef(false);
+  // Rests almost transparent so it does not compete with the text; fully visible
+  // while touched or dragged, then fades back.
+  const AI_BUBBLE_REST_OPACITY = 0.22;
+  const aiBubbleOpacity = useRef(new Animated.Value(AI_BUBBLE_REST_OPACITY)).current;
+  const showAIBubble = useCallback(() => {
+    aiBubbleOpacity.stopAnimation();
+    aiBubbleOpacity.setValue(1);
+  }, [aiBubbleOpacity]);
+  const restAIBubble = useCallback(() => {
+    if (isEinkDevice()) {
+      aiBubbleOpacity.setValue(AI_BUBBLE_REST_OPACITY);
+      return;
+    }
+    Animated.timing(aiBubbleOpacity, {
+      toValue: AI_BUBBLE_REST_OPACITY,
+      duration: 400,
+      delay: 700,
+      useNativeDriver: true,
+    }).start();
+  }, [aiBubbleOpacity]);
   const initialAIBubblePosition = useMemo(
     () => ({
       x: Math.max(insets.left, windowWidth - insets.right - AI_BUBBLE_SIZE - 8),
@@ -502,6 +522,7 @@ export function ReaderScreen({ route, navigation }: Props) {
         onMoveShouldSetPanResponderCapture: (_event, gesture) =>
           Math.abs(gesture.dx) + Math.abs(gesture.dy) > 3,
         onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: () => showAIBubble(),
         onPanResponderMove: (_event, gesture) => {
           aiBubbleUserDraggedRef.current = true;
           const start = aiBubbleCoordinatesRef.current;
@@ -521,12 +542,14 @@ export function ReaderScreen({ route, navigation }: Props) {
               .catch(() => {});
           }
           if (!moved) openAIChat();
+          restAIBubble();
         },
         onPanResponderTerminate: () => {
           aiBubblePosition.setValue(aiBubbleCoordinatesRef.current);
+          restAIBubble();
         },
       }),
-    [aiBubblePosition, clampAIBubble, openAIChat],
+    [aiBubblePosition, clampAIBubble, openAIChat, showAIBubble, restAIBubble],
   );
 
   useEffect(() => {
@@ -821,6 +844,7 @@ export function ReaderScreen({ route, navigation }: Props) {
         fontSize: computeEffectiveFontSize(settings.fontSize, settings.followSystemFontScale),
         lineHeight: settings.lineHeight,
         paragraphSpacing: settings.paragraphSpacing,
+        textWeight: settings.textWeight ?? 0,
         pageMargin: settings.pageMargin,
         fontTheme: settings.fontTheme,
         useBookFonts: settings.useBookFonts,
@@ -1532,6 +1556,7 @@ export function ReaderScreen({ route, navigation }: Props) {
             fontSize: readSettings.fontSize,
             lineHeight: readSettings.lineHeight,
             paragraphSpacing: readSettings.paragraphSpacing,
+            textWeight: readSettings.textWeight ?? 0,
             pageMargin: readSettings.pageMargin,
             fontTheme: readSettings.fontTheme,
             useBookFonts: readSettings.useBookFonts,
@@ -2196,6 +2221,7 @@ export function ReaderScreen({ route, navigation }: Props) {
             {
               left: 0,
               top: 0,
+              opacity: aiBubbleOpacity,
               transform: aiBubblePosition.getTranslateTransform(),
             },
           ]}

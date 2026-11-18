@@ -61,34 +61,6 @@
       overflow: hidden;
     }
 
-    /* Vertical page-swipe feedback: a chevron that appears once the swipe will turn
-       the page. On e-ink it is drawn once (no fades: every frame would ghost). */
-    #swipe-turn-indicator {
-      position: fixed;
-      left: 50%;
-      z-index: 40;
-      width: 44px;
-      height: 44px;
-      margin-left: -22px;
-      border-radius: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-      opacity: 0;
-      background: rgba(0, 0, 0, 0.55);
-      color: #fff;
-      font: 600 22px/1 system-ui, sans-serif;
-      transition: opacity 120ms ease-out, transform 120ms ease-out;
-    }
-    #swipe-turn-indicator[data-dir="next"] { bottom: 28px; }
-    #swipe-turn-indicator[data-dir="prev"] { top: 28px; }
-    #swipe-turn-indicator[data-shown="true"] { opacity: 1; }
-    #swipe-turn-indicator[data-eink="true"] {
-      transition: none;
-      background: #000;
-      border: 2px solid #fff;
-    }
     #pull-bookmark-indicator {
       position: absolute;
       left: 50%;
@@ -208,7 +180,6 @@
     <div id="pull-bookmark-indicator" aria-hidden="true" data-armed="false">
       <div class="pill" id="pull-bookmark-indicator-text"></div>
     </div>
-    <div id="swipe-turn-indicator" aria-hidden="true" data-shown="false"></div>
     <button id="footnote-tip" type="button" aria-hidden="true"></button>
     <div id="loading">
       <div class="spinner"></div>
@@ -655,6 +626,7 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
     let currentCustomFontFamily = '';
     let currentUseBookFonts = true;
     let currentSmoothReading = false;
+    let currentTextWeight = 0;
     // Set from the app on open: e-ink panels get no motion, only a one-shot cue.
     let isEinkDisplay = false;
     let tapNavigationInFlight = false;
@@ -2390,6 +2362,10 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
       if (settings.paragraphSpacing !== undefined) {
         currentParagraphSpacing = settings.paragraphSpacing;
       }
+      if (settings.textWeight !== undefined) {
+        const w = Number(settings.textWeight);
+        currentTextWeight = Number.isFinite(w) ? Math.max(0, Math.min(5, Math.round(w))) : 0;
+      }
       if (settings.fontTheme !== undefined) {
         currentFontTheme = settings.fontTheme || 'default';
       }
@@ -2398,7 +2374,7 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
           settings.paginatedLayout === 'single' ? 'single' : 'double';
       }
 
-      if (settings.fontSize !== undefined || settings.lineHeight !== undefined || settings.fontTheme !== undefined || settings.paragraphSpacing !== undefined || settings.justifyBodyText !== undefined
+      if (settings.fontSize !== undefined || settings.lineHeight !== undefined || settings.fontTheme !== undefined || settings.paragraphSpacing !== undefined || settings.textWeight !== undefined || settings.justifyBodyText !== undefined
           || settings.customFontFamily !== undefined || settings.customFontFaceCSS !== undefined || settings.useBookFonts !== undefined) {
         const fontThemes = {
           default: { cjk: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif', serif: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif' },
@@ -2484,6 +2460,14 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
           :root:not(.vrtl):not(.vltr) h6 {
             line-height: ${lh} !important;
           }
+          ${currentTextWeight > 0 ? `
+          /* Text weight: an outline around every glyph thickens ANY font, including
+             thin ones without bolder weights. em-based so it scales with font size;
+             the stroke colour follows each element's own text colour. */
+          html body {
+            -webkit-text-stroke-width: ${(currentTextWeight * 0.011).toFixed(3)}em !important;
+            -webkit-text-stroke-color: currentColor;
+          }` : ''}
           pre, code, kbd, samp {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
           }
@@ -3283,12 +3267,21 @@ html, body {
         if (wordRange) {
           e.preventDefault();
           e.stopPropagation();
+          if (dictionaryTapPending) return;
           const text = getRangeTextWithoutRuby(wordRange, wordRange.toString());
-          postToRN('dictionaryLookup', {
+          const lookup = {
             text,
             baseForms: japaneseBaseForms(text),
             context: getSelectionContext(wordRange),
-          });
+          };
+          // Mark the word first, THEN open the entry, so it is clear which word
+          // was picked and the sheet does not jump up the instant the finger lifts.
+          dictionaryTapPending = true;
+          markTappedWord(doc, wordRange);
+          setTimeout(() => {
+            dictionaryTapPending = false;
+            postToRN('dictionaryLookup', lookup);
+          }, isEinkDisplay ? DICTIONARY_TAP_DELAY_EINK_MS : DICTIONARY_TAP_DELAY_MS);
           return;
         }
 
@@ -3299,13 +3292,75 @@ html, body {
       }, { passive: false, capture: true });
     }
 
+    // ── Tapped-word mark (dictionary) ─────────────────────────────────────
+    // The tapped word is tinted, then the dictionary opens after a short beat.
+    // The tint stays while the entry is open and clears on the next touch.
+    const DICTIONARY_TAP_DELAY_MS = 260;
+    const DICTIONARY_TAP_DELAY_EINK_MS = 180; // e-ink draws the mark in one refresh
+    let dictionaryTapPending = false;
+
+    function markTappedWord(doc, range) {
+      clearTappedWordMarks();
+      const win = doc.defaultView;
+      const color = (currentThemeColors && currentThemeColors.primary) || '#c2570c';
+      const tint = /^#[0-9a-f]{6}$/i.test(color)
+        ? color + '40'
+        : `color-mix(in srgb, ${color} 25%, transparent)`;
+      if (win && win.CSS && win.CSS.highlights && typeof win.Highlight === 'function') {
+        if (!doc.__readany_tapMarkStyle) {
+          const style = doc.createElement('style');
+          style.id = 'readany-tap-mark-style';
+          doc.head && doc.head.appendChild(style);
+          doc.__readany_tapMarkStyle = style;
+        }
+        doc.__readany_tapMarkStyle.textContent = isEinkDisplay
+          ? '::highlight(readany-tap){background-color:#000;color:#fff;}'
+          : `::highlight(readany-tap){background-color:${tint};}`;
+        win.CSS.highlights.set('readany-tap', new win.Highlight(range.cloneRange()));
+        tappedWordMarkDocs.add(doc);
+      } else {
+        // Older WebViews: absolutely positioned boxes over the word.
+        const rects = Array.from(range.getClientRects());
+        const boxes = rects.map((r) => {
+          const box = doc.createElement('div');
+          box.className = 'readany-tap-mark';
+          box.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;` +
+            `pointer-events:none;z-index:2147483647;border-radius:3px;` +
+            (isEinkDisplay ? 'outline:2px solid #000;' : `background:${tint};`);
+          doc.documentElement.appendChild(box);
+          return box;
+        });
+        doc.__readany_tapMarkBoxes = boxes;
+        tappedWordMarkDocs.add(doc);
+      }
+      if (!doc.__readany_tapMarkClearer) {
+        doc.__readany_tapMarkClearer = true;
+        doc.addEventListener('touchstart', () => {
+          if (!dictionaryTapPending) clearTappedWordMarks();
+        }, { passive: true, capture: true });
+      }
+    }
+
+    const tappedWordMarkDocs = new Set();
+    function clearTappedWordMarks() {
+      for (const doc of tappedWordMarkDocs) {
+        try {
+          const win = doc.defaultView;
+          if (win && win.CSS && win.CSS.highlights) win.CSS.highlights.delete('readany-tap');
+          (doc.__readany_tapMarkBoxes || []).forEach((b) => b.remove());
+          doc.__readany_tapMarkBoxes = null;
+        } catch {}
+      }
+      tappedWordMarkDocs.clear();
+    }
+
     // ── Vertical page swipe ────────────────────────────────────────────────
     // Feedback while the finger is down, so a swipe that will NOT turn the page is
     // visibly different from a slow turn:
-    //   LCD    — the page follows the finger (rubber band, <= 40px) and springs back;
-    //            a chevron appears once releasing will turn the page.
-    //   e-ink  — nothing moves (motion ghosts); the chevron is drawn once at the
-    //            threshold and removed once on release.
+    //   LCD    — the page follows the finger (rubber band, <= 40px) and springs back.
+    //   e-ink  — nothing moves (motion ghosts on e-ink).
+    // (A turn/no-turn chevron was tried and removed: it appearing only sometimes
+    // was confusing.)
     // A turn needs a vertical swipe of >= 60px, OR a quick flick (>= 25px at
     // >= 0.45 px/ms). Every decision is logged as [Swipe] for tuning.
     const SWIPE_TURN_DISTANCE = 60;
@@ -3314,23 +3369,6 @@ html, body {
     const SWIPE_MAX_DURATION_MS = 2500;
     const SWIPE_DIRECTION_RATIO = 1.5;
     const SWIPE_MAX_FOLLOW_PX = 40;
-
-    function swipeIndicator() {
-      return document.getElementById('swipe-turn-indicator');
-    }
-
-    function setSwipeIndicator(dir) {
-      const el = swipeIndicator();
-      if (!el) return;
-      const shown = dir ? 'true' : 'false';
-      if (el.dataset.shown === shown && (!dir || el.dataset.dir === dir)) return;
-      el.dataset.eink = isEinkDisplay ? 'true' : 'false';
-      if (dir) {
-        el.dataset.dir = dir;
-        el.textContent = dir === 'next' ? '\u25BC' : '\u25B2';
-      }
-      el.dataset.shown = shown;
-    }
 
     function setSwipeFollow(offset, animate) {
       const target = view;
@@ -3377,7 +3415,6 @@ html, body {
       let state = null;
 
       const endFeedback = (animate) => {
-        setSwipeIndicator(null);
         setSwipeFollow(0, animate);
       };
 
@@ -3390,7 +3427,7 @@ html, body {
         const selection = doc.getSelection();
         if (selection && !selection.isCollapsed) return;
         const touch = e.touches[0];
-        state = { x: touch.clientX, y: touch.clientY, startedAt: Date.now(), vertical: false, armed: null };
+        state = { x: touch.clientX, y: touch.clientY, startedAt: Date.now(), vertical: false };
       }, { passive: true, capture: true });
 
       doc.addEventListener('touchmove', (e) => {
@@ -3409,13 +3446,6 @@ html, body {
         }
         e.preventDefault();
         setSwipeFollow(swipeFollowOffset(dy), false);
-        // Show the chevron once a release here would turn the page by distance.
-        const armed = Math.abs(dy) >= SWIPE_TURN_DISTANCE &&
-          Math.abs(dy) >= Math.abs(dx) * SWIPE_DIRECTION_RATIO ? (dy < 0 ? 'next' : 'prev') : null;
-        if (armed !== state.armed) {
-          state.armed = armed;
-          setSwipeIndicator(armed);
-        }
       }, { passive: false, capture: true });
 
       doc.addEventListener('touchend', (e) => {
@@ -3445,7 +3475,6 @@ html, body {
         hideFootnoteTip();
         armTapNavigationLock();
         setSwipeFollow(0, false);
-        setSwipeIndicator(null);
         if (dy < 0) goNextByMode(undefined, 'swipe:up');
         else goPrevByMode(undefined, 'swipe:down');
       }, { passive: false, capture: true });
