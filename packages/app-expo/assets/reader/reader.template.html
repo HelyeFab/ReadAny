@@ -2929,37 +2929,50 @@ html, body {
       const tint = /^#[0-9a-f]{6}$/i.test(color)
         ? color + '55'
         : `color-mix(in srgb, ${color} 33%, transparent)`;
-      const boxes = Array.from(range.getClientRects())
-        .filter((r) => r.width > 0 && r.height > 0)
-        .map((r) => {
-          const box = doc.createElement('div');
-          box.className = 'readany-tap-flash';
-          const pad = 2;
-          box.style.cssText =
-            `position:fixed;left:${r.left - pad}px;top:${r.top - pad}px;` +
-            `width:${r.width + pad * 2}px;height:${r.height + pad * 2}px;` +
-            'pointer-events:none;z-index:2147483647;border-radius:4px;' +
-            (isEinkDisplay
-              ? 'outline:2px solid #000;'
-              : `background:${tint};opacity:0;transform:scale(0.85);` +
-                'transition:opacity 120ms ease-out, transform 160ms cubic-bezier(0.2,0.9,0.3,1.4);');
-          doc.documentElement.appendChild(box);
-          return box;
-        });
-      if (isEinkDisplay) {
-        return () => boxes.forEach((box) => box.remove());
+      // One box per LINE: a word split into several nodes (bionic reading's bold
+      // start, ruby, inline formatting) returns one rect per node, and padded
+      // translucent rects overlapping at the seam drew a dark cursor-like bar.
+      const lines = [];
+      for (const r of Array.from(range.getClientRects())) {
+        if (r.width <= 0 || r.height <= 0) continue;
+        const line = lines.find((l) => Math.abs(l.top - r.top) < r.height / 2);
+        if (line) {
+          line.left = Math.min(line.left, r.left);
+          line.right = Math.max(line.right, r.right);
+          line.top = Math.min(line.top, r.top);
+          line.bottom = Math.max(line.bottom, r.bottom);
+        } else {
+          lines.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
+        }
       }
-      // pop in on the next frame, fade out shortly before the entry opens
+      const pad = 2;
+      const boxes = lines.map((l) => {
+        const box = doc.createElement('div');
+        box.className = 'readany-tap-flash';
+        box.style.cssText =
+          `position:fixed;left:${l.left - pad}px;top:${l.top - pad}px;` +
+          `width:${l.right - l.left + pad * 2}px;height:${l.bottom - l.top + pad * 2}px;` +
+          'pointer-events:none;z-index:2147483647;border-radius:4px;' +
+          (isEinkDisplay
+            ? 'outline:2px solid #000;'
+            : `background:${tint};opacity:0;transform:scale(0.85);` +
+              'transition:opacity 90ms ease-out, transform 120ms cubic-bezier(0.2,0.9,0.3,1.4);');
+        doc.documentElement.appendChild(box);
+        return box;
+      });
+      const removeAll = () => boxes.forEach((box) => box.remove());
+      if (isEinkDisplay) return removeAll;
+      // The whole flash finishes BEFORE the dictionary opens: once the sheet covers
+      // the page the WebView may stop repainting and a mid-fade tint would linger.
       requestAnimationFrame(() => boxes.forEach((box) => {
         box.style.opacity = '1';
         box.style.transform = 'scale(1)';
       }));
       setTimeout(() => boxes.forEach((box) => {
-        box.style.transition = 'opacity 220ms ease-in';
+        box.style.transition = 'opacity 120ms ease-in';
         box.style.opacity = '0';
-      }), 170);
-      setTimeout(() => boxes.forEach((box) => box.remove()), 450);
-      return () => {};
+      }), 120);
+      return removeAll;
     }
 
     // ── Vertical page swipe ────────────────────────────────────────────────
