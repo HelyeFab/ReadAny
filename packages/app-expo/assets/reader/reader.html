@@ -189,7 +189,7 @@
 
   <script>
 (() => {
-  // packages/core/src/reader/justified-text.ts
+  // ../core/src/reader/justified-text.ts
   var BR_CONTAINER_SELECTOR = "p, div, blockquote, dd, li, h1, h2, h3, h4, h5, h6, td, th, section, article, caption, figcaption";
   var PIN_ATTR = "data-readany-justify-pinned";
   var ORIGINAL_ATTR = "data-readany-justify-original";
@@ -358,14 +358,14 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
     };
   }
 
-  // packages/core/src/reader/justified-text-entry.ts
+  // ../core/src/reader/justified-text-entry.ts
   installReadAnyJustifiedText(globalThis);
 })();
 
 </script>
   <script>
 (() => {
-  // packages/core/src/reader/bionic-reading.ts
+  // ../core/src/reader/bionic-reading.ts
   var BIONIC_PROCESSED_ATTR = "data-readany-bionic";
   var BIONIC_STYLE_ID = "readany-bionic-style";
   var WORD_RE = /[\p{Script=Latin}\p{Mn}ʼ'’]+/gu;
@@ -505,14 +505,14 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
     };
   }
 
-  // packages/core/src/reader/bionic-reading-entry.ts
+  // ../core/src/reader/bionic-reading-entry.ts
   installReadAnyBionicReading(globalThis);
 })();
 
 </script>
   <script>
 (() => {
-  // packages/core/src/reader/pen-selection.ts
+  // ../core/src/reader/pen-selection.ts
   var SELECTION_HOLD_MS = 350;
   var SELECTION_HOLD_SLOP_PX = 10;
   function idleGesture() {
@@ -565,7 +565,7 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
     };
   }
 
-  // packages/core/src/reader/pen-selection-entry.ts
+  // ../core/src/reader/pen-selection-entry.ts
   installReadAnyPenSelection(globalThis);
 })();
 
