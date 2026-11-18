@@ -158,6 +158,8 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       lastLocation?: string;
       /** saved progress 0..1: fallback when lastLocation cannot be placed */
       lastProgress?: number;
+      /** e-ink panel: page-turn feedback without motion */
+      einkDisplay?: boolean;
       pageMargin?: number;
       paginatedLayout?: "single" | "double";
       settings?: ReaderInitialSettings;

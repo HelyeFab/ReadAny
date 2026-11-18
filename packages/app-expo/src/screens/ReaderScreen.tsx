@@ -212,6 +212,16 @@ function buildCustomFontFaceCSS(
 }
 
 // ──────────────────────────── ReaderScreen ────────────────────────────
+
+/** Onyx BOOX (and other e-ink makers) — motion on these panels ghosts. */
+function isEinkDevice(): boolean {
+  if (Platform.OS !== "android") return false;
+  const c = (Platform.constants ?? {}) as { Manufacturer?: string; Brand?: string; Model?: string };
+  return /onyx|boox|hisense.*a\d|bigme|meebook|pocketbook|kobo|remarkable/i.test(
+    `${c.Manufacturer ?? ""} ${c.Brand ?? ""} ${c.Model ?? ""}`,
+  );
+}
+
 export function ReaderScreen({ route, navigation }: Props) {
   const colors = useColors();
   const { mode: themeMode } = useTheme();
@@ -1515,6 +1525,7 @@ export function ReaderScreen({ route, navigation }: Props) {
           mimeType,
           lastLocation,
           lastProgress: typeof book.progress === "number" ? book.progress : undefined,
+          einkDisplay: isEinkDevice(),
           pageMargin: readSettings.pageMargin,
           paginatedLayout: readSettings.paginatedLayout,
           settings: {
