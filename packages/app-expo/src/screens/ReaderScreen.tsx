@@ -406,6 +406,12 @@ export function ReaderScreen({ route, navigation }: Props) {
   } | null>(null);
   const totalBookCharactersRef = useRef<number | null>(null);
   const progressTrackingGuardUntilRef = useRef(0);
+  // Reading-position sync: the relocate that RESTORES a position (book open, or a
+  // jump to a position from another device) is not a reading action and must not be
+  // saved, or it would stamp a stale position as "newest" and win the next sync.
+  const skipNextPositionSaveRef = useRef(true);
+  // When the user last moved in this book on this device (0 = not since opening).
+  const localPositionAtRef = useRef(0);
 
   const incrementPagesRead = useReadingSessionStore((s) => s.incrementPagesRead);
   const incrementCharactersRead = useReadingSessionStore((s) => s.incrementCharactersRead);
@@ -440,10 +446,16 @@ export function ReaderScreen({ route, navigation }: Props) {
   const { readerClock, batteryLevel, isBatteryCharging, stableTopInset, insets } =
     useReaderSystemInfo({ showSearch, isIPadLayout, shouldToggleSystemStatusBar, baseTopInset });
 
+  // The AI button may sit anywhere on the usable screen, edge to edge, and stays
+  // where the user last dropped it (remembered across books and restarts).
+  const AI_BUBBLE_SIZE = 52;
+  const AI_BUBBLE_POSITION_KEY = "reader_ai_bubble_position";
+  const aiBubbleUserDraggedRef = useRef(false);
+  const aiBubbleRestoredRef = useRef(false);
   const initialAIBubblePosition = useMemo(
     () => ({
-      x: Math.max(insets.left + 8, windowWidth - insets.right - 68),
-      y: Math.max(stableTopInset + 8, windowHeight - insets.bottom - 162),
+      x: Math.max(insets.left, windowWidth - insets.right - AI_BUBBLE_SIZE - 8),
+      y: Math.max(stableTopInset, windowHeight - insets.bottom - 162),
     }),
     [insets.bottom, insets.left, insets.right, stableTopInset, windowHeight, windowWidth],
   );
@@ -452,10 +464,10 @@ export function ReaderScreen({ route, navigation }: Props) {
 
   const clampAIBubble = useCallback(
     (x: number, y: number) => ({
-      x: Math.max(insets.left + 8, Math.min(windowWidth - insets.right - 60, x)),
+      x: Math.max(insets.left, Math.min(windowWidth - insets.right - AI_BUBBLE_SIZE, x)),
       y: Math.max(
-        stableTopInset + 8,
-        Math.min(windowHeight - insets.bottom - 162, y),
+        stableTopInset,
+        Math.min(windowHeight - insets.bottom - AI_BUBBLE_SIZE, y),
       ),
     }),
     [insets.bottom, insets.left, insets.right, stableTopInset, windowHeight, windowWidth],
@@ -478,6 +490,7 @@ export function ReaderScreen({ route, navigation }: Props) {
           Math.abs(gesture.dx) + Math.abs(gesture.dy) > 3,
         onPanResponderTerminationRequest: () => false,
         onPanResponderMove: (_event, gesture) => {
+          aiBubbleUserDraggedRef.current = true;
           const start = aiBubbleCoordinatesRef.current;
           aiBubblePosition.setValue(clampAIBubble(start.x + gesture.dx, start.y + gesture.dy));
         },
@@ -489,6 +502,11 @@ export function ReaderScreen({ route, navigation }: Props) {
             : start;
           aiBubbleCoordinatesRef.current = next;
           aiBubblePosition.setValue(next);
+          if (moved) {
+            void getPlatformService()
+              .kvSetItem(AI_BUBBLE_POSITION_KEY, JSON.stringify(next))
+              .catch(() => {});
+          }
           if (!moved) openAIChat();
         },
         onPanResponderTerminate: () => {
@@ -505,6 +523,25 @@ export function ReaderScreen({ route, navigation }: Props) {
     );
     aiBubbleCoordinatesRef.current = next;
     aiBubblePosition.setValue(next);
+  }, [aiBubblePosition, clampAIBubble]);
+
+  // Restore the remembered position once; a drag that starts before it loads wins.
+  useEffect(() => {
+    if (aiBubbleRestoredRef.current) return;
+    aiBubbleRestoredRef.current = true;
+    void getPlatformService()
+      .kvGetItem(AI_BUBBLE_POSITION_KEY)
+      .then((raw) => {
+        if (!raw || aiBubbleUserDraggedRef.current) return;
+        const saved = JSON.parse(raw) as { x?: unknown; y?: unknown };
+        const x = Number(saved.x);
+        const y = Number(saved.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+        const next = clampAIBubble(x, y);
+        aiBubbleCoordinatesRef.current = next;
+        aiBubblePosition.setValue(next);
+      })
+      .catch(() => {});
   }, [aiBubblePosition, clampAIBubble]);
 
   // ── Bookmark ───────────────────────────────────────────────────────────────
@@ -946,8 +983,13 @@ export function ReaderScreen({ route, navigation }: Props) {
         }
         lastCfiRef.current = detail.cfi;
         setCurrentCfi(detail.cfi);
-        // Use throttled save instead of immediate update
-        throttledSaveProgress(bookId, detail.fraction ?? 0, detail.cfi);
+        if (skipNextPositionSaveRef.current) {
+          skipNextPositionSaveRef.current = false;
+        } else {
+          localPositionAtRef.current = Date.now();
+          // Use throttled save instead of immediate update
+          throttledSaveProgress(bookId, detail.fraction ?? 0, detail.cfi);
+        }
       }
 
       // Mark translation ready after first successful relocate (CFI navigation done)
@@ -1337,8 +1379,59 @@ export function ReaderScreen({ route, navigation }: Props) {
   useEffect(() => {
     return eventBus.on("sync:completed", () => {
       void loadAnnotations(bookId);
+      void (async () => {
+        try {
+          const { getDB } = require("@readany/core/db/database");
+          const db = await getDB();
+          const rows = await db.select(
+            "SELECT progress, current_cfi, position_updated_at FROM books WHERE id = ?",
+            [bookId],
+          );
+          const row = rows[0] as
+            | { progress: number | null; current_cfi: string | null; position_updated_at: number | null }
+            | undefined;
+          if (!row?.current_cfi || row.current_cfi === lastCfiRef.current) return;
+          // Only follow the other device if it read MORE RECENTLY than we moved here.
+          if ((row.position_updated_at ?? 0) <= localPositionAtRef.current) return;
+          console.log("[ReaderScreen] Applying newer reading position from sync", {
+            from: lastCfiRef.current,
+            to: row.current_cfi,
+          });
+          skipNextPositionSaveRef.current = true;
+          lastCfiRef.current = row.current_cfi;
+          if (row.progress != null) {
+            progressRef.current = row.progress;
+            setProgress(row.progress);
+          }
+          bridgeRef.current?.goToCFI(row.current_cfi);
+        } catch (err) {
+          console.warn("[ReaderScreen] Could not apply synced position:", err);
+        }
+      })();
     });
   }, [bookId, loadAnnotations]);
+
+  // Leaving the app (home button, app switch, screen off): save the position NOW
+  // and sync, so the other device sees it — the throttled save may still be pending.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (s: AppStateStatus) => {
+      if (s !== "background" && s !== "inactive") return;
+      if (!localPositionAtRef.current || !lastCfiRef.current) return;
+      const db = require("@readany/core/db/database");
+      const { useSyncStore } = require("@readany/core/stores/sync-store");
+      void runWithDbRetry(
+        () =>
+          db.updateBook(bookId, {
+            progress: progressRef.current,
+            currentCfi: lastCfiRef.current,
+          }),
+        { attempts: 10, initialDelayMs: 150 },
+      )
+        .then(() => useSyncStore.getState().syncNow?.())
+        .catch((err: Error) => console.error("Failed to save progress on background:", err));
+    });
+    return () => sub.remove();
+  }, [bookId]);
 
   // Save progress immediately on unmount
   useEffect(() => {
@@ -1347,19 +1440,25 @@ export function ReaderScreen({ route, navigation }: Props) {
         stopFileServer();
         fileServerRef.current = null;
       }
-      if (lastCfiRef.current) {
-        const db = require("@readany/core/db/database");
-        runWithDbRetry(
-          () =>
-            db.updateBook(bookId, {
-              progress: progressRef.current,
-              currentCfi: lastCfiRef.current,
-            }),
-          { attempts: 10, initialDelayMs: 150 },
-        ).catch((err: Error) => console.error("Failed to save progress on unmount:", err));
-      }
       const { useSyncStore } = require("@readany/core/stores/sync-store");
-      useSyncStore.getState().syncNow?.();
+      // Save first, THEN sync: syncing before the write lands uploads the old position.
+      const save =
+        lastCfiRef.current && localPositionAtRef.current
+          ? (() => {
+              const db = require("@readany/core/db/database");
+              return runWithDbRetry(
+                () =>
+                  db.updateBook(bookId, {
+                    progress: progressRef.current,
+                    currentCfi: lastCfiRef.current,
+                  }),
+                { attempts: 10, initialDelayMs: 150 },
+              );
+            })()
+          : Promise.resolve();
+      save
+        .catch((err: Error) => console.error("Failed to save progress on unmount:", err))
+        .then(() => useSyncStore.getState().syncNow?.());
     };
   }, [bookId]);
 
@@ -1391,6 +1490,7 @@ export function ReaderScreen({ route, navigation }: Props) {
           .map((s) => encodeURIComponent(s))
           .join("/");
 
+        skipNextPositionSaveRef.current = true;
         bridge.openBook({
           uri: `${serverUrl}/${encodedPath}`,
           fileName,

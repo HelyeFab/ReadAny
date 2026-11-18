@@ -11,6 +11,33 @@ function hasAutoSync(config: unknown): config is { autoSync: boolean; syncInterv
   return typeof config === "object" && config !== null && "autoSync" in config;
 }
 
+/** Errors that retrying cannot fix: wrong credentials. Everything else is retried. */
+export function isAuthSyncError(error: string | null | undefined): boolean {
+  if (!error) return false;
+  return /unauthori[sz]ed|\b401\b|\b403\b|forbidden|No credentials configured|Sync not configured/i.test(
+    error,
+  );
+}
+
+let lastTriggeredAt = 0;
+
+/**
+ * Ask for a sync now (app came to the foreground, a book was closed, ...).
+ * Respects the auto-sync setting, skips while a sync runs, and is rate-limited so
+ * rapid app switching does not hammer the server.
+ */
+export async function requestAutoSync(reason: string, minGapMs = 60_000): Promise<void> {
+  const state = useSyncStore.getState();
+  if (!state.isConfigured || !(hasAutoSync(state.config) && state.config.autoSync)) return;
+  if (state.status !== "idle" && state.status !== "error") return;
+  if (isAuthSyncError(state.error)) return;
+  const now = Date.now();
+  if (now - lastTriggeredAt < minGapMs) return;
+  lastTriggeredAt = now;
+  console.log(`[AutoSync] Sync requested: ${reason}`);
+  await state.syncNow();
+}
+
 function withJitter(baseMs: number, maxJitterMs: number): number {
   const jitter = Math.floor(Math.random() * maxJitterMs);
   return baseMs + jitter;
@@ -57,9 +84,10 @@ export function useAutoSync(onSyncComplete?: () => void) {
       return;
     }
 
-    // Don't auto-sync if last error was auth-related
-    if (lastErrorRef.current?.includes("connect") || lastErrorRef.current?.includes("Unauthorized")) {
-      console.log("[AutoSync] Skipping auto-sync due to connection/auth error");
+    // Credentials errors need the user; anything else (network blip, server hiccup)
+    // is retried below instead of silently disabling auto-sync for the session.
+    if (isAuthSyncError(lastErrorRef.current)) {
+      console.log("[AutoSync] Skipping auto-sync due to auth/config error");
       return;
     }
 
@@ -70,12 +98,19 @@ export function useAutoSync(onSyncComplete?: () => void) {
       timerRef.current = setTimeout(async () => {
         if (cancelled) return;
 
-        if (statusRef.current === "idle" && !lastErrorRef.current) {
+        if (
+          (statusRef.current === "idle" || statusRef.current === "error") &&
+          !isAuthSyncError(lastErrorRef.current)
+        ) {
+          lastTriggeredAt = Date.now();
           await syncNow();
         }
 
         if (!cancelled) {
-          scheduleNext(withJitter(intervalMs, Math.min(60_000, Math.floor(intervalMs * 0.1))));
+          // After a failure, retry sooner (2 min) rather than waiting a full interval.
+          const failed = useSyncStore.getState().status === "error";
+          const nextMs = failed ? Math.min(intervalMs, 2 * 60_000) : intervalMs;
+          scheduleNext(withJitter(nextMs, Math.min(60_000, Math.floor(nextMs * 0.1))));
         }
       }, delayMs);
     };

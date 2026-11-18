@@ -324,6 +324,10 @@ export async function updateBook(id: string, updates: Partial<Book>): Promise<vo
   const updatedAt = await nextUpdatedAt(database, "books", id);
   sets.push("updated_at = ?");
   values.push(updatedAt);
+  if (updates.progress !== undefined || updates.currentCfi !== undefined) {
+    sets.push("position_updated_at = ?");
+    values.push(updatedAt);
+  }
   sets.push("sync_version = ?");
   values.push(syncVersion);
   sets.push("last_modified_by = ?");

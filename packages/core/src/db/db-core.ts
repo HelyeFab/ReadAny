@@ -687,6 +687,22 @@ export async function initDatabase(): Promise<void> {
         // Column already exists
       }
 
+      // Migration 9b: the reading position (progress + current_cfi) carries its own
+      // timestamp, so a device that merely OPENS a book (which bumps the row's
+      // updated_at) cannot push its stale position over a newer one from another device.
+      try {
+        await database.execute("ALTER TABLE books ADD COLUMN position_updated_at INTEGER");
+      } catch {
+        // Column already exists
+      }
+      try {
+        await database.execute(
+          "UPDATE books SET position_updated_at = updated_at WHERE position_updated_at IS NULL",
+        );
+      } catch {
+        // Best effort
+      }
+
       // Migration 10: Add updated_at and id to tags/book_tags for sync; add updated_at to reading_sessions
       try {
         await database.execute("ALTER TABLE tags ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0");

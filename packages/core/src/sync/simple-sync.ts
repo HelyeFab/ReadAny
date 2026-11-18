@@ -33,6 +33,68 @@ interface ExistingRecordState {
   timestamp: number;
   deletedAt?: number | null;
   coverUrl?: string | null;
+  /** books only: the local reading position and when it last changed */
+  position?: BookPosition;
+}
+
+interface BookPosition {
+  updatedAt: number;
+  progress: unknown;
+  currentCfi: unknown;
+}
+
+/**
+ * When the reading position of a remote book record changed. Builds without the
+ * position_updated_at column stamped the position with the row's updated_at, so
+ * that is the honest fallback.
+ */
+export function remotePositionTimestamp(record: Record<string, unknown>): number {
+  const explicit = Number(record.position_updated_at);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  const rowTs = Number(record.updated_at);
+  return Number.isFinite(rowTs) ? rowTs : 0;
+}
+
+/**
+ * The reading position is merged on its own clock, independently of the rest of the
+ * book row. Returns the record to upsert (or null to leave the row alone) plus an
+ * optional position-only update for rows whose other fields are older than ours.
+ */
+export function mergeBookPosition(
+  record: Record<string, unknown>,
+  rowWins: boolean,
+  local: BookPosition | undefined,
+): { record: Record<string, unknown> | null; positionOnly: BookPosition | null } {
+  if (!local) return { record: rowWins ? record : null, positionOnly: null };
+  const remotePosTs = remotePositionTimestamp(record);
+  if (rowWins) {
+    if (local.updatedAt > remotePosTs) {
+      // Newer metadata from the other device, but OUR position is newer: keep it.
+      return {
+        record: {
+          ...record,
+          progress: local.progress,
+          current_cfi: local.currentCfi,
+          position_updated_at: local.updatedAt,
+        },
+        positionOnly: null,
+      };
+    }
+    return { record, positionOnly: null };
+  }
+  if (remotePosTs > local.updatedAt && "current_cfi" in record) {
+    // Our row is newer overall (e.g. we just opened the book), but the other device
+    // read further more recently: take its position only.
+    return {
+      record: null,
+      positionOnly: {
+        updatedAt: remotePosTs,
+        progress: record.progress,
+        currentCfi: record.current_cfi,
+      },
+    };
+  }
+  return { record: null, positionOnly: null };
 }
 
 export interface SimpleSyncOptions {
@@ -339,20 +401,55 @@ export async function applyChanges(
               : record;
 
           const localState = existingRecords.get(String(pkValue));
-          if (!options.forceApply && !shouldApplyRemoteRecord(record, timestampCol, localState)) {
-            skipped++;
+          const rowWins =
+            options.forceApply || shouldApplyRemoteRecord(record, timestampCol, localState);
+          let recordToApply: Record<string, unknown> | null = rowWins ? safeRecord : null;
+          let positionTaken = false;
+
+          if (tableName === "books" && !options.forceApply && localState) {
+            const merged = mergeBookPosition(safeRecord, rowWins, localState.position);
+            recordToApply = merged.record;
+            if (merged.positionOnly) {
+              await db.execute(
+                "UPDATE books SET progress = ?, current_cfi = ?, position_updated_at = ? WHERE id = ?",
+                [
+                  merged.positionOnly.progress ?? 0,
+                  merged.positionOnly.currentCfi ?? null,
+                  merged.positionOnly.updatedAt,
+                  pkValue,
+                ],
+              );
+              localState.position = merged.positionOnly;
+              console.log(
+                `[SimpleSync] Took newer reading position for books/${String(pkValue)} from device ${payload.deviceId}`,
+              );
+              applied++;
+              positionTaken = true;
+            }
+          }
+
+          if (!recordToApply) {
+            if (!positionTaken) skipped++;
           } else {
             try {
               await upsertRecord(
                 db,
                 tableName,
-                preserveLocalCustomBookCover(safeRecord, localState),
+                preserveLocalCustomBookCover(recordToApply, localState),
                 pk,
               );
               applied++;
               existingRecords.set(String(pkValue), {
                 timestamp: remoteTs,
                 deletedAt: normalizeDeletedAt(record.deleted_at),
+                position:
+                  tableName === "books"
+                    ? {
+                        updatedAt: remotePositionTimestamp(recordToApply),
+                        progress: recordToApply.progress,
+                        currentCfi: recordToApply.current_cfi,
+                      }
+                    : undefined,
               });
             } catch (error) {
               if (isForeignKeyConstraintError(error)) {
@@ -564,6 +661,12 @@ async function loadExistingRecordStates(
   const deletedAtSelect = columns.has("deleted_at") ? ", deleted_at AS deleted_at" : "";
   const coverUrlSelect =
     tableName === "books" && columns.has("cover_url") ? ", cover_url AS cover_url" : "";
+  const trackPosition = tableName === "books" && columns.has("current_cfi");
+  const positionSelect = trackPosition
+    ? `, progress AS progress, current_cfi AS current_cfi${
+        columns.has("position_updated_at") ? ", position_updated_at AS position_updated_at" : ""
+      }`
+    : "";
 
   const chunkSize = 200;
   for (let offset = 0; offset < ids.length; offset += chunkSize) {
@@ -574,8 +677,11 @@ async function loadExistingRecordStates(
       timestamp: number | null;
       deleted_at?: number | null;
       cover_url?: string | null;
+      progress?: unknown;
+      current_cfi?: unknown;
+      position_updated_at?: number | null;
     }>(
-      `SELECT ${pk} AS id, ${timestampCol} AS timestamp${deletedAtSelect}${coverUrlSelect} FROM ${tableName} WHERE ${pk} IN (${placeholders})`,
+      `SELECT ${pk} AS id, ${timestampCol} AS timestamp${deletedAtSelect}${coverUrlSelect}${positionSelect} FROM ${tableName} WHERE ${pk} IN (${placeholders})`,
       chunk,
     );
 
@@ -584,6 +690,13 @@ async function loadExistingRecordStates(
         timestamp: row.timestamp ?? 0,
         deletedAt: normalizeDeletedAt(row.deleted_at),
         coverUrl: row.cover_url,
+        position: trackPosition
+          ? {
+              updatedAt: Number(row.position_updated_at ?? row.timestamp ?? 0) || 0,
+              progress: row.progress,
+              currentCfi: row.current_cfi,
+            }
+          : undefined,
       });
     }
   }

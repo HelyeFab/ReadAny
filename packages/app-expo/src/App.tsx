@@ -26,7 +26,7 @@ import { DarkTheme, DefaultTheme, NavigationContainer } from "@react-navigation/
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LogBox, Platform, Text, View } from "react-native";
+import { AppState, LogBox, Platform, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -60,7 +60,7 @@ import { RootNavigator } from "@/navigation/RootNavigator";
 import { useLibraryStore } from "@/stores/library-store";
 import { ThemeProvider, useTheme } from "@/styles/ThemeContext";
 import { ui } from "@/styles/theme";
-import { useAutoSync } from "@readany/core/hooks/use-auto-sync";
+import { requestAutoSync, useAutoSync } from "@readany/core/hooks/use-auto-sync";
 
 installFeedbackLogCapture();
 
@@ -267,6 +267,15 @@ function AppInner() {
   const loadBooks = useLibraryStore((s) => s.loadBooks);
   useUpdateChecker();
   useAutoSync(loadBooks);
+
+  // Pull other devices' reading positions whenever the app comes back to the front,
+  // instead of waiting for the next 30-minute tick.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void requestAutoSync("app foreground");
+    });
+    return () => sub.remove();
+  }, []);
 
   const navTheme = useMemo(
     () => ({
