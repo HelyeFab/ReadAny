@@ -1402,6 +1402,18 @@
             await view.addAnnotation(msg.annotation);
           }
           break;
+        case 'clearSelection':
+          // Selecting text highlights it directly (no menu), so the native
+          // selection and its handles are dropped once the highlight is drawn.
+          try {
+            for (const content of getRendererContents()) {
+              const sel = content.doc.getSelection && content.doc.getSelection();
+              if (sel) sel.removeAllRanges();
+              content.doc.__readany_selection_interaction = false;
+            }
+            clearPenSelectionPreviewLayers();
+          } catch (e) {}
+          break;
         case 'removeAnnotation':
           if (view && msg.annotation) {
             if (

@@ -243,6 +243,13 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
     [inject],
   );
 
+  /** Drop the WebView's native text selection (and the pen preview). */
+  const clearSelection = useCallback(() => {
+    webViewRef.current?.injectJavaScript(
+      `try { handleCommand(${JSON.stringify({ type: "clearSelection" })}); } catch (e) {} true;`,
+    );
+  }, []);
+
   const addAnnotation = useCallback(
     (annotation: { value: string; type?: string; color?: string; note?: string }) => {
       const annotationStr = JSON.stringify(annotation);
@@ -1008,6 +1015,7 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       clearSearch,
       navigateSearch,
       addAnnotation,
+      clearSelection,
       removeAnnotation,
       highlightCFITemporarily,
       applySettings,
@@ -1046,6 +1054,7 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       clearSearch,
       navigateSearch,
       addAnnotation,
+      clearSelection,
       removeAnnotation,
       highlightCFITemporarily,
       applySettings,

@@ -315,6 +315,7 @@ export function ReaderScreen({ route, navigation }: Props) {
     goToCFI: (cfi: string) => void;
     goToHref: (href: string) => void;
     flashHighlight: (cfi: string, color?: string, duration?: number) => void;
+    clearSelection?: () => void;
     addAnnotation: (annotation: {
       value: string;
       type?: string;
@@ -1084,14 +1085,19 @@ export function ReaderScreen({ route, navigation }: Props) {
       });
     },
     onSelection: (detail: SelectionEvent) => {
-      setSelection(detail);
+      // Highlighter behaviour: selecting text highlights it straight away in the
+      // current colour, with no menu in the way. The menu (colour, note, delete,
+      // copy, define, AI…) opens by tapping a highlight — or by selecting exactly
+      // an existing highlight again.
       if (detail.cfi && detail.text.trim()) {
         const annotationState = useAnnotationStore.getState();
         const existingHighlight = annotationState.highlights.find(
           (highlight) => highlight.bookId === bookId && highlight.cfi === detail.cfi,
         );
 
-        if (!existingHighlight) {
+        if (existingHighlight) {
+          setSelection(detail);
+        } else {
           const color = useSettingsStore.getState().readSettings.defaultHighlightColor ?? "yellow";
           const now = Date.now();
           annotationState.addHighlight({
@@ -1109,7 +1115,11 @@ export function ReaderScreen({ route, navigation }: Props) {
             type: "highlight",
             color,
           });
+          bridgeRef.current?.clearSelection?.();
         }
+      } else {
+        // No position to anchor a highlight to: fall back to the menu.
+        setSelection(detail);
       }
       // Sync selection for AI tools
       if (detail.cfi) {
