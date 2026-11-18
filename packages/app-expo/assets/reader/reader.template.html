@@ -1843,6 +1843,20 @@
             console.warn('[WebView] Failed to init with lastLocation, going to start:', err);
             await el.goToFraction(0);
           }
+          // A saved position the engine cannot place inside its chapter silently lands
+          // on the chapter's FIRST page. If we ended up far from the saved progress,
+          // trust the progress instead.
+          const expected = typeof msg.lastProgress === 'number' ? msg.lastProgress : null;
+          const landed = el.lastLocation && typeof el.lastLocation.fraction === 'number'
+            ? el.lastLocation.fraction : null;
+          if (expected != null && expected > 0.01 && landed != null && Math.abs(landed - expected) > 0.03) {
+            console.warn('[ReaderOpen] lastLocation landed at ' + landed.toFixed(4) +
+              ', saved progress ' + expected.toFixed(4) + '; going to saved progress');
+            postToRN('debug', { message: '[ReaderOpen] position fallback ' + landed.toFixed(4) + ' -> ' + expected.toFixed(4) + ' cfi=' + msg.lastLocation });
+            await el.goToFraction(expected);
+          }
+        } else if (typeof msg.lastProgress === 'number' && msg.lastProgress > 0.01) {
+          await el.goToFraction(msg.lastProgress);
         } else {
           await el.goToFraction(0);
         }

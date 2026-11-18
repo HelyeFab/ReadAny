@@ -156,6 +156,8 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       fileName?: string;
       mimeType?: string;
       lastLocation?: string;
+      /** saved progress 0..1: fallback when lastLocation cannot be placed */
+      lastProgress?: number;
       pageMargin?: number;
       paginatedLayout?: "single" | "double";
       settings?: ReaderInitialSettings;

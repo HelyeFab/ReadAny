@@ -412,6 +412,9 @@ export function ReaderScreen({ route, navigation }: Props) {
   const skipNextPositionSaveRef = useRef(true);
   // When the user last moved in this book on this device (0 = not since opening).
   const localPositionAtRef = useRef(0);
+  // Relocates right after a restore (e.g. the reader's fallback from an unplaceable
+  // saved position to the saved percentage) are still part of the restore.
+  const restoreSettleUntilRef = useRef(0);
 
   const incrementPagesRead = useReadingSessionStore((s) => s.incrementPagesRead);
   const incrementCharactersRead = useReadingSessionStore((s) => s.incrementCharactersRead);
@@ -985,6 +988,9 @@ export function ReaderScreen({ route, navigation }: Props) {
         setCurrentCfi(detail.cfi);
         if (skipNextPositionSaveRef.current) {
           skipNextPositionSaveRef.current = false;
+          restoreSettleUntilRef.current = Date.now() + 1500;
+        } else if (Date.now() < restoreSettleUntilRef.current) {
+          // still settling after a restore: not a reading action
         } else {
           localPositionAtRef.current = Date.now();
           // Use throttled save instead of immediate update
@@ -1403,7 +1409,13 @@ export function ReaderScreen({ route, navigation }: Props) {
             progressRef.current = row.progress;
             setProgress(row.progress);
           }
-          bridgeRef.current?.goToCFI(row.current_cfi);
+          // Point CFIs (no range commas, written by some older builds) can fail to
+          // place inside a chapter and land on its first page; use the fraction then.
+          if (!row.current_cfi.includes(",") && row.progress != null && row.progress > 0.01) {
+            bridgeRef.current?.goToFraction(row.progress);
+          } else {
+            bridgeRef.current?.goToCFI(row.current_cfi);
+          }
         } catch (err) {
           console.warn("[ReaderScreen] Could not apply synced position:", err);
         }
@@ -1496,6 +1508,7 @@ export function ReaderScreen({ route, navigation }: Props) {
           fileName,
           mimeType,
           lastLocation,
+          lastProgress: typeof book.progress === "number" ? book.progress : undefined,
           pageMargin: readSettings.pageMargin,
           paginatedLayout: readSettings.paginatedLayout,
           settings: {
