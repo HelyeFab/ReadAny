@@ -2085,7 +2085,8 @@
              thin ones without bolder weights. em-based so it scales with font size;
              the stroke colour follows each element's own text colour. */
           html body {
-            -webkit-text-stroke-width: ${(currentTextWeight * 0.011).toFixed(3)}em !important;
+            --readany-text-stroke: ${(currentTextWeight * 0.011).toFixed(3)}em;
+            -webkit-text-stroke-width: var(--readany-text-stroke) !important;
             -webkit-text-stroke-color: currentColor;
           }` : ''}
           pre, code, kbd, samp {

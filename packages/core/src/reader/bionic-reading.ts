@@ -116,7 +116,10 @@ export const BIONIC_CSS = `
 }
 [${BIONIC_PROCESSED_ATTR}] b {
   font-weight: inherit;
-  -webkit-text-stroke: 0.35px currentColor;
+  /* ON TOP of the reader's text-weight outline (--readany-text-stroke), never in
+     place of it: a fixed value here made the word starts THINNER than the rest
+     once text weight was raised above 0.35px. */
+  -webkit-text-stroke: calc(var(--readany-text-stroke, 0px) + 0.35px) currentColor;
   text-shadow: 0.2px 0 currentColor;
 }
 `;

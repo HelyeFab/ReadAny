@@ -415,7 +415,10 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
 }
 [${BIONIC_PROCESSED_ATTR}] b {
   font-weight: inherit;
-  -webkit-text-stroke: 0.35px currentColor;
+  /* ON TOP of the reader's text-weight outline (--readany-text-stroke), never in
+     place of it: a fixed value here made the word starts THINNER than the rest
+     once text weight was raised above 0.35px. */
+  -webkit-text-stroke: calc(var(--readany-text-stroke, 0px) + 0.35px) currentColor;
   text-shadow: 0.2px 0 currentColor;
 }
 `;
@@ -2465,7 +2468,8 @@ ${rules.map((rule) => `  ${rule}`).join("\n")}
              thin ones without bolder weights. em-based so it scales with font size;
              the stroke colour follows each element's own text colour. */
           html body {
-            -webkit-text-stroke-width: ${(currentTextWeight * 0.011).toFixed(3)}em !important;
+            --readany-text-stroke: ${(currentTextWeight * 0.011).toFixed(3)}em;
+            -webkit-text-stroke-width: var(--readany-text-stroke) !important;
             -webkit-text-stroke-color: currentColor;
           }` : ''}
           pre, code, kbd, samp {
