@@ -3427,8 +3427,10 @@ html, body {
     // right-to-left books, so the gesture follows the reading direction.
     const HSWIPE_MIN_DISTANCE_PX = 100;
     const HSWIPE_MIN_DISTANCE_FRACTION = 0.22; // of the screen width
-    const HSWIPE_CENTRE_X = [0.15, 0.85]; // start must lie in this band of the width
-    const HSWIPE_CENTRE_Y = [0.15, 0.85]; // ...and of the height
+    // Wide enough that a natural long swipe (started near the side it moves away
+    // from) counts; the outer 6% stays free for Android's edge back gesture.
+    const HSWIPE_CENTRE_X = [0.06, 0.94]; // start must lie in this band of the width
+    const HSWIPE_CENTRE_Y = [0.08, 0.92]; // ...and of the height
 
     function horizontalSwipeMinDistance(screenWidth) {
       return Math.max(HSWIPE_MIN_DISTANCE_PX, screenWidth * HSWIPE_MIN_DISTANCE_FRACTION);
@@ -3488,24 +3490,33 @@ html, body {
 
       doc.addEventListener('touchstart', (e) => {
         state = null;
-        if (!view || currentViewMode === 'scroll' || e.touches.length !== 1 ||
-            doc.__readany_selection_interaction || tapNavigationInFlight) return;
+        // A swipe that starts while the previous turn is still settling is NOT
+        // dropped any more (it was, silently, on the slower e-ink panel); its turn
+        // is queued until the navigation lock clears.
+        if (!view || currentViewMode === 'scroll' || e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        if (doc.__readany_selection_interaction) {
+          state = { ignored: 'selecting', x: touch.clientX, y: touch.clientY, startedAt: Date.now() };
+          return;
+        }
         const target = e.target;
         if (target && target.closest && target.closest('a[href], audio, video, button, input, select, textarea')) return;
         const selection = doc.getSelection();
-        if (selection && !selection.isCollapsed) return;
-        const touch = e.touches[0];
+        if (selection && !selection.isCollapsed) {
+          state = { ignored: 'selection-open', x: touch.clientX, y: touch.clientY, startedAt: Date.now() };
+          return;
+        }
         const p = toScreen(touch);
         const w = window.innerWidth || 1;
         const h = window.innerHeight || 1;
         const inCentre =
           p.x >= w * HSWIPE_CENTRE_X[0] && p.x <= w * HSWIPE_CENTRE_X[1] &&
           p.y >= h * HSWIPE_CENTRE_Y[0] && p.y <= h * HSWIPE_CENTRE_Y[1];
-        state = { x: touch.clientX, y: touch.clientY, startedAt: Date.now(), axis: null, inCentre };
+        state = { x: touch.clientX, y: touch.clientY, startedAt: Date.now(), axis: null, inCentre, ignored: null };
       }, { passive: true, capture: true });
 
       doc.addEventListener('touchmove', (e) => {
-        if (!state) return;
+        if (!state || state.ignored) return;
         if (e.touches.length !== 1 || currentViewMode === 'scroll' || doc.__readany_selection_interaction) {
           state = null;
           endFeedback(true);
@@ -3516,8 +3527,10 @@ html, body {
         const dy = touch.clientY - state.y;
         if (!state.axis) {
           if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx) * SWIPE_DIRECTION_RATIO) state.axis = 'y';
-          else if (state.inCentre && Math.abs(dx) > 16 && Math.abs(dx) > Math.abs(dy) * SWIPE_DIRECTION_RATIO) state.axis = 'x';
-          else return;
+          else if (Math.abs(dx) > 16 && Math.abs(dx) > Math.abs(dy) * SWIPE_DIRECTION_RATIO) {
+            if (state.inCentre) state.axis = 'x';
+            else { state.ignored = 'outside-centre'; return; }
+          } else return;
         }
         e.preventDefault();
         setSwipeFollow(swipeFollowOffset(state.axis === 'x' ? dx : dy), false, state.axis);
@@ -3527,17 +3540,27 @@ html, body {
         const start = state;
         state = null;
         if (!start) return;
-        if (!start.axis) { endFeedback(false); return; }
-        if (currentViewMode === 'scroll' || e.changedTouches.length !== 1 ||
-            doc.__readany_selection_interaction || doc.__readany_selection_tap_guard_until > Date.now() ||
-            tapNavigationInFlight) {
-          endFeedback(true);
+        const touch = e.changedTouches[0];
+        const dx = touch ? touch.clientX - start.x : 0;
+        const dy = touch ? touch.clientY - start.y : 0;
+        const durationMs = Date.now() - start.startedAt;
+        // Anything that moved like a swipe but was not taken is logged with the
+        // reason, so "missed" swipes are never silent.
+        const swipeLike = Math.max(Math.abs(dx), Math.abs(dy)) >= 40;
+        if (start.ignored || !start.axis) {
+          endFeedback(false);
+          if (swipeLike) {
+            logSwipe(Math.abs(dx) > Math.abs(dy) ? 'x' : 'y',
+              { turn: false, reason: start.ignored || 'no-axis', velocity: 0 }, dx, dy, durationMs);
+          }
           return;
         }
-        const touch = e.changedTouches[0];
-        const dx = touch.clientX - start.x;
-        const dy = touch.clientY - start.y;
-        const durationMs = Date.now() - start.startedAt;
+        if (currentViewMode === 'scroll' || e.changedTouches.length !== 1 ||
+            doc.__readany_selection_interaction || doc.__readany_selection_tap_guard_until > Date.now()) {
+          endFeedback(true);
+          logSwipe(start.axis, { turn: false, reason: 'selection-guard', velocity: 0 }, dx, dy, durationMs);
+          return;
+        }
         const decision = start.axis === 'x'
           ? classifyHorizontalSwipe(dx, dy, durationMs, window.innerWidth || 0)
           : classifyVerticalSwipe(dx, dy, durationMs);
@@ -3550,7 +3573,6 @@ html, body {
         e.preventDefault();
         e.stopPropagation();
         hideFootnoteTip();
-        armTapNavigationLock();
         setSwipeFollow(0, false);
         let next;
         if (start.axis === 'x') {
@@ -3560,8 +3582,22 @@ html, body {
           next = dy < 0;
         }
         const source = start.axis === 'x' ? (dx < 0 ? 'swipe:left' : 'swipe:right') : (dy < 0 ? 'swipe:up' : 'swipe:down');
-        if (next) goNextByMode(undefined, source);
-        else goPrevByMode(undefined, source);
+        const turn = () => {
+          armTapNavigationLock();
+          if (next) goNextByMode(undefined, source);
+          else goPrevByMode(undefined, source);
+        };
+        if (tapNavigationInFlight) {
+          // Previous turn still settling: queue this one instead of dropping it.
+          const waitStarted = Date.now();
+          const waitForLock = () => {
+            if (!tapNavigationInFlight || Date.now() - waitStarted > 800) turn();
+            else setTimeout(waitForLock, 40);
+          };
+          setTimeout(waitForLock, 40);
+        } else {
+          turn();
+        }
       }, { passive: false, capture: true });
 
       doc.addEventListener('touchcancel', () => {
